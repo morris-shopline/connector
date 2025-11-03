@@ -35,10 +35,17 @@ const prisma = new PrismaClient()
 async function registerPlugins() {
   // CORS 設定
   await fastify.register(cors, {
-    origin: process.env.NODE_ENV === 'production' 
-      ? ['https://your-frontend-domain.com'] 
-      : ['http://localhost:3000'],
-    credentials: true
+    origin: process.env.NODE_ENV === 'production'
+      ? [
+          'https://connector-theta.vercel.app',
+          'https://connector.vercel.app',
+          /https:\/\/connector.*\.vercel\.app/, // 允許所有 Vercel 子域名
+          process.env.FRONTEND_URL || 'https://connector-theta.vercel.app'
+        ]
+      : ['http://localhost:3000', 'http://localhost:3001'],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
   })
 
   // 安全標頭
