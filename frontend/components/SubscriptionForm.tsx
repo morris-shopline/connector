@@ -19,17 +19,24 @@ export function SubscriptionForm({ isOpen, onClose, onSubmit, defaultHandle }: S
   const [webhookUrlMode, setWebhookUrlMode] = useState<'test' | 'production'>('test')
   const [apiVersion, setApiVersion] = useState('v20250601')
 
+  // 確保 URL 正確拼接，移除尾部斜線避免雙斜線
+  const normalizeUrl = (baseUrl: string, path: string): string => {
+    const cleanBase = baseUrl.replace(/\/+$/, '') // 移除尾部斜線
+    const cleanPath = path.replace(/^\/+/, '') // 移除開頭斜線
+    return `${cleanBase}/${cleanPath}`
+  }
+
   useEffect(() => {
     if (webhookUrlMode === 'test') {
       // 測試站：使用 ngrok URL（僅本地開發）
       const testUrl = process.env.NEXT_PUBLIC_NGROK_URL
       if (testUrl) {
-        setWebhookUrl(`${testUrl}/webhook/shopline`)
+        setWebhookUrl(normalizeUrl(testUrl, 'webhook/shopline'))
       } else {
         // 沒有 ngrok URL，使用正式站 URL
         const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL
         if (backendUrl) {
-          setWebhookUrl(`${backendUrl}/webhook/shopline`)
+          setWebhookUrl(normalizeUrl(backendUrl, 'webhook/shopline'))
         } else {
           alert('⚠️ 請設定 NEXT_PUBLIC_BACKEND_URL 或 NEXT_PUBLIC_NGROK_URL 環境變數')
           setWebhookUrl('')
@@ -39,7 +46,7 @@ export function SubscriptionForm({ isOpen, onClose, onSubmit, defaultHandle }: S
       // 正式站：使用後端 URL
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL
       if (backendUrl) {
-        setWebhookUrl(`${backendUrl}/webhook/shopline`)
+        setWebhookUrl(normalizeUrl(backendUrl, 'webhook/shopline'))
       } else {
         alert('⚠️ 請設定 NEXT_PUBLIC_BACKEND_URL 環境變數')
         setWebhookUrl('')

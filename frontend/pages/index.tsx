@@ -115,7 +115,8 @@ export default function Home() {
                               alert('❌ 錯誤：請設定 NEXT_PUBLIC_BACKEND_URL 環境變數')
                               return
                             }
-                            const url = `${backendUrl}/api/auth/shopline/install?appkey=${appKey}&handle=${handle}&timestamp=${timestamp}&sign=${hashHex}`
+                            const cleanUrl = backendUrl.replace(/\/+$/, '') // 移除尾部斜線
+                            const url = `${cleanUrl}/api/auth/shopline/install?appkey=${appKey}&handle=${handle}&timestamp=${timestamp}&sign=${hashHex}`
                             window.location.href = url
                           })
                           .catch(() => {
@@ -125,7 +126,8 @@ export default function Home() {
                               alert('❌ 錯誤：請設定 NEXT_PUBLIC_BACKEND_URL 環境變數')
                               return
                             }
-                            window.location.href = `${backendUrl}/api/auth/shopline/install?appkey=${appKey}&handle=${handle}&timestamp=${timestamp}&sign=test`
+                            const cleanUrl = backendUrl.replace(/\/+$/, '') // 移除尾部斜線
+                            window.location.href = `${cleanUrl}/api/auth/shopline/install?appkey=${appKey}&handle=${handle}&timestamp=${timestamp}&sign=test`
                           })
                       }}
                       className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"

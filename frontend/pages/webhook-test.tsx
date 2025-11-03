@@ -82,7 +82,7 @@ export default function WebhookTest() {
     await handleSubscribe({
       handle: selectedHandle,
       topic: 'products/update',
-      webhookUrl: `${backendUrl}/webhook/shopline`,
+      webhookUrl: `${backendUrl.replace(/\/+$/, '')}/webhook/shopline`,
       apiVersion: 'v20250601'
     })
   }
