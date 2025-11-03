@@ -101,8 +101,8 @@
 
 ```bash
 # 1. 複製專案
-git clone <repository-url>
-cd lab
+git clone https://github.com/morris-shopline/connector.git
+cd connector
 
 # 2. 安裝後端依賴
 cd backend && npm install
