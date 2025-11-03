@@ -18,8 +18,7 @@
     "jsx": "preserve",
     "baseUrl": ".",
     "paths": {
-      "@/shared/*": ["../shared/*"],
-      "@/shared/types": ["../shared/types"]
+      "@/shared/*": ["../shared/*"]
     }
   },
   "include": [
