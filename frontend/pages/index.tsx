@@ -110,14 +110,22 @@ export default function Home() {
                           .then(signature => {
                             const hashArray = Array.from(new Uint8Array(signature))
                             const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
-                            const ngrokUrl = process.env.NEXT_PUBLIC_NGROK_URL || 'http://localhost:3001'
-                            const url = `${ngrokUrl}/api/auth/shopline/install?appkey=${appKey}&handle=${handle}&timestamp=${timestamp}&sign=${hashHex}`
+                            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_NGROK_URL
+                            if (!backendUrl) {
+                              alert('❌ 錯誤：請設定 NEXT_PUBLIC_BACKEND_URL 環境變數')
+                              return
+                            }
+                            const url = `${backendUrl}/api/auth/shopline/install?appkey=${appKey}&handle=${handle}&timestamp=${timestamp}&sign=${hashHex}`
                             window.location.href = url
                           })
                           .catch(() => {
                             // 如果 Web Crypto API 失敗，使用簡單的測試簽名
-                            const ngrokUrl = process.env.NEXT_PUBLIC_NGROK_URL || 'http://localhost:3001'
-                            window.location.href = `${ngrokUrl}/api/auth/shopline/install?appkey=${appKey}&handle=${handle}&timestamp=${timestamp}&sign=test`
+                            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_NGROK_URL
+                            if (!backendUrl) {
+                              alert('❌ 錯誤：請設定 NEXT_PUBLIC_BACKEND_URL 環境變數')
+                              return
+                            }
+                            window.location.href = `${backendUrl}/api/auth/shopline/install?appkey=${appKey}&handle=${handle}&timestamp=${timestamp}&sign=test`
                           })
                       }}
                       className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"

@@ -138,7 +138,15 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         await shoplineService.saveStoreInfo(tokenData, params.handle)
         
         // 取得前端 URL (從環境變數或使用預設值)
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000'
+        // 生產環境必須設定 FRONTEND_URL
+        const frontendUrl = process.env.FRONTEND_URL
+        if (!frontendUrl) {
+          fastify.log.error({ msg: '❌ 錯誤：生產環境必須設定 FRONTEND_URL 環境變數' })
+          return reply.status(500).send({
+            success: false,
+            error: 'Frontend URL not configured'
+          })
+        }
         
         // 返回成功頁面 HTML，自動重導向到前端
         return reply.type('text/html').send(`

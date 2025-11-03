@@ -1,8 +1,29 @@
 import axios from 'axios'
 import { ApiResponse, StoreInfo } from '@/shared/types'
 
+// 生產環境必須設定 NEXT_PUBLIC_BACKEND_URL
+// 開發環境可以使用 NEXT_PUBLIC_NGROK_URL（ngrok）或 NEXT_PUBLIC_API_URL
+const getBackendUrl = () => {
+  if (process.env.NEXT_PUBLIC_BACKEND_URL) {
+    return process.env.NEXT_PUBLIC_BACKEND_URL
+  }
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL
+  }
+  if (process.env.NEXT_PUBLIC_NGROK_URL) {
+    return process.env.NEXT_PUBLIC_NGROK_URL
+  }
+  // 生產環境不應該到這裡，應該拋出錯誤
+  if (process.env.NODE_ENV === 'production') {
+    console.error('❌ 錯誤：生產環境必須設定 NEXT_PUBLIC_BACKEND_URL 環境變數')
+    throw new Error('NEXT_PUBLIC_BACKEND_URL is required in production')
+  }
+  // 開發環境允許使用 localhost
+  return 'http://localhost:3001'
+}
+
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
+  baseURL: getBackendUrl(),
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'

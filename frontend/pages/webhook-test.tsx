@@ -74,11 +74,15 @@ export default function WebhookTest() {
   }
 
   const handleQuickTest = async () => {
-    const ngrokUrl = process.env.NEXT_PUBLIC_NGROK_URL || 'http://localhost:3001'
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_NGROK_URL
+    if (!backendUrl) {
+      console.error('❌ 錯誤：請設定 NEXT_PUBLIC_BACKEND_URL 環境變數')
+      return
+    }
     await handleSubscribe({
       handle: selectedHandle,
       topic: 'products/update',
-      webhookUrl: `${ngrokUrl}/webhook/shopline`,
+      webhookUrl: `${backendUrl}/webhook/shopline`,
       apiVersion: 'v20250601'
     })
   }

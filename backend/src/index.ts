@@ -42,7 +42,9 @@ async function registerPlugins() {
           /https:\/\/connector.*\.vercel\.app/, // 允許所有 Vercel 子域名
           process.env.FRONTEND_URL || 'https://connector-theta.vercel.app'
         ]
-      : ['http://localhost:3000', 'http://localhost:3001'],
+      : process.env.FRONTEND_URL 
+          ? [process.env.FRONTEND_URL]
+          : ['http://localhost:3000'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']

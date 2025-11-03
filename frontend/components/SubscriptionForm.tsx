@@ -21,11 +21,29 @@ export function SubscriptionForm({ isOpen, onClose, onSubmit, defaultHandle }: S
 
   useEffect(() => {
     if (webhookUrlMode === 'test') {
-      const ngrokUrl = process.env.NEXT_PUBLIC_NGROK_URL || 'http://localhost:3001'
-      setWebhookUrl(`${ngrokUrl}/webhook/shopline`)
+      // 測試站：使用 ngrok URL（僅本地開發）
+      const testUrl = process.env.NEXT_PUBLIC_NGROK_URL
+      if (testUrl) {
+        setWebhookUrl(`${testUrl}/webhook/shopline`)
+      } else {
+        // 沒有 ngrok URL，使用正式站 URL
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL
+        if (backendUrl) {
+          setWebhookUrl(`${backendUrl}/webhook/shopline`)
+        } else {
+          alert('⚠️ 請設定 NEXT_PUBLIC_BACKEND_URL 或 NEXT_PUBLIC_NGROK_URL 環境變數')
+          setWebhookUrl('')
+        }
+      }
     } else {
-      // 正式站 URL（可從環境變數或配置取得）
-      setWebhookUrl('')
+      // 正式站：使用後端 URL
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL
+      if (backendUrl) {
+        setWebhookUrl(`${backendUrl}/webhook/shopline`)
+      } else {
+        alert('⚠️ 請設定 NEXT_PUBLIC_BACKEND_URL 環境變數')
+        setWebhookUrl('')
+      }
     }
   }, [webhookUrlMode])
 
