@@ -180,6 +180,7 @@ cd frontend && npm run dev
 - [系統架構](docs/ARCHITECTURE.md) - 完整的系統設計說明
 - [重要學習點](docs/LESSONS_LEARNED.md) - 開發過程中的重要發現
 - [合規性檢查](docs/COMPLIANCE_CHECK.md) - Shopline API 合規性評估
+- [部署指南](docs/DEPLOYMENT_GUIDE.md) - Vercel（前端）和 Render（後端）部署說明
 - [測試資訊](TESTING_INFO.md) - 測試流程與注意事項
 - [工具腳本](docs/SCRIPTS.md) - 自動化腳本說明
 - [Shopline API 文檔](SHOPLINE_API_DOCS.md) - API 參考文檔
