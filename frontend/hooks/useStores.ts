@@ -1,6 +1,6 @@
 import useSWR from 'swr'
 import { apiClient } from '../lib/api'
-import { StoreInfo } from '../../../shared/types'
+import { StoreInfo } from '@/shared/types'
 
 export function useStores() {
   const { data, error, isLoading, mutate } = useSWR<StoreInfo[]>(
