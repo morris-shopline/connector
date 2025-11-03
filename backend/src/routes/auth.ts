@@ -52,11 +52,14 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
       
       // 驗證安裝請求
       fastify.log.info('步驟 2: 驗證簽名...')
-      fastify.log.info({ msg: '驗證參數:', params: {
-        appkey: params.appkey,
-        handle: params.handle,
-        timestamp: params.timestamp,
-        receivedSign: params.sign
+      fastify.log.info({ 
+        msg: '驗證參數:', 
+        params: {
+          appkey: params.appkey,
+          handle: params.handle,
+          timestamp: params.timestamp,
+          receivedSign: params.sign
+        }
       })
       
       const isValid = await shoplineService.verifyInstallRequest(params)
