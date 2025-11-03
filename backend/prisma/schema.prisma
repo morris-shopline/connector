@@ -1,0 +1,50 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Store {
+  id          String   @id @default(cuid())
+  shoplineId  String   @unique
+  handle      String?  // Shopline 商店 handle (例如: paykepoc)
+  name        String?
+  domain      String?
+  accessToken String
+  expiresAt   DateTime? // Token 到期時間
+  scope       String   // 儲存為逗號分隔的字串
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  webhookEvents WebhookEvent[]
+
+  @@map("stores")
+}
+
+model WebhookEvent {
+  id          String   @id @default(cuid())
+  storeId     String
+  webhookId   String   @unique // X-Shopline-Webhook-Id，用於去重
+  topic       String   // X-Shopline-Topic，例如：orders/update
+  eventType   String   // 與 topic 相同，保留作為兼容欄位
+  shopDomain  String?  // X-Shopline-Shop-Domain
+  shoplineId  String?  // X-Shopline-Shop-Id（商店 ID）
+  merchantId  String?  // X-Shopline-Merchant-Id
+  apiVersion  String?  // X-Shopline-API-Version
+  payload     String   // 儲存為 JSON 字串
+  processed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@map("webhook_events")
+  @@index([webhookId])
+  @@index([storeId, createdAt])
+}

@@ -1,0 +1,12 @@
+{
+  "app_key": "your_app_key_here",
+  "app_secret": "your_app_secret_here",
+  "shop_handle": "example_shop_handle",
+  "shop_url": "https://example.myshopline.com/",
+  "redirect_uri": "https://your-ngrok-url.ngrok-free.app/api/auth/shopline/callback",
+  "database_url": "由 .env 中的 DATABASE_URL 取代",
+  "port": 3001,
+  "jwt_secret": "your_jwt_secret_here_please_change_in_production",
+  "ngrok_url": "your_ngrok_url_here"
+}
+

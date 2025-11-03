@@ -1,0 +1,11 @@
+{
+  "app_key": "4c951e966557c8374d9a61753dfe3c52441aba3b",
+  "app_secret": "dd46269d6920f49b07e810862d3093062b0fb858",
+  "shop_handle": "paykepoc",
+  "shop_url": "https://paykepoc.myshopline.com/",
+  "redirect_uri": "https://f79597ed859e.ngrok-free.app/api/auth/shopline/callback",
+  "database_url": "由 .env 中的 DATABASE_URL 取代",
+  "port": 3001,
+  "jwt_secret": "your_jwt_secret_here_please_change_in_production",
+  "ngrok_url": "https://f79597ed859e.ngrok-free.app"
+}

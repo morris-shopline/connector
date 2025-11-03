@@ -1,0 +1,236 @@
+import { FastifyInstance } from 'fastify'
+import { ShoplineService } from '../services/shopline'
+import { generateRandomString } from '../utils/signature'
+import { z } from 'zod'
+
+const shoplineService = new ShoplineService()
+
+// 驗證安裝請求的 schema
+const installRequestSchema = z.object({
+  appkey: z.string(),
+  handle: z.string(),
+  timestamp: z.string(),
+  sign: z.string(),
+  lang: z.string().optional()
+})
+
+// OAuth 回調的 schema
+const callbackSchema = z.object({
+  appkey: z.string(),
+  code: z.string(),
+  handle: z.string(),
+  timestamp: z.string(),
+  sign: z.string(),
+  lang: z.string().optional(),
+  customField: z.string().optional()
+})
+
+export async function authRoutes(fastify: FastifyInstance, options: any) {
+  // 處理應用安裝請求
+  fastify.get('/api/auth/shopline/install', async (request, reply) => {
+    try {
+      const startTime = Date.now()
+      fastify.log.info('=== 開始處理 Shopline 安裝請求 ===')
+      fastify.log.info('請求時間:', new Date().toISOString())
+      fastify.log.info('請求 IP:', request.ip)
+      fastify.log.info('原始查詢參數:', JSON.stringify(request.query, null, 2))
+      
+      // 解析參數
+      fastify.log.info('步驟 1: 解析請求參數...')
+      const parseResult = installRequestSchema.safeParse(request.query)
+      if (!parseResult.success) {
+        fastify.log.error('❌ 參數解析失敗:', parseResult.error.errors)
+        return reply.status(400).send({
+          success: false,
+          error: 'Invalid request parameters',
+          details: parseResult.error.errors
+        })
+      }
+
+      const params = parseResult.data
+      fastify.log.info('✅ 參數解析成功:', JSON.stringify(params, null, 2))
+      
+      // 驗證安裝請求
+      fastify.log.info('步驟 2: 驗證簽名...')
+      fastify.log.info('驗證參數:', {
+        appkey: params.appkey,
+        handle: params.handle,
+        timestamp: params.timestamp,
+        receivedSign: params.sign
+      })
+      
+      const isValid = await shoplineService.verifyInstallRequest(params)
+      if (!isValid) {
+        fastify.log.error('❌ 簽名驗證失敗')
+        return reply.status(401).send({
+          success: false,
+          error: 'Invalid install request signature',
+          receivedParams: params
+        })
+      }
+
+      fastify.log.info('✅ 簽名驗證成功')
+      
+      // 生成 state 參數
+      fastify.log.info('步驟 3: 生成 state 參數...')
+      const state = generateRandomString()
+      fastify.log.info('生成的 state:', state)
+      
+      // 重定向到 Shopline 授權頁面
+      fastify.log.info('步驟 4: 生成授權 URL...')
+      const authUrl = shoplineService.generateAuthUrl(state, params.handle)
+      fastify.log.info('生成的授權 URL:', authUrl)
+      
+      const processingTime = Date.now() - startTime
+      fastify.log.info(`=== 安裝請求處理完成，耗時: ${processingTime}ms ===`)
+      fastify.log.info('重定向到:', authUrl)
+      
+      return reply.redirect(302, authUrl)
+    } catch (error: any) {
+      fastify.log.error('Auth error:', error)
+      return reply.status(500).send({
+        success: false,
+        error: 'Internal server error',
+        message: error.message
+      })
+    }
+  })
+
+  // 處理 OAuth 回調
+  fastify.get('/api/auth/shopline/callback', async (request, reply) => {
+    try {
+      fastify.log.info('收到授權回調:', request.query)
+      
+      const parseResult = callbackSchema.safeParse(request.query)
+      if (!parseResult.success) {
+        fastify.log.error('Parse error:', parseResult.error)
+        return reply.status(400).send({
+          success: false,
+          error: 'Invalid request parameters',
+          details: parseResult.error.errors
+        })
+      }
+
+      const params = parseResult.data
+      
+      // 驗證簽名
+      const isValidSignature = await shoplineService.verifyInstallRequest(params)
+      if (!isValidSignature) {
+        fastify.log.error('回調簽名驗證失敗')
+        return reply.status(401).send({
+          success: false,
+          error: 'Invalid signature'
+        })
+      }
+
+      fastify.log.info('授權碼驗證成功:', params.code)
+      
+      // 交換授權碼獲取存取令牌
+      const tokenData = await shoplineService.exchangeCodeForToken(params.code, params.handle)
+      
+      if (tokenData.success) {
+        fastify.log.info('Access token 獲取成功')
+        
+        // 儲存商店資訊
+        await shoplineService.saveStoreInfo(tokenData, params.handle)
+        
+        // 取得前端 URL (從環境變數或使用預設值)
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000'
+        
+        // 返回成功頁面 HTML，自動重導向到前端
+        return reply.type('text/html').send(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <title>授權成功</title>
+              <style>
+                body {
+                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                  display: flex;
+                  justify-content: center;
+                  align-items: center;
+                  min-height: 100vh;
+                  margin: 0;
+                  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                  color: white;
+                }
+                .container {
+                  text-align: center;
+                  padding: 2rem;
+                  background: rgba(255, 255, 255, 0.1);
+                  border-radius: 1rem;
+                  backdrop-filter: blur(10px);
+                }
+                h1 { margin: 0 0 1rem 0; }
+                p { margin: 0.5rem 0; }
+                .spinner {
+                  border: 3px solid rgba(255, 255, 255, 0.3);
+                  border-radius: 50%;
+                  border-top: 3px solid white;
+                  width: 30px;
+                  height: 30px;
+                  animation: spin 1s linear infinite;
+                  margin: 1rem auto;
+                }
+                @keyframes spin {
+                  0% { transform: rotate(0deg); }
+                  100% { transform: rotate(360deg); }
+                }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <h1>✅ 授權成功！</h1>
+                <p>商店授權已成功完成</p>
+                <p>已取得存取權限</p>
+                <div class="spinner"></div>
+                <p style="font-size: 0.9rem; opacity: 0.9; margin-top: 1rem;">正在返回應用程式...</p>
+              </div>
+              <script>
+                // 嘗試關閉視窗 (如果是彈窗)
+                try {
+                  if (window.opener) {
+                    window.close();
+                  }
+                } catch (e) {
+                  console.log('Could not close window:', e);
+                }
+                
+                // 3秒後重導向到前端
+                setTimeout(() => {
+                  window.location.href = '${frontendUrl}';
+                }, 3000);
+              </script>
+            </body>
+          </html>
+        `)
+      } else {
+        fastify.log.error('Access token 獲取失敗:', tokenData.error)
+        return reply.status(500).send({
+          success: false,
+          error: tokenData.error
+        })
+      }
+    } catch (error: any) {
+      fastify.log.error('Callback error:', error)
+      fastify.log.error('Error stack:', error?.stack)
+      return reply.status(500).send({
+        success: false,
+        error: 'Internal server error',
+        message: error?.message
+      })
+    }
+  })
+
+  // 成功頁面
+  fastify.get('/success', async (request, reply) => {
+    const { shop } = request.query as { shop?: string }
+    
+    return reply.send({
+      success: true,
+      message: '商店授權成功！',
+      shopId: shop
+    })
+  })
+}
