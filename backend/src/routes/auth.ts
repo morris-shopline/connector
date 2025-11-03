@@ -31,9 +31,9 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
     try {
       const startTime = Date.now()
       fastify.log.info('=== 開始處理 Shopline 安裝請求 ===')
-      fastify.log.info('請求時間:', new Date().toISOString())
-      fastify.log.info('請求 IP:', request.ip)
-      fastify.log.info('原始查詢參數:', JSON.stringify(request.query, null, 2))
+      fastify.log.info({ msg: '請求時間:', time: new Date().toISOString() })
+      fastify.log.info({ msg: '請求 IP:', ip: request.ip })
+      fastify.log.info({ msg: '原始查詢參數:', query: JSON.stringify(request.query, null, 2) })
       
       // 解析參數
       fastify.log.info('步驟 1: 解析請求參數...')
@@ -48,11 +48,11 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
       }
 
       const params = parseResult.data
-      fastify.log.info('✅ 參數解析成功:', JSON.stringify(params, null, 2))
+      fastify.log.info({ msg: '✅ 參數解析成功:', params: JSON.stringify(params, null, 2) })
       
       // 驗證安裝請求
       fastify.log.info('步驟 2: 驗證簽名...')
-      fastify.log.info('驗證參數:', {
+      fastify.log.info({ msg: '驗證參數:', params: {
         appkey: params.appkey,
         handle: params.handle,
         timestamp: params.timestamp,

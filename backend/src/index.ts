@@ -55,7 +55,7 @@ async function registerPlugins() {
   })
 
   // Session 支援 (簡化版)
-  fastify.addHook('preHandler', async (request, reply) => {
+  fastify.addHook('preHandler', async (request: any, reply) => {
     if (!request.session) {
       request.session = new Map()
     }

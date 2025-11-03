@@ -7,7 +7,7 @@ import {
   signPostRequest,
   verifyWebhookSignature as verifyWebhookSignatureUtil
 } from '../utils/signature'
-import { ShoplineAuthParams, ShoplineTokenResponse } from '../../shared/types'
+import { ShoplineAuthParams, ShoplineTokenResponse } from '../types'
 
 const prisma = new PrismaClient()
 

@@ -14,7 +14,7 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
         data: stores
       })
     } catch (error) {
-      fastify.log.error('Get stores error:', error)
+      fastify.log.error({ msg: 'Get stores error:', error })
       return reply.status(500).send({
         success: false,
         error: 'Internal server error'
