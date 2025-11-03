@@ -87,9 +87,17 @@
 #### JWT 設定
 ```
 變數名稱：JWT_SECRET
-變數值：請使用強隨機字串（至少 32 字元，例如：your_super_secret_jwt_key_change_in_production_2025）
+變數值：7c6c4d2e6393a206f3e758949ff3cd822998bd6afb583ea90c8c538a368cab4b0638f3c0d76830a5b2ccef69060c766ac50f1f41db2b6f75b5e35c5884e796a4
 ```
-⚠️ **重要**：請更換為您的專屬 JWT Secret
+
+**JWT_SECRET 說明：**
+- **用途**：用於簽署和驗證 JWT token，確保 token 的安全性和完整性
+- **上方的值**：這是一個已生成的 128 字元隨機密鑰，可以直接使用
+- **安全性**：請妥善保管此密鑰，不要公開分享或 commit 到 Git
+- **如果需要重新生成**：可以使用以下命令：
+  ```bash
+  node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+  ```
 
 ### 3. 儲存並重新部署
 
