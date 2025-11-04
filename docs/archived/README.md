@@ -27,7 +27,7 @@
 **歸檔日期**: 2025-01-XX  
 **狀態**: ✅ 已歸檔  
 **歸檔原因**: 文件已遷移至新的 Sprint 文件體系  
-**替代文件**: `docs/sprints/01-admin-api-testing.md`  
+**替代文件**: `docs/sprints/02-admin-api-testing.md`  
 **Sprint 總覽**: `docs/sprints/SPRINT_INDEX.md`
 
 **說明**: 此文件為 Sprint 1 的初步規劃文件，已整合到新的 Sprint 文件管理體系中。新文件包含更完整的時序資訊、前置條件和依賴關係。

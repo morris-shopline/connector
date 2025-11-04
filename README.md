@@ -8,7 +8,7 @@
 **最後更新**: 2025-11-03  
 **狀態**: ✅ OAuth 授權流程已完整實作並測試通過
 
-> 📋 詳細的專案狀態請參考 [PROJECT_STATUS.md](./PROJECT_STATUS.md)  
+> 📋 詳細的專案狀態請參考 [PROJECT_STATUS.md](./PROJECT_STATUS.md)
 > 🏃 Sprint 管理請參考 [docs/sprints/SPRINT_INDEX.md](./docs/sprints/SPRINT_INDEX.md)
 
 ### 已完成功能
@@ -187,6 +187,7 @@ cd frontend && npm run dev
 - [Webhook 使用指南](docs/WEBHOOK_GUIDE.md) - SHOPLINE Webhook 完整實作指南
 - [Webhook Topics 列表](docs/SHOPLINE_WEBHOOK_TOPICS.md) - 所有可用的 Webhook Topics 及版本對應
 - [Webhook 測試介面設計](docs/WEBHOOK_TEST_UI_DESIGN.md) - 前端測試介面架構規劃
+- [Admin API 測試介面設計](docs/ADMIN_API_TEST_UI_DESIGN.md) - Admin API 測試頁面 Layout 設計
 
 ## 🔑 配置說明
 

@@ -53,3 +53,127 @@ export interface ApiResponse<T = any> {
   error?: string
   message?: string
 }
+
+// Admin API Types
+
+// Store Info
+export interface StoreInfoResponse {
+  shop?: {
+    id?: string
+    name?: string
+    domain?: string
+    location_id?: string
+    [key: string]: any
+  }
+}
+
+// Products
+export interface Product {
+  id: string
+  handle: string
+  title: string
+  variants: ProductVariant[]
+  images?: Array<{ src: string; alt: string }>
+  subtitle?: string
+  body_html?: string
+  status: string
+  published_scope: string
+  tags?: string[]
+  [key: string]: any
+}
+
+export interface ProductVariant {
+  id: string
+  sku: string
+  price: string
+  required_shipping: boolean
+  taxable: boolean
+  inventory_tracker: boolean
+  image?: { alt: string; src: string }
+  [key: string]: any
+}
+
+export interface ProductListParams {
+  page?: number
+  limit?: number
+  ids?: string
+}
+
+export interface ProductListResponse {
+  products: Product[]
+  pagination?: {
+    page: number
+    limit: number
+    total: number
+  }
+}
+
+export interface CreateProductInput {
+  product: {
+    handle: string
+    title: string
+    tags: string[]
+    variants: Array<{
+      sku: string
+      price: string
+      required_shipping: boolean
+      taxable: boolean
+      image?: { alt: string; src: string }
+      inventory_tracker: boolean
+    }>
+    images?: Array<{ src: string; alt: string }>
+    subtitle?: string
+    body_html?: string
+    status: string
+    published_scope: string
+  }
+}
+
+// Orders
+export interface Order {
+  id: string
+  [key: string]: any
+}
+
+export interface OrderListParams {
+  page?: number
+  limit?: number
+  status?: string
+}
+
+export interface OrderListResponse {
+  orders: Order[]
+  pagination?: {
+    page: number
+    limit: number
+    total: number
+  }
+}
+
+export interface CreateOrderInput {
+  order: {
+    tags?: string
+    price_info: {
+      total_shipping_price: string
+    }
+    line_items: Array<{
+      location_id: string
+      price: string
+      quantity: number
+      title: string
+      variant_id: string
+    }>
+  }
+}
+
+// Locations
+export interface Location {
+  id: string
+  name?: string
+  [key: string]: any
+}
+
+export interface LocationListResponse {
+  locations?: Location[]
+  [key: string]: any
+}

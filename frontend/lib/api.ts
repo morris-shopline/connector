@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { ApiResponse, StoreInfo } from '@/types'
+import { ApiResponse, StoreInfo, StoreInfoResponse, ProductListParams, ProductListResponse, Product, CreateProductInput, OrderListParams, OrderListResponse, Order, CreateOrderInput, LocationListResponse } from '@/types'
 
 // 生產環境必須設定 NEXT_PUBLIC_BACKEND_URL
 // 開發環境可以使用 NEXT_PUBLIC_NGROK_URL（ngrok）或 NEXT_PUBLIC_API_URL
@@ -124,6 +124,89 @@ export const apiClient = {
       return response.data
     } catch (error: any) {
       console.error('Get webhook count error:', error)
+      throw error
+    }
+  },
+
+  // Admin API Methods
+  async getStoreInfo(handle: string): Promise<ApiResponse<StoreInfoResponse>> {
+    try {
+      const response = await api.get(`/api/stores/${handle}/info`)
+      return response.data
+    } catch (error: any) {
+      console.error('Get store info error:', error)
+      throw error
+    }
+  },
+
+  async getProducts(handle: string, params?: ProductListParams): Promise<ApiResponse<ProductListResponse>> {
+    try {
+      const queryParams = new URLSearchParams()
+      if (params?.ids) queryParams.append('ids', params.ids)
+      if (params?.page) queryParams.append('page', params.page.toString())
+      if (params?.limit) queryParams.append('limit', params.limit.toString())
+      
+      const queryString = queryParams.toString()
+      const response = await api.get(`/api/stores/${handle}/products${queryString ? '?' + queryString : ''}`)
+      return response.data
+    } catch (error: any) {
+      console.error('Get products error:', error)
+      throw error
+    }
+  },
+
+  async getProduct(handle: string, productId: string): Promise<ApiResponse<{ product: Product }>> {
+    try {
+      const response = await api.get(`/api/stores/${handle}/products/${productId}`)
+      return response.data
+    } catch (error: any) {
+      console.error('Get product error:', error)
+      throw error
+    }
+  },
+
+  async createProduct(handle: string, productData?: CreateProductInput): Promise<ApiResponse<{ product: Product }>> {
+    try {
+      const response = await api.post(`/api/stores/${handle}/products`, productData || {})
+      return response.data
+    } catch (error: any) {
+      console.error('Create product error:', error)
+      throw error
+    }
+  },
+
+  async getOrders(handle: string, params?: OrderListParams): Promise<ApiResponse<OrderListResponse>> {
+    try {
+      const queryParams = new URLSearchParams()
+      if (params?.page) queryParams.append('page', params.page.toString())
+      if (params?.limit) queryParams.append('limit', params.limit.toString())
+      if (params?.status) queryParams.append('status', params.status)
+      
+      const queryString = queryParams.toString()
+      const response = await api.get(`/api/stores/${handle}/orders${queryString ? '?' + queryString : ''}`)
+      return response.data
+    } catch (error: any) {
+      console.error('Get orders error:', error)
+      throw error
+    }
+  },
+
+  async createOrder(handle: string, orderData?: CreateOrderInput): Promise<ApiResponse<{ order: Order }>> {
+    try {
+      const response = await api.post(`/api/stores/${handle}/orders`, orderData || {})
+      return response.data
+    } catch (error: any) {
+      console.error('Create order error:', error)
+      throw error
+    }
+  },
+
+  async getLocations(handle: string): Promise<ApiResponse<LocationListResponse>> {
+    try {
+      const response = await api.get(`/api/stores/${handle}/locations`)
+      return response.data
+    } catch (error: any) {
+      console.error('Get locations error:', error)
       throw error
     }
   }

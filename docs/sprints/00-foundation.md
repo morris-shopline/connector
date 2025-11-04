@@ -10,7 +10,7 @@
 **持續時間**: ~2 週
 
 **前置 Sprint**: 無（專案起始）  
-**後續 Sprint**: [Sprint 1: Admin API 測試功能](./01-admin-api-testing.md)
+**後續 Sprint**: [Sprint 1: Bug 修復與架構優化](./01-bug-fix-and-architecture.md)
 
 ---
 
@@ -277,15 +277,21 @@ frontend/
 
 ### Sprint 0 完成後
 
-- ✅ 準備進入 Sprint 1: Admin API 測試功能
+- ✅ 準備進入 Sprint 1: Bug 修復與架構優化
 - ✅ 建立 Sprint 文件體系
 - ✅ 整理開發經驗
 
 ### 下一個 Sprint 準備
 
 **Sprint 1** 將基於 Sprint 0 的成果：
+- 修復正式部署後的問題
+- 優化型別定義策略
+- 新增健康檢查功能
+
+**Sprint 2** 將基於 Sprint 0 和 Sprint 1 的成果：
 - 使用已建立的 OAuth 授權機制
 - 使用已儲存的商店 Access Token
+- 使用已改進的錯誤處理機制
 - 擴展 `ShoplineService` 新增 Admin API 方法
 - 建立前端測試介面
 
@@ -294,7 +300,8 @@ frontend/
 ## 📚 相關文件
 
 - [Sprint 總覽](./SPRINT_INDEX.md)
-- [Sprint 1: Admin API 測試功能](./01-admin-api-testing.md)
+- [Sprint 1: Bug 修復與架構優化](./01-bug-fix-and-architecture.md)
+- [Sprint 2: Admin API 測試功能](./02-admin-api-testing.md)
 - [系統架構](../ARCHITECTURE.md)
 - [合規性檢查](../COMPLIANCE_CHECK.md)
 - [Webhook 指南](../WEBHOOK_GUIDE.md)

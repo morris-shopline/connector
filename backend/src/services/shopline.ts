@@ -7,7 +7,20 @@ import {
   signPostRequest,
   verifyWebhookSignature as verifyWebhookSignatureUtil
 } from '../utils/signature'
-import { ShoplineAuthParams, ShoplineTokenResponse } from '../types'
+import { 
+  ShoplineAuthParams, 
+  ShoplineTokenResponse,
+  StoreInfoResponse,
+  ProductListParams,
+  ProductListResponse,
+  Product,
+  CreateProductInput,
+  OrderListParams,
+  OrderListResponse,
+  Order,
+  CreateOrderInput,
+  LocationListResponse
+} from '../types'
 
 const prisma = new PrismaClient()
 
@@ -113,7 +126,7 @@ export class ShoplineService {
         }
       )
 
-      const data = await response.json()
+      const data: any = await response.json()
       
       if (data.code === 200) {
         return {
@@ -181,12 +194,20 @@ export class ShoplineService {
   }
 
   /**
-   * 取得商店資訊
+   * 取得商店資訊（從資料庫）
    */
-  async getStoreInfo(shoplineId: string) {
+  async getStoreFromDb(shoplineId: string) {
     return prisma.store.findUnique({
       where: { shoplineId }
     })
+  }
+
+  /**
+   * 取得商店資訊（從資料庫）
+   * @deprecated 使用 getStoreFromDb
+   */
+  async getStoreInfo(shoplineId: string) {
+    return this.getStoreFromDb(shoplineId)
   }
 
   /**
@@ -556,5 +577,328 @@ export class ShoplineService {
     // 使用列表 API 然後計算數量
     const subscriptions = await this.getSubscribedWebhooks(handle, apiVersion)
     return { count: subscriptions?.webhooks?.length || 0 }
+  }
+
+  // ==================== Admin API Methods ====================
+
+  /**
+   * 取得商店資訊（從 Shopline API）
+   */
+  async getStoreInfoFromAPI(handle: string, apiVersion: string = 'v20250601'): Promise<StoreInfoResponse> {
+    const store = await this.validateStoreToken(handle)
+    const url = `https://${handle}.myshopline.com/admin/openapi/${apiVersion}/merchants/shop.json`
+
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Authorization': `Bearer ${store.accessToken}`
+        }
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw this.handleApiError(response, errorText)
+      }
+
+      const data: any = await response.json()
+      return data as StoreInfoResponse
+    } catch (error: any) {
+      console.error('Get store info error:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 取得產品列表
+   */
+  async getProducts(handle: string, params?: ProductListParams, apiVersion: string = 'v20250601'): Promise<ProductListResponse> {
+    const store = await this.validateStoreToken(handle)
+    
+    // 構建查詢參數
+    const queryParams = new URLSearchParams()
+    if (params?.ids) queryParams.append('ids', params.ids)
+    if (params?.page) queryParams.append('page', params.page.toString())
+    if (params?.limit) queryParams.append('limit', params.limit.toString())
+    
+    const queryString = queryParams.toString()
+    const url = `https://${handle}.myshopline.com/admin/openapi/${apiVersion}/products/products.json${queryString ? '?' + queryString : ''}`
+
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Authorization': `Bearer ${store.accessToken}`
+        }
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw this.handleApiError(response, errorText)
+      }
+
+      const data: any = await response.json()
+      return data as ProductListResponse
+    } catch (error: any) {
+      console.error('Get products error:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 取得單一產品
+   */
+  async getProduct(handle: string, productId: string, apiVersion: string = 'v20250601'): Promise<{ product: Product }> {
+    const products = await this.getProducts(handle, { ids: productId }, apiVersion)
+    if (!products.products || products.products.length === 0) {
+      throw new Error(`Product not found: ${productId}`)
+    }
+    return { product: products.products[0] }
+  }
+
+  /**
+   * 建立產品（含動態隨機機制生成唯一 handle）
+   */
+  async createProduct(handle: string, productData?: Partial<CreateProductInput>, apiVersion: string = 'v20250601'): Promise<{ product: Product }> {
+    const store = await this.validateStoreToken(handle)
+    
+    // 生成唯一的 handle
+    const generateUniqueHandle = (): string => {
+      const timestamp = Date.now()
+      const random = Math.random().toString(36).substring(2, 11)
+      return `shopline-${timestamp}-${random}`
+    }
+
+    // 如果沒有提供 productData，使用預設值
+    const uniqueHandle = generateUniqueHandle()
+    const defaultProductData: CreateProductInput = {
+      product: {
+        handle: uniqueHandle,
+        title: uniqueHandle,
+        tags: ['test', 'api'],
+        variants: [
+          {
+            sku: `T${Date.now()}`,
+            price: '1000',
+            required_shipping: true,
+            taxable: true,
+            inventory_tracker: true
+          }
+        ],
+        status: 'active',
+        published_scope: 'web'
+      }
+    }
+
+    const finalProductData = productData 
+      ? { ...defaultProductData, product: { ...defaultProductData.product, ...productData.product, handle: productData.product?.handle || uniqueHandle } }
+      : defaultProductData
+
+    const url = `https://${handle}.myshopline.com/admin/openapi/${apiVersion}/products/products.json`
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Authorization': `Bearer ${store.accessToken}`
+        },
+        body: JSON.stringify(finalProductData)
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw this.handleApiError(response, errorText)
+      }
+
+      const data: any = await response.json()
+      return data as { product: Product }
+    } catch (error: any) {
+      console.error('Create product error:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 取得訂單列表
+   */
+  async getOrders(handle: string, params?: OrderListParams, apiVersion: string = 'v20250601'): Promise<OrderListResponse> {
+    const store = await this.validateStoreToken(handle)
+    
+    const queryParams = new URLSearchParams()
+    if (params?.page) queryParams.append('page', params.page.toString())
+    if (params?.limit) queryParams.append('limit', params.limit.toString())
+    if (params?.status) queryParams.append('status', params.status)
+    
+    const queryString = queryParams.toString()
+    const url = `https://${handle}.myshopline.com/admin/openapi/${apiVersion}/orders.json${queryString ? '?' + queryString : ''}`
+
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Authorization': `Bearer ${store.accessToken}`
+        }
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw this.handleApiError(response, errorText)
+      }
+
+      const data: any = await response.json()
+      return data as OrderListResponse
+    } catch (error: any) {
+      console.error('Get orders error:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 取得 Locations 列表
+   */
+  async getLocations(handle: string, apiVersion: string = 'v20250601'): Promise<LocationListResponse> {
+    const store = await this.validateStoreToken(handle)
+    const url = `https://${handle}.myshopline.com/admin/openapi/${apiVersion}/locations/list.json`
+
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Authorization': `Bearer ${store.accessToken}`
+        }
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw this.handleApiError(response, errorText)
+      }
+
+      const data: any = await response.json()
+      return data as LocationListResponse
+    } catch (error: any) {
+      console.error('Get locations error:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 建立訂單（含隨機產品選擇機制）
+   */
+  async createOrder(handle: string, orderData?: Partial<CreateOrderInput>, apiVersion: string = 'v20250601'): Promise<{ order: Order }> {
+    // 驗證並鎖定 handle：確保整個多步驟操作使用同一個 handle 和 token
+    const store = await this.validateStoreToken(handle)
+    
+    // 保存 handle 快照，確保整個流程使用同一個 handle
+    const lockedHandle = handle
+
+    // 如果沒有提供 orderData，自動生成
+    let finalOrderData: CreateOrderInput
+
+    if (!orderData || !orderData.order) {
+      // 1. 取得產品列表（使用鎖定的 handle）
+      const productsResponse = await this.getProducts(lockedHandle, {}, apiVersion)
+      
+      if (!productsResponse.products || productsResponse.products.length === 0) {
+        throw new Error('No products found. Please create a product first.')
+      }
+
+      // 2. 隨機選擇一個產品
+      const randomProduct = productsResponse.products[Math.floor(Math.random() * productsResponse.products.length)]
+      
+      // 3. 取得 variant_id（確保是字串且有效）
+      if (!randomProduct.variants || randomProduct.variants.length === 0) {
+        throw new Error('Selected product has no variants')
+      }
+      
+      // 找到第一個有效的 variant（有 id 且 id 不為空）
+      const validVariant = randomProduct.variants.find((v: any) => v && v.id && String(v.id).trim() !== '')
+      
+      if (!validVariant) {
+        throw new Error('Selected product has no valid variants (missing variant ID)')
+      }
+      
+      // 確保 variant_id 是字串格式
+      const variantId = String(validVariant.id).trim()
+      const variantPrice = validVariant.price || '100'
+      
+      // 驗證 variant_id 格式（應該是有效的 ID）
+      if (!variantId || variantId === 'undefined' || variantId === 'null') {
+        throw new Error(`Invalid variant ID: ${variantId}`)
+      }
+      
+      console.log('Selected product:', {
+        productId: randomProduct.id,
+        productTitle: randomProduct.title,
+        variantId: variantId,
+        variantPrice: variantPrice,
+        totalVariants: randomProduct.variants.length
+      })
+
+      // 4. 取得 location_id（從 Locations API，使用鎖定的 handle）
+      let locationId = ''
+      try {
+        const locationsResponse = await this.getLocations(lockedHandle, apiVersion)
+        if (locationsResponse.locations && locationsResponse.locations.length > 0) {
+          // 使用第一個 location
+          locationId = locationsResponse.locations[0].id
+        } else {
+          throw new Error('No locations found')
+        }
+      } catch (error) {
+        console.error('Could not get location_id from locations API:', error)
+        throw new Error('Failed to get location_id. Please ensure the store has locations configured.')
+      }
+
+      // 5. 生成訂單資料
+      finalOrderData = {
+        order: {
+          tags: 'API_Test',
+          price_info: {
+            total_shipping_price: '8.00'
+          },
+          line_items: [
+            {
+              location_id: locationId,
+              price: variantPrice,
+              quantity: 1,
+              title: randomProduct.title || 'Test Product',
+              variant_id: variantId
+            }
+          ]
+        }
+      }
+    } else {
+      finalOrderData = orderData as CreateOrderInput
+    }
+
+    // 使用鎖定的 handle 建立訂單
+    const url = `https://${lockedHandle}.myshopline.com/admin/openapi/${apiVersion}/orders.json`
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Authorization': `Bearer ${store.accessToken}`
+        },
+        body: JSON.stringify(finalOrderData)
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw this.handleApiError(response, errorText)
+      }
+
+      const data: any = await response.json()
+      return data as { order: Order }
+    } catch (error: any) {
+      console.error('Create order error:', error)
+      throw error
+    }
   }
 }

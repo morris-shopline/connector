@@ -1,14 +1,21 @@
 import { StoreInfo } from '@/types'
 import { format } from 'date-fns'
 import { zhTW } from 'date-fns/locale/index.js'
+import Link from 'next/link'
 
 interface StoreCardProps {
   store: StoreInfo
 }
 
 export function StoreCard({ store }: StoreCardProps) {
+  const handle = store.handle || store.shoplineId
+  
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200 hover:shadow-lg transition-shadow">
+    <Link 
+      href={`/admin-api-test?handle=${encodeURIComponent(handle)}`}
+      className="block"
+    >
+      <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200 hover:shadow-lg transition-all cursor-pointer hover:border-blue-400">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900">
           {store.handle || '未命名商店'}
@@ -46,6 +53,7 @@ export function StoreCard({ store }: StoreCardProps) {
           {format(new Date(store.updatedAt), 'yyyy年MM月dd日 HH:mm', { locale: zhTW })}
         </div>
       </div>
-    </div>
+      </div>
+    </Link>
   )
 }

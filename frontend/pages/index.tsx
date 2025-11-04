@@ -1,10 +1,10 @@
-import { useState } from 'react'
-import Link from 'next/link'
+import { useState, useEffect } from 'react'
 import { useStores } from '../hooks/useStores'
 import { useWebhookEvents } from '../hooks/useWebhookEvents'
 import { useHealthCheck } from '../hooks/useHealthCheck'
 import { StoreCard } from '../components/StoreCard'
 import { WebhookEventCard } from '../components/WebhookEventCard'
+import { Header } from '../components/Header'
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'stores' | 'events'>('stores')
@@ -14,46 +14,23 @@ export default function Home() {
   const { events, isLoading: eventsLoading, isError: eventsError } = useWebhookEvents()
   const { checkHealth, isChecking, status, message, lastChecked } = useHealthCheck()
 
+  // 監聽 URL hash 變化來同步 activeTab
+  useEffect(() => {
+    const updateTabFromHash = () => {
+      if (window.location.hash === '#events') {
+        setActiveTab('events')
+      } else {
+        setActiveTab('stores')
+      }
+    }
+    updateTabFromHash()
+    window.addEventListener('hashchange', updateTabFromHash)
+    return () => window.removeEventListener('hashchange', updateTabFromHash)
+  }, [])
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <h1 className="text-xl font-semibold text-gray-900">
-              Shopline API 整合儀表板
-            </h1>
-            <div className="flex space-x-4">
-              <button
-                onClick={() => setActiveTab('stores')}
-                className={`px-3 py-2 rounded-md text-sm font-medium ${
-                  activeTab === 'stores'
-                    ? 'bg-primary-100 text-primary-700'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                商店列表
-              </button>
-              <button
-                onClick={() => setActiveTab('events')}
-                className={`px-3 py-2 rounded-md text-sm font-medium ${
-                  activeTab === 'events'
-                    ? 'bg-primary-100 text-primary-700'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Webhook 事件
-              </button>
-              <Link
-                href="/webhook-test"
-                className="px-3 py-2 rounded-md text-sm font-medium bg-green-600 text-white hover:bg-green-700"
-              >
-                Webhook 管理
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

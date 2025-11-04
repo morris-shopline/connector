@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import Link from 'next/link'
 import { useStores } from '../hooks/useStores'
 import { useWebhookSubscriptions } from '../hooks/useWebhookSubscriptions'
 import { useWebhookEvents } from '../hooks/useWebhookEvents'
 import { useSubscribeWebhook } from '../hooks/useSubscribeWebhook'
 import { useUnsubscribeWebhook } from '../hooks/useUnsubscribeWebhook'
+import { Header } from '../components/Header'
 import { SubscriptionItem } from '../components/SubscriptionItem'
 import { SubscriptionStats } from '../components/SubscriptionStats'
 import { SubscriptionForm } from '../components/SubscriptionForm'
@@ -61,9 +61,9 @@ export default function WebhookTest() {
         if (confirm(confirmMessage)) {
           // 導向到商店列表頁面進行重新授權
           window.location.href = '/'
-        }
-      } else {
-        alert(`訂閱失敗: ${result.error}`)
+      }
+    } else {
+      alert(`訂閱失敗: ${result.error}`)
       }
     }
   }
@@ -84,9 +84,9 @@ export default function WebhookTest() {
         if (confirm(confirmMessage)) {
           // 導向到商店列表頁面進行重新授權
           window.location.href = '/'
-        }
-      } else {
-        alert(`取消訂閱失敗: ${result.error}`)
+      }
+    } else {
+      alert(`取消訂閱失敗: ${result.error}`)
       }
     }
   }
@@ -107,36 +107,7 @@ export default function WebhookTest() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <h1 className="text-xl font-semibold text-gray-900">
-              Webhook 管理
-            </h1>
-            <div className="flex space-x-4">
-              <Link
-                href="/"
-                className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-              >
-                商店列表
-              </Link>
-              <Link
-                href="/"
-                className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-              >
-                Webhook 事件
-              </Link>
-              <Link
-                href="/webhook-test"
-                className="px-3 py-2 rounded-md text-sm font-medium bg-green-600 text-white hover:bg-green-700"
-              >
-                Webhook 管理
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* Main Layout - 雙欄式 */}
       <div className="flex h-[calc(100vh-4rem)]">

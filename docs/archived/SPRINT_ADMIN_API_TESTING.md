@@ -2,7 +2,7 @@
 
 > **歸檔日期**: 2025-01-XX  
 > **歸檔原因**: 文件已遷移至新的 Sprint 文件體系  
-> **替代文件**: [docs/sprints/01-admin-api-testing.md](../sprints/01-admin-api-testing.md)  
+> **替代文件**: [docs/sprints/02-admin-api-testing.md](../sprints/02-admin-api-testing.md)  
 > **Sprint 總覽**: [docs/sprints/SPRINT_INDEX.md](../sprints/SPRINT_INDEX.md)
 
 ---

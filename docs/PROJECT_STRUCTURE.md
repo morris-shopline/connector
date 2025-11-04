@@ -14,6 +14,7 @@ lab/
 ├── frontend/              # Next.js 前端應用（獨立部署）
 │   ├── pages/
 │   ├── components/
+│   │   └── Header.tsx    # 統一 Header 組件（所有頁面共用）
 │   ├── hooks/
 │   ├── lib/
 │   └── types.ts          # 前端型別定義

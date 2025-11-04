@@ -1,6 +1,7 @@
 # 專案狀態總結
 
-> 🏃 **Sprint 管理**: 本專案採用 Sprint 為單位進行開發管理，詳細 Sprint 資訊請參考 [docs/sprints/SPRINT_INDEX.md](./docs/sprints/SPRINT_INDEX.md)
+> 🏃 **Sprint 管理**: 本專案採用 Sprint 為單位進行開發管理，詳細 Sprint 資訊請參考 [docs/sprints/SPRINT_INDEX.md](./docs/sprints/SPRINT_INDEX.md)  
+> **當前 Sprint**: [Sprint 2: Admin API 測試功能](./docs/sprints/02-admin-api-testing.md) - ✅ 已完成
 
 ## 📊 當前版本
 
@@ -43,6 +44,11 @@
    - ✅ Handle 輸入與顯示
    - ✅ Token 到期時間顯示
    - ✅ 響應式設計
+   - ✅ 統一 Header 組件整合（所有頁面共用）
+     - ✅ 統一導航結構（商店列表、Webhook 事件、Webhook 管理、Admin API 測試）
+     - ✅ 統一高亮樣式（藍色背景）
+     - ✅ 支援 hash 路由（`/#events`）
+     - ✅ 自動偵測當前頁面並高亮對應連結
 
 5. **開發工具**
    - ✅ 自動化啟動腳本
@@ -282,6 +288,17 @@ Git              - 版本控制
 ---
 
 ## 📝 變更記錄
+
+### 2025-11-04
+
+- ✅ 完成 Header 組件統一整合
+  - ✅ 建立統一 `Header` 組件（`frontend/components/Header.tsx`）
+  - ✅ 統一所有頁面的導航結構（商店列表、Webhook 事件、Webhook 管理、Admin API 測試）
+  - ✅ 統一高亮樣式（藍色背景 `bg-blue-600`）
+  - ✅ 支援 hash 路由（`/#events`）
+  - ✅ 修復事件頁導航問題（從 `/#events` 返回商店列表）
+  - ✅ 自動偵測當前頁面並高亮對應連結
+  - ✅ 頁面標題根據當前路徑動態顯示
 
 ### 2025-11-03
 
