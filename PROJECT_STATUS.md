@@ -1,5 +1,7 @@
 # 專案狀態總結
 
+> 🏃 **Sprint 管理**: 本專案採用 Sprint 為單位進行開發管理，詳細 Sprint 資訊請參考 [docs/sprints/SPRINT_INDEX.md](./docs/sprints/SPRINT_INDEX.md)
+
 ## 📊 當前版本
 
 **版本**: v0.1.0 - Auth Complete  

@@ -58,10 +58,42 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
 
   // 健康檢查
   fastify.get('/api/health', async (request, reply) => {
-    return reply.send({
-      success: true,
-      message: 'Service is running',
-      timestamp: new Date().toISOString()
-    })
+    const startTime = Date.now()
+    
+    try {
+      // 檢查資料庫連線
+      const { PrismaClient } = await import('@prisma/client')
+      const prisma = new PrismaClient()
+      
+      // 簡單的資料庫查詢測試
+      await prisma.$queryRaw`SELECT 1`
+      await prisma.$disconnect()
+      
+      const responseTime = Date.now() - startTime
+      
+      return reply.send({
+        success: true,
+        message: 'Service is running',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        responseTime: `${responseTime}ms`,
+        database: 'connected',
+        environment: process.env.NODE_ENV || 'development'
+      })
+    } catch (error: any) {
+      const responseTime = Date.now() - startTime
+      
+      fastify.log.error('Health check error:', error)
+      
+      return reply.status(503).send({
+        success: false,
+        message: 'Service health check failed',
+        timestamp: new Date().toISOString(),
+        responseTime: `${responseTime}ms`,
+        error: error.message || 'Unknown error',
+        database: 'disconnected',
+        environment: process.env.NODE_ENV || 'development'
+      })
+    }
   })
 }

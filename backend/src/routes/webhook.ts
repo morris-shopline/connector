@@ -244,6 +244,27 @@ export async function webhookRoutes(fastify: FastifyInstance, options: any) {
         message: error.message,
         stack: error.stack
       })
+
+      // 處理 Token 過期錯誤
+      if (error.message?.includes('ACCESS_TOKEN_EXPIRED')) {
+        return reply.status(401).send({
+          success: false,
+          error: 'ACCESS_TOKEN_EXPIRED',
+          message: 'Access Token 已過期，請重新授權商店',
+          code: 'TOKEN_EXPIRED'
+        })
+      }
+
+      // 處理認證失敗錯誤
+      if (error.message?.includes('AUTHENTICATION_FAILED')) {
+        return reply.status(401).send({
+          success: false,
+          error: 'AUTHENTICATION_FAILED',
+          message: error.message.replace('AUTHENTICATION_FAILED: ', ''),
+          code: 'AUTH_FAILED'
+        })
+      }
+
       return reply.status(500).send({
         success: false,
         error: error.message || 'Internal server error'
@@ -283,6 +304,27 @@ export async function webhookRoutes(fastify: FastifyInstance, options: any) {
         message: error.message,
         stack: error.stack
       })
+
+      // 處理 Token 過期錯誤
+      if (error.message?.includes('ACCESS_TOKEN_EXPIRED')) {
+        return reply.status(401).send({
+          success: false,
+          error: 'ACCESS_TOKEN_EXPIRED',
+          message: 'Access Token 已過期，請重新授權商店',
+          code: 'TOKEN_EXPIRED'
+        })
+      }
+
+      // 處理認證失敗錯誤
+      if (error.message?.includes('AUTHENTICATION_FAILED')) {
+        return reply.status(401).send({
+          success: false,
+          error: 'AUTHENTICATION_FAILED',
+          message: error.message.replace('AUTHENTICATION_FAILED: ', ''),
+          code: 'AUTH_FAILED'
+        })
+      }
+
       return reply.status(500).send({
         success: false,
         error: error.message || 'Internal server error'
@@ -311,6 +353,27 @@ export async function webhookRoutes(fastify: FastifyInstance, options: any) {
       })
     } catch (error: any) {
       fastify.log.error('Unsubscribe webhook error:', error)
+
+      // 處理 Token 過期錯誤
+      if (error.message?.includes('ACCESS_TOKEN_EXPIRED')) {
+        return reply.status(401).send({
+          success: false,
+          error: 'ACCESS_TOKEN_EXPIRED',
+          message: 'Access Token 已過期，請重新授權商店',
+          code: 'TOKEN_EXPIRED'
+        })
+      }
+
+      // 處理認證失敗錯誤
+      if (error.message?.includes('AUTHENTICATION_FAILED')) {
+        return reply.status(401).send({
+          success: false,
+          error: 'AUTHENTICATION_FAILED',
+          message: error.message.replace('AUTHENTICATION_FAILED: ', ''),
+          code: 'AUTH_FAILED'
+        })
+      }
+
       return reply.status(500).send({
         success: false,
         error: error.message || 'Internal server error'

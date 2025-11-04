@@ -18,14 +18,13 @@
     "jsx": "preserve",
     "baseUrl": ".",
     "paths": {
-      "@/shared/*": ["../shared/*"]
+      "@/*": ["./*"]
     }
   },
   "include": [
     "next-env.d.ts",
     "**/*.ts",
-    "**/*.tsx",
-    "../shared/types.ts"
+    "**/*.tsx"
   ],
   "exclude": [
     "node_modules"

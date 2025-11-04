@@ -4,8 +4,11 @@
 
 ## 📋 專案架構
 
-- **前端**：Next.js 應用（部署到 Vercel）
-- **後端**：Fastify API 服務（部署到 Render）
+- **前端**：Next.js 應用（部署到 Vercel，Root Directory: `frontend/`)
+- **後端**：Fastify API 服務（部署到 Render，Root Directory: `backend/`)
+
+> 📋 **型別定義**：前端和後端各自獨立維護型別定義，不共享。  
+> 詳細說明請參考：[專案結構與部署架構](./PROJECT_STRUCTURE.md)
 
 ## 🚀 部署步驟
 
@@ -217,6 +220,7 @@ NEXT_PUBLIC_BACKEND_URL=https://connector.onrender.com
 **A:** 
 - Vercel：需要重新部署才能載入新的環境變數
 - Render：環境變數更新後會自動重新部署
+
 
 ---
 

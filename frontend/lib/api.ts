@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { ApiResponse, StoreInfo } from '@/shared/types'
+import { ApiResponse, StoreInfo } from '@/types'
 
 // 生產環境必須設定 NEXT_PUBLIC_BACKEND_URL
 // 開發環境可以使用 NEXT_PUBLIC_NGROK_URL（ngrok）或 NEXT_PUBLIC_API_URL

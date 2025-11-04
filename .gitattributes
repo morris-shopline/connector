@@ -1,0 +1,4 @@
+# 確保型別檔案被視為文字檔案
+*.ts text eol=lf
+*.tsx text eol=lf
+

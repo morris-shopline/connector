@@ -199,6 +199,85 @@ export class ShoplineService {
   }
 
   /**
+   * 檢查 Access Token 是否過期
+   */
+  private isTokenExpired(store: any): boolean {
+    if (!store.expiresAt) {
+      // 如果沒有過期時間，嘗試從 JWT 解析
+      try {
+        const jwtPayload = JSON.parse(Buffer.from(store.accessToken.split('.')[1], 'base64').toString())
+        if (jwtPayload.exp) {
+          const expTime = jwtPayload.exp * 1000
+          return Date.now() >= expTime
+        }
+      } catch (error) {
+        console.error('Failed to parse JWT:', error)
+      }
+      // 如果無法解析，假設未過期（但應該警告）
+      return false
+    }
+
+    // 檢查過期時間（加入 5 分鐘緩衝，避免在即將過期時使用）
+    const bufferTime = 5 * 60 * 1000 // 5 分鐘
+    return Date.now() >= (store.expiresAt.getTime() - bufferTime)
+  }
+
+  /**
+   * 驗證商店並檢查 Token 是否過期
+   */
+  private async validateStoreToken(handle: string): Promise<any> {
+    const store = await this.getStoreByHandle(handle)
+    if (!store) {
+      throw new Error(`Store not found for handle: ${handle}`)
+    }
+
+    if (this.isTokenExpired(store)) {
+      throw new Error('ACCESS_TOKEN_EXPIRED: Access Token 已過期，請重新授權商店')
+    }
+
+    return store
+  }
+
+  /**
+   * 處理 Shopline API 錯誤回應
+   */
+  private handleApiError(response: Response, text: string): Error {
+    // 嘗試解析錯誤訊息
+    let errorMessage = text || response.statusText
+    
+    try {
+      const errorData = JSON.parse(text)
+      if (errorData.errors) {
+        errorMessage = errorData.errors
+      } else if (errorData.message) {
+        errorMessage = errorData.message
+      } else if (errorData.error) {
+        errorMessage = errorData.error
+      }
+    } catch (parseError) {
+      // 如果無法解析 JSON，使用原始文字
+    }
+
+    // 針對特定狀態碼提供更友好的錯誤訊息
+    if (response.status === 401) {
+      if (errorMessage.includes('expired') || errorMessage.includes('過期')) {
+        return new Error('ACCESS_TOKEN_EXPIRED: Access Token 已過期，請重新授權商店')
+      }
+      return new Error(`AUTHENTICATION_FAILED: 認證失敗 - ${errorMessage}`)
+    }
+
+    if (response.status === 403) {
+      return new Error(`AUTHORIZATION_FAILED: 權限不足 - ${errorMessage}`)
+    }
+
+    if (response.status === 404) {
+      return new Error(`NOT_FOUND: 資源不存在 - ${errorMessage}`)
+    }
+
+    return new Error(`HTTP ${response.status}: ${errorMessage}`)
+  }
+
+  /**
    * 取得所有已授權的商店
    */
   async getAllStores() {
@@ -277,10 +356,8 @@ export class ShoplineService {
     webhookUrl: string,
     apiVersion: string = 'v20250601'
   ): Promise<any> {
-    const store = await this.getStoreByHandle(handle)
-    if (!store) {
-      throw new Error(`Store not found for handle: ${handle}`)
-    }
+    // 驗證商店並檢查 Token 是否過期
+    const store = await this.validateStoreToken(handle)
 
     // 官方文件：POST /admin/openapi/v20250601/webhooks.json
     const url = `https://${handle}.myshopline.com/admin/openapi/${apiVersion}/webhooks.json`
@@ -317,7 +394,7 @@ export class ShoplineService {
       // 檢查回應狀態
       if (!response.ok) {
         console.error(`Webhook subscribe error (${response.status}):`, text)
-        throw new Error(`HTTP ${response.status}: ${text || response.statusText}`)
+        throw this.handleApiError(response, text)
       }
 
       // 檢查是否為空回應
@@ -362,10 +439,8 @@ export class ShoplineService {
     handle: string,
     apiVersion: string = 'v20250601'
   ): Promise<any> {
-    const store = await this.getStoreByHandle(handle)
-    if (!store) {
-      throw new Error(`Store not found for handle: ${handle}`)
-    }
+    // 驗證商店並檢查 Token 是否過期
+    const store = await this.validateStoreToken(handle)
 
     // 官方文件：GET /admin/openapi/v20250601/webhooks.json
     const url = `https://${handle}.myshopline.com/admin/openapi/${apiVersion}/webhooks.json`
@@ -386,7 +461,7 @@ export class ShoplineService {
       // 檢查回應狀態
       if (!response.ok) {
         console.error(`Get webhooks error (${response.status}):`, text)
-        throw new Error(`HTTP ${response.status}: ${text || response.statusText}`)
+        throw this.handleApiError(response, text)
       }
 
       // 檢查是否為空回應
@@ -428,10 +503,8 @@ export class ShoplineService {
     webhookId: string,
     apiVersion: string = 'v20250601'
   ): Promise<any> {
-    const store = await this.getStoreByHandle(handle)
-    if (!store) {
-      throw new Error(`Store not found for handle: ${handle}`)
-    }
+    // 驗證商店並檢查 Token 是否過期
+    const store = await this.validateStoreToken(handle)
 
     // 根據 RESTful 慣例推測：DELETE /admin/openapi/v20250601/webhooks/{id}.json
     const url = `https://${handle}.myshopline.com/admin/openapi/${apiVersion}/webhooks/${webhookId}.json`
@@ -449,7 +522,7 @@ export class ShoplineService {
       if (!response.ok) {
         const errorText = await response.text()
         console.error(`Unsubscribe webhook error (${response.status}):`, errorText)
-        throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`)
+        throw this.handleApiError(response, errorText)
       }
 
       // DELETE 請求可能返回空回應或 JSON

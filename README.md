@@ -8,7 +8,8 @@
 **最後更新**: 2025-11-03  
 **狀態**: ✅ OAuth 授權流程已完整實作並測試通過
 
-> 📋 詳細的專案狀態請參考 [PROJECT_STATUS.md](./PROJECT_STATUS.md)
+> 📋 詳細的專案狀態請參考 [PROJECT_STATUS.md](./PROJECT_STATUS.md)  
+> 🏃 Sprint 管理請參考 [docs/sprints/SPRINT_INDEX.md](./docs/sprints/SPRINT_INDEX.md)
 
 ### 已完成功能
 
@@ -76,9 +77,6 @@
 │   ├── components/      # React 元件
 │   ├── hooks/           # 自訂 Hooks
 │   └── lib/             # 工具庫
-│
-├── shared/              # 共享資源
-│   └── types.ts         # TypeScript 型別定義
 │
 ├── docs/                # 文件
 │   ├── ARCHITECTURE.md  # 系統架構
@@ -177,6 +175,7 @@ cd frontend && npm run dev
 ## 📚 文件
 
 - [專案狀態](PROJECT_STATUS.md) - 詳細的專案狀態與里程碑
+- [專案結構與部署架構](docs/PROJECT_STRUCTURE.md) - 專案結構與部署方式說明
 - [系統架構](docs/ARCHITECTURE.md) - 完整的系統設計說明
 - [重要學習點](docs/LESSONS_LEARNED.md) - 開發過程中的重要發現
 - [合規性檢查](docs/COMPLIANCE_CHECK.md) - Shopline API 合規性評估

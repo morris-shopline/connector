@@ -18,7 +18,7 @@ export default function WebhookTest() {
   const [eventFilter, setEventFilter] = useState<'all' | 'processed' | 'pending'>('all')
 
   const { stores } = useStores()
-  const { subscriptions, isLoading: subsLoading, mutate: mutateSubs } = useWebhookSubscriptions(selectedHandle)
+  const { subscriptions, isLoading: subsLoading, isTokenExpired, tokenExpiredMessage, mutate: mutateSubs } = useWebhookSubscriptions(selectedHandle)
   const { events, isLoading: eventsLoading } = useWebhookEvents()
   const { subscribe, isLoading: isSubscribing } = useSubscribeWebhook()
   const { unsubscribe, isLoading: isUnsubscribing } = useUnsubscribeWebhook()
@@ -55,7 +55,16 @@ export default function WebhookTest() {
         setSelectedTopic('products/update')
       }
     } else {
-      alert(`訂閱失敗: ${result.error}`)
+      // 檢查是否為 Token 過期錯誤
+      if (result.code === 'TOKEN_EXPIRED') {
+        const confirmMessage = `${result.error}\n\n是否要重新授權商店？`
+        if (confirm(confirmMessage)) {
+          // 導向到商店列表頁面進行重新授權
+          window.location.href = '/'
+        }
+      } else {
+        alert(`訂閱失敗: ${result.error}`)
+      }
     }
   }
 
@@ -69,7 +78,16 @@ export default function WebhookTest() {
         setSelectedTopic(null)
       }
     } else {
-      alert(`取消訂閱失敗: ${result.error}`)
+      // 檢查是否為 Token 過期錯誤
+      if (result.code === 'TOKEN_EXPIRED') {
+        const confirmMessage = `${result.error}\n\n是否要重新授權商店？`
+        if (confirm(confirmMessage)) {
+          // 導向到商店列表頁面進行重新授權
+          window.location.href = '/'
+        }
+      } else {
+        alert(`取消訂閱失敗: ${result.error}`)
+      }
     }
   }
 
@@ -172,6 +190,23 @@ export default function WebhookTest() {
           {/* 訂閱列表（可滾動） */}
           <div className="flex-1 overflow-y-auto p-4">
             <h3 className="text-sm font-semibold text-gray-700 mb-3">📋 訂閱列表</h3>
+            
+            {/* Token 過期提示 */}
+            {isTokenExpired && (
+              <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                <p className="text-sm text-yellow-800 mb-2">{tokenExpiredMessage}</p>
+                <button
+                  onClick={() => {
+                    if (confirm('是否要重新授權商店？')) {
+                      window.location.href = '/'
+                    }
+                  }}
+                  className="text-xs text-yellow-900 underline hover:text-yellow-700"
+                >
+                  前往重新授權
+                </button>
+              </div>
+            )}
             
             {subsLoading ? (
               <div className="text-center py-8">
