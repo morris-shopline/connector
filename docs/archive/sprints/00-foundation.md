@@ -165,11 +165,9 @@ frontend/
 
 - ✅ README.md - 專案概覽
 - ✅ PROJECT_STATUS.md - 專案狀態
-- ✅ docs/ARCHITECTURE.md - 系統架構
-- ✅ docs/COMPLIANCE_CHECK.md - 合規性檢查
-- ✅ docs/LESSONS_LEARNED.md - 開發經驗
-- ✅ docs/WEBHOOK_GUIDE.md - Webhook 指南
-- ✅ docs/SHOPLINE_WEBHOOK_TOPICS.md - Webhook Topics
+- ✅ docs/memory/architecture/current.md - 系統架構
+- ✅ docs/reference/guides/WEBHOOK_GUIDE.md - Webhook 指南
+- ✅ docs/reference/platform-apis/SHOPLINE_WEBHOOK_TOPICS.md - Webhook Topics
 
 ### 功能交付
 

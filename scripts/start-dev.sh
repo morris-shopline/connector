@@ -13,6 +13,18 @@ fi
 
 echo "☁️  使用 Neon 雲端資料庫"
 
+# 檢查 Redis 設定
+if [ -f backend/.env ]; then
+  if grep -q "REDIS_URL=rediss://" backend/.env; then
+    echo "✅ Redis External URL 已設定（地端開發環境）"
+  elif grep -q "REDIS_URL=redis://" backend/.env; then
+    echo "⚠️  Redis Internal URL 已設定（僅 Render 服務可用）"
+    echo "   地端開發建議使用 External URL（見 docs/reference/guides/REDIS_LOCAL_SETUP.md）"
+  else
+    echo "ℹ️  Redis 未設定，將使用資料庫查詢（降級模式）"
+  fi
+fi
+
 # 執行資料庫遷移
 echo "🗄️ 執行資料庫遷移..."
 cd backend && npm run db:push && cd ..

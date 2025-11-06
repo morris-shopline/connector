@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/router'
 import { useStores } from '../hooks/useStores'
 import { useAdminAPI } from '../hooks/useAdminAPI'
+import { useStoreStore } from '../stores/useStoreStore'
 import { Header } from '../components/Header'
 
 // API 功能定義
@@ -83,7 +84,7 @@ const FUNCTION_GROUPS = {
 
 export default function AdminAPITest() {
   const router = useRouter()
-  const [selectedHandle, setSelectedHandle] = useState<string>('')
+  const { selectedHandle, setSelectedHandle, lockedHandle } = useStoreStore()
   const [selectedFunction, setSelectedFunction] = useState<string | null>(null)
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set(['store', 'products', 'orders', 'inventory']))
   const [response, setResponse] = useState<any>(null)
@@ -94,32 +95,66 @@ export default function AdminAPITest() {
 
   const { stores } = useStores()
   const adminAPI = useAdminAPI(selectedHandle || null)
-
-  // 從 URL 參數讀取 handle 並自動選擇
+  
+  // 使用 ref 追蹤上次處理的 URL handle，避免不必要的更新
+  const lastProcessedUrlHandleRef = useRef<string | null>(null)
+  
+  // 從 URL 參數讀取 handle 並自動選擇（只在 URL 變化時執行）
   useEffect(() => {
-    if (router.isReady) {
-      const handleFromQuery = router.query.handle as string
-      if (handleFromQuery && handleFromQuery !== selectedHandle) {
-        setSelectedHandle(handleFromQuery)
-        setResponse(null)
-        setError(null)
-        setSelectedFunction(null)
+    if (!router.isReady) return
+    
+    const handleFromQuery = router.query.handle as string || null
+    
+    // 只在 URL handle 真正變化時才處理（避免重複執行）
+    if (handleFromQuery !== lastProcessedUrlHandleRef.current) {
+      lastProcessedUrlHandleRef.current = handleFromQuery
+      
+      // 如果 URL 有 handle，更新 Zustand Store（即使已經相同也要更新，確保狀態一致）
+      if (handleFromQuery) {
+        const currentHandle = useStoreStore.getState().selectedHandle
+        if (handleFromQuery !== currentHandle) {
+          setSelectedHandle(handleFromQuery)
+          setResponse(null)
+          setError(null)
+          setSelectedFunction(null)
+        }
       }
     }
-  }, [router.isReady, router.query.handle])
+  }, [router.isReady, router.query.handle, setSelectedHandle]) // 只依賴 URL，不依賴 selectedHandle，避免循環
 
-  // 當商店選擇改變時，更新 URL（但不觸發頁面重新載入）
-  useEffect(() => {
-    if (router.isReady && selectedHandle) {
-      const currentHandle = router.query.handle as string
-      if (selectedHandle !== currentHandle) {
+  // 當用戶手動選擇商店時，同時更新 Zustand Store 和 URL
+  const handleStoreChange = (newHandle: string | null) => {
+    // 檢查是否有鎖定的 handle
+    if (lockedHandle && newHandle !== lockedHandle) {
+      alert(`無法切換商店：${lockedHandle} 正在操作中，請等待操作完成`)
+      return
+    }
+    
+    // 更新 ref，避免第一個 useEffect 重複執行
+    lastProcessedUrlHandleRef.current = newHandle || null
+    
+    // 更新 Zustand Store
+    setSelectedHandle(newHandle)
+    setResponse(null)
+    setError(null)
+    setSelectedFunction(null)
+    
+    // 更新 URL（使用 replace 避免觸發第一個 useEffect 的循環）
+    if (router.isReady) {
+      if (newHandle) {
         router.replace({
           pathname: router.pathname,
-          query: { ...router.query, handle: selectedHandle }
+          query: { ...router.query, handle: newHandle }
+        }, undefined, { shallow: true })
+      } else {
+        const { handle, ...restQuery } = router.query
+        router.replace({
+          pathname: router.pathname,
+          query: restQuery
         }, undefined, { shallow: true })
       }
     }
-  }, [selectedHandle, router])
+  }
 
   const toggleGroup = (group: string) => {
     const newOpenGroups = new Set(openGroups)
@@ -211,27 +246,12 @@ export default function AdminAPITest() {
                 選擇商店
               </label>
               <select
-                value={selectedHandle}
+                value={selectedHandle || ''}
                 onChange={(e) => {
-                  const newHandle = e.target.value
-                  setSelectedHandle(newHandle)
-                  setResponse(null)
-                  setError(null)
-                  setSelectedFunction(null)
-                  // 更新 URL
-                  if (newHandle) {
-                    router.replace({
-                      pathname: router.pathname,
-                      query: { ...router.query, handle: newHandle }
-                    }, undefined, { shallow: true })
-                  } else {
-                    router.replace({
-                      pathname: router.pathname,
-                      query: {}
-                    }, undefined, { shallow: true })
-                  }
+                  handleStoreChange(e.target.value || null)
                 }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={!!lockedHandle}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">請選擇商店</option>
                 {stores.map(store => (
@@ -240,6 +260,11 @@ export default function AdminAPITest() {
                   </option>
                 ))}
               </select>
+              {lockedHandle && (
+                <p className="mt-2 text-xs text-yellow-600">
+                  ⚠️ {lockedHandle} 正在操作中，無法切換商店
+                </p>
+              )}
             </div>
 
             {/* Toggle Menu */}

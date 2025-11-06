@@ -737,15 +737,15 @@ export function useAdminAPI(handle: string) {
 - [Sprint 總覽](./SPRINT_INDEX.md)
 - [Sprint 0: 基礎架構與 OAuth 授權](./00-foundation.md)
 - [Sprint 1: Bug 修復與架構優化](./01-bug-fix-and-architecture.md)
-- [系統架構](../ARCHITECTURE.md)
-- [專案結構與部署架構](../PROJECT_STRUCTURE.md)
-- [Shopline API 文檔](../../SHOPLINE_API_DOCS.md)
-- [Webhook 指南](../WEBHOOK_GUIDE.md)
+- [系統架構](../memory/architecture/current.md)
+- [專案結構與部署架構](../memory/architecture/project-structure.md)
+- [Shopline API 文檔](../reference/platform-apis/shopline-api-docs.md)
+- [Webhook 指南](../reference/guides/WEBHOOK_GUIDE.md)
 
 ### 設計文件
 
-- [Admin API 測試介面設計](../ADMIN_API_TEST_UI_DESIGN.md) - Admin API 測試頁面 Layout 設計文件
-- [Webhook 測試介面設計](../WEBHOOK_TEST_UI_DESIGN.md) - 前端測試介面架構規劃（參考的 UI 設計模式）
+- [Admin API 測試介面設計](../reference/design-specs/ADMIN_API_TEST_UI_DESIGN.md) - Admin API 測試頁面 Layout 設計文件
+- [Webhook 測試介面設計](../reference/design-specs/WEBHOOK_TEST_UI_DESIGN.md) - 前端測試介面架構規劃（參考的 UI 設計模式）
 
 **可參考的設計模式**：
 - 商店選擇器（下拉選單）
@@ -896,7 +896,7 @@ export function useAdminAPI(handle: string) {
 
 ---
 
-**Sprint 狀態**: ✅ 已完成  
+**Sprint 狀態**: ✅ 已完成（正式環境測試通過）  
 **建立日期**: 2025-01-XX  
 **完成日期**: 2025-01-XX  
 **最後更新**: 2025-01-XX

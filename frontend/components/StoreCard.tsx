@@ -2,6 +2,8 @@ import { StoreInfo } from '@/types'
 import { format } from 'date-fns'
 import { zhTW } from 'date-fns/locale/index.js'
 import Link from 'next/link'
+import { useStoreStore } from '../stores/useStoreStore'
+import { useRouter } from 'next/router'
 
 interface StoreCardProps {
   store: StoreInfo
@@ -9,11 +11,20 @@ interface StoreCardProps {
 
 export function StoreCard({ store }: StoreCardProps) {
   const handle = store.handle || store.shoplineId
+  const { setSelectedHandle } = useStoreStore()
+  const router = useRouter()
+  
+  const handleClick = () => {
+    // 更新 Zustand Store
+    setSelectedHandle(handle)
+    // 導航到 admin-api-test 頁面
+    router.push(`/admin-api-test?handle=${encodeURIComponent(handle)}`)
+  }
   
   return (
-    <Link 
-      href={`/admin-api-test?handle=${encodeURIComponent(handle)}`}
-      className="block"
+    <div 
+      onClick={handleClick}
+      className="block cursor-pointer"
     >
       <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200 hover:shadow-lg transition-all cursor-pointer hover:border-blue-400">
       <div className="flex items-center justify-between mb-4">
@@ -54,6 +65,6 @@ export function StoreCard({ store }: StoreCardProps) {
         </div>
       </div>
       </div>
-    </Link>
+    </div>
   )
 }

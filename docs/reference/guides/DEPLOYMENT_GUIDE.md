@@ -2,6 +2,8 @@
 
 本指南說明如何將 connector 專案部署到 Vercel（前端）和 Render（後端）。
 
+> 📋 **正式環境資訊**：正式部署 URL 和服務資訊請參考 `docs/reference/guides/PRODUCTION_ENVIRONMENT.md`
+
 ## 📋 專案架構
 
 - **前端**：Next.js 應用（部署到 Vercel，Root Directory: `frontend/`)
@@ -37,7 +39,7 @@ NEXT_PUBLIC_SHOPLINE_CUSTOM_APP_KEY=4c951e966557c8374d9a61753dfe3c52441aba3b
 NEXT_PUBLIC_SHOPLINE_CUSTOM_APP_SECRET=dd46269d6920f49b07e810862d3093062b0fb858
 NEXT_PUBLIC_SHOPLINE_PUBLIC_APP_KEY=c6e5110e6e06b928920af61b322e1db0ca446c16
 NEXT_PUBLIC_SHOPLINE_PUBLIC_APP_SECRET=62589f36ba6e496ae37b00fc75c434a5fece4fb9
-NEXT_PUBLIC_BACKEND_URL=https://connector.onrender.com
+NEXT_PUBLIC_BACKEND_URL=https://connector-o5hx.onrender.com
 NEXT_PUBLIC_NGROK_URL=你的_ngrok_url（僅本地開發需要）
 ```
 
@@ -52,7 +54,7 @@ NEXT_PUBLIC_NGROK_URL=你的_ngrok_url（僅本地開發需要）
 
 1. 點擊 **"Deploy"**
 2. 等待部署完成
-3. 取得前端 URL（例如：`https://connector.vercel.app`）
+3. 取得前端 URL（正式環境：`https://connector-theta.vercel.app/`）
 
 ---
 
@@ -99,11 +101,11 @@ SHOPLINE_CUSTOM_APP_SECRET=dd46269d6920f49b07e810862d3093062b0fb858
 SHOPLINE_PUBLIC_APP_KEY=c6e5110e6e06b928920af61b322e1db0ca446c16
 SHOPLINE_PUBLIC_APP_SECRET=62589f36ba6e496ae37b00fc75c434a5fece4fb9
 
-# 重要：使用 Render 提供的 URL
-SHOPLINE_REDIRECT_URI=https://connector.onrender.com/api/auth/shopline/callback
+# 重要：使用 Render 提供的 URL（正式環境）
+SHOPLINE_REDIRECT_URI=https://connector-o5hx.onrender.com/api/auth/shopline/callback
 
-# 前端 URL（用於 OAuth 回調重導向）
-FRONTEND_URL=https://connector.vercel.app
+# 前端 URL（用於 OAuth 回調重導向）（正式環境）
+FRONTEND_URL=https://connector-theta.vercel.app
 
 # JWT 設定
 JWT_SECRET=你的_jwt_secret_請在生產環境更換
@@ -113,14 +115,15 @@ JWT_SECRET=你的_jwt_secret_請在生產環境更換
 ```
 
 **⚠️ 重要注意事項：**
-- `SHOPLINE_REDIRECT_URI` 必須使用 Render 提供的 URL（通常是 `https://connector.onrender.com/api/auth/shopline/callback`）
+- `SHOPLINE_REDIRECT_URI` 必須使用 Render 提供的 URL（正式環境：`https://connector-o5hx.onrender.com/api/auth/shopline/callback`）
 - 部署完成後，需要到 SHOPLINE App 設定中更新 Callback URL
+- **正式環境資訊**：見 `docs/reference/guides/PRODUCTION_ENVIRONMENT.md`
 
 #### 5. 部署
 
 1. 點擊 **"Create Web Service"**
 2. 等待首次部署完成（約 5-10 分鐘）
-3. 取得後端 URL（例如：`https://connector.onrender.com`）
+3. 取得後端 URL（正式環境：`https://connector-o5hx.onrender.com/`）
 
 ---
 
@@ -131,30 +134,32 @@ JWT_SECRET=你的_jwt_secret_請在生產環境更換
 部署完成後，需要到 [SHOPLINE Console](https://console.shopline.com/) 更新 App 設定：
 
 #### 基本資訊設定（Basic Information Settings）
-- **App URL**: `https://connector.onrender.com/api/auth/shopline/install`
-- **Callback URL**: `https://connector.onrender.com/api/auth/shopline/callback`
+- **App URL**: `https://connector-o5hx.onrender.com/api/auth/shopline/install`
+- **Callback URL**: `https://connector-o5hx.onrender.com/api/auth/shopline/callback`
 
 #### Webhook 設定
-- **Webhook URL**: `https://connector.onrender.com/webhook/shopline`
+- **Webhook URL**: `https://connector-o5hx.onrender.com/webhook/shopline`
 
 ### 2. 更新前端環境變數
 
 回到 Vercel，更新 `NEXT_PUBLIC_BACKEND_URL`：
 ```
-NEXT_PUBLIC_BACKEND_URL=https://connector.onrender.com
+NEXT_PUBLIC_BACKEND_URL=https://connector-o5hx.onrender.com
 ```
 
 ### 3. 驗證部署
 
 1. 檢查後端健康狀態：
    ```
-   curl https://connector.onrender.com/api/health
+   curl https://connector-o5hx.onrender.com/api/health
    ```
 
 2. 檢查前端是否正常載入：
    ```
-   https://connector.vercel.app
+   https://connector-theta.vercel.app/
    ```
+
+**正式環境資訊**：見 `docs/reference/guides/PRODUCTION_ENVIRONMENT.md`
 
 ---
 
@@ -230,4 +235,8 @@ NEXT_PUBLIC_BACKEND_URL=https://connector.onrender.com
 - [Vercel 文件](https://vercel.com/docs)
 - [Render 文件](https://render.com/docs)
 - 專案 README.md
+
+## 📋 後續規劃
+
+> 📋 **部署策略分析**: 關於未來遷移到大型 CSP（如 AWS）的策略與複雜度評估，請參考 [部署策略分析](./DEPLOYMENT_STRATEGY.md)
 

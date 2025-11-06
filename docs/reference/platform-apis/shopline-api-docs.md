@@ -99,7 +99,7 @@ App Bridge 提供 UI 元件庫和通訊能力，讓嵌入式應用程式可以�
 - **Message Action**: https://developer.shopline.com/docs/apps/development-tool/app-bridge/actions/message?version=v20260301
 - **Subscribe Action**: https://developer.shopline.com/docs/apps/development-tool/app-bridge/actions/subscribe?version=v20260301
 
-詳細使用指南請參見：[App Bridge 使用指南](docs/APP_BRIDGE.md)
+詳細使用指南請參見：[App Bridge 使用指南](../guides/APP_BRIDGE.md)
 
 ## 當前配置
 

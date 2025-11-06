@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useStores } from '../hooks/useStores'
 import { useWebhookSubscriptions } from '../hooks/useWebhookSubscriptions'
 import { useWebhookEvents } from '../hooks/useWebhookEvents'
 import { useSubscribeWebhook } from '../hooks/useSubscribeWebhook'
 import { useUnsubscribeWebhook } from '../hooks/useUnsubscribeWebhook'
+import { useStoreStore } from '../stores/useStoreStore'
 import { Header } from '../components/Header'
 import { SubscriptionItem } from '../components/SubscriptionItem'
 import { SubscriptionStats } from '../components/SubscriptionStats'
@@ -11,13 +12,22 @@ import { SubscriptionForm } from '../components/SubscriptionForm'
 import { WebhookEventCard } from '../components/WebhookEventCard'
 
 export default function WebhookTest() {
-  const [selectedHandle, setSelectedHandle] = useState<string>('paykepoc')
+  const { selectedHandle, setSelectedHandle, lockedHandle } = useStoreStore()
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null)
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null)
   const [showSubscriptionForm, setShowSubscriptionForm] = useState(false)
   const [eventFilter, setEventFilter] = useState<'all' | 'processed' | 'pending'>('all')
 
   const { stores } = useStores()
+  
+  // 初始化時如果沒有選中商店，使用第一個商店作為預設值
+  useEffect(() => {
+    if (!selectedHandle && stores.length > 0) {
+      setSelectedHandle(stores[0].handle || stores[0].shoplineId || null)
+    }
+  }, [stores.length]) // 只在 stores 載入時執行一次
+  
+  // 只使用 selectedHandle，避免狀態不一致導致多次請求
   const { subscriptions, isLoading: subsLoading, isTokenExpired, tokenExpiredMessage, mutate: mutateSubs } = useWebhookSubscriptions(selectedHandle)
   const { events, isLoading: eventsLoading } = useWebhookEvents()
   const { subscribe, isLoading: isSubscribing } = useSubscribeWebhook()
@@ -97,6 +107,10 @@ export default function WebhookTest() {
       console.error('❌ 錯誤：請設定 NEXT_PUBLIC_BACKEND_URL 環境變數')
       return
     }
+    if (!selectedHandle) {
+      alert('請先選擇商店')
+      return
+    }
     await handleSubscribe({
       handle: selectedHandle,
       topic: 'products/update',
@@ -119,12 +133,20 @@ export default function WebhookTest() {
               商店選擇
             </label>
             <select
-              value={selectedHandle}
+              value={selectedHandle || ''}
               onChange={(e) => {
-                setSelectedHandle(e.target.value)
+                const newHandle = e.target.value
+                // 檢查是否有鎖定的 handle
+                if (lockedHandle && newHandle !== lockedHandle) {
+                  alert(`無法切換商店：${lockedHandle} 正在操作中，請等待操作完成`)
+                  return
+                }
+                // 直接更新 Zustand Store
+                setSelectedHandle(newHandle || null)
                 setSelectedTopic(null) // 切換商店時清空選中訂閱
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={!!lockedHandle}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {stores.map(store => (
                 <option key={store.id} value={store.handle || store.shoplineId}>
@@ -132,6 +154,11 @@ export default function WebhookTest() {
                 </option>
               ))}
             </select>
+            {lockedHandle && (
+              <p className="mt-2 text-xs text-yellow-600">
+                ⚠️ {lockedHandle} 正在操作中，無法切換商店
+              </p>
+            )}
           </div>
 
           {/* 新增訂閱按鈕 */}
@@ -280,7 +307,7 @@ export default function WebhookTest() {
         isOpen={showSubscriptionForm}
         onClose={() => setShowSubscriptionForm(false)}
         onSubmit={handleSubscribe}
-        defaultHandle={selectedHandle}
+        defaultHandle={selectedHandle || ''}
       />
     </div>
   )

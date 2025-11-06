@@ -2,13 +2,15 @@ import { useState, useEffect } from 'react'
 import { useStores } from '../hooks/useStores'
 import { useWebhookEvents } from '../hooks/useWebhookEvents'
 import { useHealthCheck } from '../hooks/useHealthCheck'
+import { useStoreStore } from '../stores/useStoreStore'
 import { StoreCard } from '../components/StoreCard'
 import { WebhookEventCard } from '../components/WebhookEventCard'
 import { Header } from '../components/Header'
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'stores' | 'events'>('stores')
-  const [storeHandle, setStoreHandle] = useState<string>('paykepoc') // 預設測試用的 handle
+  const { selectedHandle, setSelectedHandle } = useStoreStore()
+  const [storeHandle, setStoreHandle] = useState<string>(selectedHandle || 'paykepoc') // 預設測試用的 handle
   const [showAuthDialog, setShowAuthDialog] = useState<boolean>(false)
   const { stores, isLoading: storesLoading, isError: storesError } = useStores()
   const { events, isLoading: eventsLoading, isError: eventsError } = useWebhookEvents()
@@ -96,7 +98,11 @@ export default function Home() {
                     <input
                       type="text"
                       value={storeHandle}
-                      onChange={(e) => setStoreHandle(e.target.value)}
+                      onChange={(e) => {
+                        const newHandle = e.target.value
+                        setStoreHandle(newHandle)
+                        setSelectedHandle(newHandle)
+                      }}
                       placeholder="例如: paykepoc"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />

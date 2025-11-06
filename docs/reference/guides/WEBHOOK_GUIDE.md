@@ -605,9 +605,8 @@ SHOPLINE 平台介面顯示的時間採用 ISO 8601 編碼標準的日期時間�
 
 ### 本專案相關文件
 
-- [專案架構](docs/ARCHITECTURE.md)
-- [Shopline API 文檔](SHOPLINE_API_DOCS.md)
-- [合規性檢查](docs/COMPLIANCE_CHECK.md)
+- [專案架構](../../memory/architecture/current.md)
+- [Shopline API 文檔](../platform-apis/shopline-api-docs.md)
 
 ---
 

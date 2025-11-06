@@ -79,13 +79,13 @@
 - ✅ 移除 `package.json` 中的同步相關腳本
 
 **文件更新**:
-- ✅ 建立 `docs/PROJECT_STRUCTURE.md`：說明專案結構和部署架構
-- ✅ 更新 `docs/ARCHITECTURE.md`：移除 shared 相關說明
-- ✅ 更新 `docs/DEPLOYMENT_GUIDE.md`：移除 shared 相關說明
+- ✅ 建立 `docs/memory/architecture/project-structure.md`：說明專案結構和部署架構
+- ✅ 更新 `docs/memory/architecture/current.md`：移除 shared 相關說明
+- ✅ 更新 `docs/reference/guides/DEPLOYMENT_GUIDE.md`：移除 shared 相關說明
 - ✅ 更新 `README.md`：移除 shared 目錄說明
 
 **評估文件歸檔**:
-- ✅ 將型別策略評估文件移至 `docs/archived/`
+- ✅ 將型別策略評估文件移至 `docs/archive/discussions/`
   - `TYPE_SHARING_ANALYSIS.md`
   - `AUTO_SYNC_ANALYSIS.md`
   - `TYPE_STRATEGY_COMPARISON.md`
@@ -245,11 +245,11 @@ fastify.get('/api/health', async (request, reply) => {
 ### 新增檔案
 - `frontend/types.ts` - 前端型別定義
 - `frontend/hooks/useHealthCheck.ts` - 健康檢查 Hook
-- `docs/PROJECT_STRUCTURE.md` - 專案結構說明文件
-- `docs/archived/TYPE_SHARING_ANALYSIS.md` - 型別策略分析（已歸檔）
-- `docs/archived/AUTO_SYNC_ANALYSIS.md` - 自動化同步分析（已歸檔）
-- `docs/archived/TYPE_STRATEGY_COMPARISON.md` - 型別策略比較（已歸檔）
-- `docs/archived/TYPE_SYNC_WORKFLOW.md` - 型別同步工作流程（已歸檔）
+- `docs/memory/architecture/project-structure.md` - 專案結構說明文件
+- `docs/archive/discussions/TYPE_SHARING_ANALYSIS.md` - 型別策略分析（已歸檔）
+- `docs/archive/discussions/AUTO_SYNC_ANALYSIS.md` - 自動化同步分析（已歸檔）
+- `docs/archive/discussions/TYPE_STRATEGY_COMPARISON.md` - 型別策略比較（已歸檔）
+- `docs/archive/discussions/TYPE_SYNC_WORKFLOW.md` - 型別同步工作流程（已歸檔）
 
 ### 修改檔案
 - `backend/src/services/shopline.ts` - Token 檢查、錯誤處理
@@ -266,8 +266,8 @@ fastify.get('/api/health', async (request, reply) => {
 - `frontend/lib/api.ts` - 更新引用路徑
 - `frontend/tsconfig.json` - 移除 shared 配置
 - `frontend/next.config.js` - 移除 webpack alias
-- `docs/ARCHITECTURE.md` - 移除 shared 說明
-- `docs/DEPLOYMENT_GUIDE.md` - 移除 shared 說明
+- `docs/memory/architecture/current.md` - 移除 shared 說明
+- `docs/reference/guides/DEPLOYMENT_GUIDE.md` - 移除 shared 說明
 - `README.md` - 移除 shared 說明
 
 ### 刪除檔案
@@ -301,9 +301,9 @@ fastify.get('/api/health', async (request, reply) => {
 ## 📚 相關文件
 
 ### 專案文件
-- [專案結構與部署架構](../PROJECT_STRUCTURE.md) - 型別定義策略說明
-- [系統架構](../ARCHITECTURE.md) - 架構說明
-- [部署指南](../DEPLOYMENT_GUIDE.md) - 部署說明
+- [專案結構與部署架構](../memory/architecture/project-structure.md) - 型別定義策略說明
+- [系統架構](../memory/architecture/current.md) - 架構說明
+- [部署指南](../reference/guides/DEPLOYMENT_GUIDE.md) - 部署說明
 
 ### Sprint 文件
 - [Sprint 0: 基礎架構與 OAuth 授權](./00-foundation.md) - 前置 Sprint

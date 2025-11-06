@@ -424,7 +424,7 @@ interface UpdateCustomerInput { ... }
 ### 專案文件
 
 - [系統架構](ARCHITECTURE.md)
-- [Shopline API 文檔](SHOPLINE_API_DOCS.md)
+- [Shopline API 文檔](../../reference/platform-apis/shopline-api-docs.md)
 - [Webhook 指南](WEBHOOK_GUIDE.md)
 
 ---

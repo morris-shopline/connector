@@ -2,235 +2,110 @@
 
 一個現代化的 Shopline API 整合應用程式，支援 OAuth 2.0 授權、Webhook 處理和多商店管理。
 
+---
+
 ## 📊 專案狀態
 
-**當前版本**: v0.1.0 - Auth 完成  
-**最後更新**: 2025-11-03  
-**狀態**: ✅ OAuth 授權流程已完整實作並測試通過
+**當前版本**: v0.1.0 - 基礎功能完成  
+**狀態**: ✅ 基礎架構與 OAuth 授權流程已完成
 
-> 📋 詳細的專案狀態請參考 [PROJECT_STATUS.md](./PROJECT_STATUS.md)
-> 🏃 Sprint 管理請參考 [docs/sprints/SPRINT_INDEX.md](./docs/sprints/SPRINT_INDEX.md)
+> 📋 **詳細狀態**：[PROJECT_STATUS.md](./PROJECT_STATUS.md)  
+> 🚨 **Agent 必讀**：[docs/00-AGENT-ONBOARDING.md](./docs/00-AGENT-ONBOARDING.md)
 
-### 已完成功能
-
-- ✅ **OAuth 2.0 授權流程**
-  - 安裝請求驗證
-  - 授權碼交換 Access Token
-  - JWT Token 解析
-  - 自動重導向回前端
-  
-- ✅ **資料庫整合**
-  - Neon Serverless PostgreSQL
-  - Prisma ORM
-  - 商店資訊儲存與管理
-  
-- ✅ **安全機制**
-  - HMAC-SHA256 簽名驗證
-  - 時間戳驗證（5分鐘容差）
-  - HTTPS 支援（透過 ngrok）
-  - Iframe 嵌入支援
-
-- ✅ **前端介面**
-  - 商店列表展示
-  - 授權對話框
-  - 多商店管理準備
-
-### 待開發功能
-
-- ⏳ Webhook 事件處理
-- ⏳ Shopline API 呼叫
-- ⏳ Token 自動刷新
-- ⏳ 使用者認證系統
-
-## 🛠 技術棧
-
-**後端**
-- Fastify - 高效能 Node.js 框架
-- TypeScript - 型別安全
-- Prisma - 現代 ORM
-- Neon - Serverless PostgreSQL
-
-**前端**
-- Next.js 14 - React 框架
-- SWR - 資料獲取
-- Tailwind CSS - 樣式框架
-
-**開發工具**
-- ngrok - 本地 HTTPS 隧道
-- Vite - 前端建置工具
-
-## 📁 專案結構
-
-```
-├── backend/              # 後端服務
-│   ├── src/
-│   │   ├── index.ts     # Fastify 應用程式入口
-│   │   ├── routes/      # API 路由
-│   │   ├── services/    # 業務邏輯
-│   │   └── utils/       # 工具函數
-│   ├── prisma/
-│   │   └── schema.prisma # 資料庫 schema
-│   └── env.example      # 環境變數範例
-│
-├── frontend/            # 前端應用
-│   ├── pages/           # Next.js 頁面
-│   ├── components/      # React 元件
-│   ├── hooks/           # 自訂 Hooks
-│   └── lib/             # 工具庫
-│
-├── docs/                # 文件
-│   ├── ARCHITECTURE.md  # 系統架構
-│   ├── LESSONS_LEARNED.md # 重要學習點
-│   └── COMPLIANCE_CHECK.md # 合規性檢查
-│
-└── scripts/             # 工具腳本
-    └── start-dev.sh     # 開發環境啟動腳本
-```
+---
 
 ## 🚀 快速開始
 
 ### 前置需求
-
-- Node.js 18+ 
+- Node.js 18+
 - npm 或 yarn
-- ngrok (用於本地 HTTPS)
+- ngrok（本地 HTTPS）
 
-### 安裝
+### 安裝與啟動
 
 ```bash
-# 1. 複製專案
-git clone https://github.com/morris-shopline/connector.git
-cd connector
-
-# 2. 安裝後端依賴
+# 1. 安裝依賴
 cd backend && npm install
-
-# 3. 安裝前端依賴
 cd ../frontend && npm install
 
-# 4. 回到專案根目錄
-cd ..
-```
+# 2. 設定環境變數（見 docs/reference/guides/ENV_SETUP_GUIDE.md）
+# 3. 初始化資料庫
+cd backend && npx prisma db push
 
-### 設定環境變數
-
-```bash
-# 後端環境變數
-cd backend
-cp env.example .env
-# 編輯 .env 填入 Neon 資料庫連線字串
-
-# 前端環境變數 (可選)
-cd ../frontend
-cp env.example .env.local
-# 如需自訂 API URL，編輯 .env.local
-```
-
-### 初始化資料庫
-
-```bash
-cd backend
-npx prisma db push
-```
-
-### 啟動開發環境
-
-**選項 1: 一鍵啟動** (推薦)
-
-```bash
+# 4. 啟動開發環境
 ./scripts/start-dev.sh
 ```
 
-**選項 2: 手動啟動**
-
-```bash
-# 終端 1: 啟動 ngrok
-ngrok http 3001
-
-# 終端 2: 啟動後端
-cd backend && npm run dev
-
-# 終端 3: 啟動前端
-cd frontend && npm run dev
-```
-
-### 配置 Shopline 應用
-
-1. 登入 [Shopline Console](https://console.shoplineapp.com)
-2. 前往「應用程式管理」
-3. 設定以下 URL（使用 ngrok URL）：
-   - **App URL**: `https://YOUR_NGROK_URL/api/auth/shopline/install`
-   - **App Callback URL**: `https://YOUR_NGROK_URL/api/auth/shopline/callback`
-   - **Webhook URL**: `https://YOUR_NGROK_URL/webhook/shopline`
-
-## 🧪 測試授權流程
-
-1. 開啟前端頁面: http://localhost:3000
-2. 點擊「新增商店授權」
-3. 輸入商店 Handle (例如: `paykepoc`)
-4. 點擊「確認授權」
-5. 在 Shopline 授權頁面完成授權
-6. 自動重導回前端，商店資料已儲存
-
-## 📚 文件
-
-- [專案狀態](PROJECT_STATUS.md) - 詳細的專案狀態與里程碑
-- [專案結構與部署架構](docs/PROJECT_STRUCTURE.md) - 專案結構與部署方式說明
-- [系統架構](docs/ARCHITECTURE.md) - 完整的系統設計說明
-- [重要學習點](docs/LESSONS_LEARNED.md) - 開發過程中的重要發現
-- [合規性檢查](docs/COMPLIANCE_CHECK.md) - Shopline API 合規性評估
-- [部署指南](docs/DEPLOYMENT_GUIDE.md) - Vercel（前端）和 Render（後端）部署說明
-- [測試資訊](TESTING_INFO.md) - 測試流程與注意事項
-- [工具腳本](docs/SCRIPTS.md) - 自動化腳本說明
-- [Shopline API 文檔](SHOPLINE_API_DOCS.md) - API 參考文檔
-- [App Bridge 指南](docs/APP_BRIDGE.md) - App Bridge 開發指南
-- [Webhook 使用指南](docs/WEBHOOK_GUIDE.md) - SHOPLINE Webhook 完整實作指南
-- [Webhook Topics 列表](docs/SHOPLINE_WEBHOOK_TOPICS.md) - 所有可用的 Webhook Topics 及版本對應
-- [Webhook 測試介面設計](docs/WEBHOOK_TEST_UI_DESIGN.md) - 前端測試介面架構規劃
-- [Admin API 測試介面設計](docs/ADMIN_API_TEST_UI_DESIGN.md) - Admin API 測試頁面 Layout 設計
-
-## 🔑 配置說明
-
-### 當前測試配置
-
-```
-App Key: 4c951e966557c8374d9a61753dfe3c52441aba3b
-App Secret: dd46269d6920f49b07e810862d3093062b0fb858
-商店 Handle: paykepoc
-資料庫: Neon PostgreSQL
-```
-
-### 服務端點
-
-- 後端: http://localhost:3001
-- 前端: http://localhost:3000
-- ngrok 管理介面: http://localhost:4040
-
-## 🔒 安全考量
-
-- 所有 API 請求都需要 HMAC-SHA256 簽名驗證
-- 時間戳檢查（5分鐘容差）防止重放攻擊
-- 使用 `crypto.timingSafeEqual()` 防止時序攻擊
-- 支援 HTTPS（透過 ngrok）
-- Token 資訊以 JWT 形式安全儲存
-
-## 📈 後續規劃
-
-1. **Webhook 處理** - 實現訂單、商品等事件處理
-2. **API 整合** - 實作 Shopline API 呼叫封裝
-3. **Token 管理** - 自動刷新過期 Token
-4. **多租戶** - 完整的使用者與商店管理
-5. **生產部署** - 容器化與 CI/CD
-
-## 🤝 貢獻
-
-此專案為內部開發專案，如需貢獻請聯繫專案維護者。
-
-## 📄 授權
-
-版權所有 © 2025
+**詳細安裝步驟**：見 [環境設定指南](docs/reference/guides/ENV_SETUP_GUIDE.md)
 
 ---
 
-**最後更新**: 2025-11-03  
+## 📚 關鍵文件
+
+### 🚨 Agent 必讀
+- **[Agent 協作方法論](docs/00-AGENT-ONBOARDING.md)** - 新 Agent 必讀 ⭐
+
+### 專案資訊
+- **[專案狀態](PROJECT_STATUS.md)** - 當前狀態摘要
+- **[專案願景](docs/memory/vision.md)** - 專案願景與發展方向
+- **[專案 Roadmap](docs/memory/roadmap.md)** - 長期發展規劃 ⭐
+
+### 任務管理
+- **[Backlog 索引](docs/backlog/index.md)** - 所有任務總覽
+- **[當前 Run](docs/context/current-run.md)** - 當前正在進行的 Run
+
+### 開發指南
+- **[環境設定](docs/reference/guides/ENV_SETUP_GUIDE.md)** - 環境變數設定
+- **[開發配置](docs/reference/guides/DEVELOPMENT_CONFIG.md)** - 測試配置、服務端點、安全機制
+- **[部署指南](docs/reference/guides/DEPLOYMENT_GUIDE.md)** - 部署說明
+- **[系統架構](docs/memory/architecture/current.md)** - 完整的系統設計
+
+### API 與整合
+- **[Shopline API 文檔](docs/reference/platform-apis/shopline-api-docs.md)**
+- **[Webhook 指南](docs/reference/guides/WEBHOOK_GUIDE.md)**
+
+**完整文件索引**：見 [docs/README.md](docs/README.md)
+
+---
+
+## 🛠 技術棧
+
+**後端**: Fastify + TypeScript + Prisma + Neon PostgreSQL  
+**前端**: Next.js 14 + TypeScript + SWR + Tailwind CSS  
+**開發工具**: ngrok
+
+**詳細架構**：見 [docs/memory/architecture/current.md](docs/memory/architecture/current.md)
+
+---
+
+## 🗺️ 後續規劃
+
+**詳細規劃**：見 [docs/memory/roadmap.md](docs/memory/roadmap.md)
+
+**短期重點**：
+- 多租戶管理系統
+- 多商店管理
+- 多平台整合
+
+---
+
+## 📖 文件體系
+
+本專案採用結構化的文件體系，適合 AI Agent 協作：
+
+```
+docs/
+├── 00-AGENT-ONBOARDING.md    # Agent 入門（必讀）
+├── memory/                    # 核心記憶（願景、路線圖、架構、決策）
+├── backlog/                   # 任務管理（Epic、Story）
+├── context/                   # 當前上下文（當前 Run）
+├── archive/                   # 歷史記錄
+└── reference/                 # 參考資料（API、指南）
+```
+
+**文件體系說明**：見 [docs/README.md](docs/README.md)
+
+---
+
+**最後更新**: 2025-11-05  
 **維護者**: Mo Studio

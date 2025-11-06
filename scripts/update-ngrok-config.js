@@ -68,16 +68,16 @@ async function updateAllNgrokConfigs() {
       }
     }
     
-    // 3. 更新 TESTING_INFO.md (如果存在的話)
-    const testingInfoPath = path.join(__dirname, '../TESTING_INFO.md')
-    if (fs.existsSync(testingInfoPath)) {
-      let content = fs.readFileSync(testingInfoPath, 'utf8')
+    // 3. 更新測試指南 (如果存在的話)
+    const testingGuidePath = path.join(__dirname, '../docs/reference/guides/testing-guide.md')
+    if (fs.existsSync(testingGuidePath)) {
+      let content = fs.readFileSync(testingGuidePath, 'utf8')
       const oldUrlRegex = /https:\/\/[a-f0-9]+\.ngrok-free\.app/g
       const matches = content.match(oldUrlRegex)
       if (matches && matches.length > 0) {
         content = content.replace(oldUrlRegex, ngrokUrl)
-        fs.writeFileSync(testingInfoPath, content)
-        updates.push(`✅ 已更新 TESTING_INFO.md (${matches.length} 處)`)
+        fs.writeFileSync(testingGuidePath, content)
+        updates.push(`✅ 已更新 docs/reference/guides/testing-guide.md (${matches.length} 處)`)
       }
     }
     

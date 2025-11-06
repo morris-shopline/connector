@@ -1,42 +1,45 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { apiClient } from '../lib/api'
 import { ProductListParams, CreateProductInput, OrderListParams, CreateOrderInput } from '../types'
+import { useStoreStore } from '../stores/useStoreStore'
 
 export function useAdminAPI(handle: string | null) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
   
-  // 鎖定 handle：確保整個操作流程使用同一個 handle，避免操作進行中時 handle 改變
-  const lockedHandleRef = useRef<string | null>(null)
+  // 使用 Zustand Store 的 lock/unlock 功能
+  const { lockHandle, unlockHandle } = useStoreStore()
   
   // 獲取當前有效的 handle（優先使用鎖定的 handle）
   const getCurrentHandle = (): string => {
-    if (lockedHandleRef.current) {
-      return lockedHandleRef.current
+    const { lockedHandle, selectedHandle } = useStoreStore.getState()
+    if (lockedHandle) {
+      return lockedHandle
     }
-    if (!handle) {
+    if (!handle && !selectedHandle) {
       throw new Error('Handle is required')
     }
-    return handle
+    return handle || selectedHandle || ''
   }
   
   // 鎖定 handle（操作開始時）
-  const lockHandle = (): string => {
-    if (!handle) {
+  const lockHandleForOperation = (): string => {
+    const currentHandle = handle || useStoreStore.getState().selectedHandle
+    if (!currentHandle) {
       throw new Error('Handle is required')
     }
-    lockedHandleRef.current = handle
-    return handle
+    lockHandle(currentHandle)
+    return currentHandle
   }
   
   // 解鎖 handle（操作完成時）
-  const unlockHandle = () => {
-    lockedHandleRef.current = null
+  const unlockHandleForOperation = () => {
+    unlockHandle()
   }
 
   const getStoreInfo = async () => {
     // 鎖定 handle，確保整個操作使用同一個 handle
-    const currentHandle = lockHandle()
+    const currentHandle = lockHandleForOperation()
     
     setIsLoading(true)
     setError(null)
@@ -51,12 +54,12 @@ export function useAdminAPI(handle: string | null) {
       throw error
     } finally {
       setIsLoading(false)
-      unlockHandle()
+      unlockHandleForOperation()
     }
   }
 
   const getProducts = async (params?: ProductListParams) => {
-    const currentHandle = lockHandle()
+    const currentHandle = lockHandleForOperation()
     
     setIsLoading(true)
     setError(null)
@@ -71,12 +74,12 @@ export function useAdminAPI(handle: string | null) {
       throw error
     } finally {
       setIsLoading(false)
-      unlockHandle()
+      unlockHandleForOperation()
     }
   }
 
   const getProduct = async (productId: string) => {
-    const currentHandle = lockHandle()
+    const currentHandle = lockHandleForOperation()
     
     setIsLoading(true)
     setError(null)
@@ -91,12 +94,12 @@ export function useAdminAPI(handle: string | null) {
       throw error
     } finally {
       setIsLoading(false)
-      unlockHandle()
+      unlockHandleForOperation()
     }
   }
 
   const createProduct = async (productData?: CreateProductInput) => {
-    const currentHandle = lockHandle()
+    const currentHandle = lockHandleForOperation()
     
     setIsLoading(true)
     setError(null)
@@ -111,12 +114,12 @@ export function useAdminAPI(handle: string | null) {
       throw error
     } finally {
       setIsLoading(false)
-      unlockHandle()
+      unlockHandleForOperation()
     }
   }
 
   const getOrders = async (params?: OrderListParams) => {
-    const currentHandle = lockHandle()
+    const currentHandle = lockHandleForOperation()
     
     setIsLoading(true)
     setError(null)
@@ -131,13 +134,13 @@ export function useAdminAPI(handle: string | null) {
       throw error
     } finally {
       setIsLoading(false)
-      unlockHandle()
+      unlockHandleForOperation()
     }
   }
 
   const createOrder = async (orderData?: CreateOrderInput) => {
     // 多步驟操作：鎖定 handle，確保整個流程使用同一個 handle
-    const currentHandle = lockHandle()
+    const currentHandle = lockHandleForOperation()
     
     setIsLoading(true)
     setError(null)
@@ -153,12 +156,12 @@ export function useAdminAPI(handle: string | null) {
       throw error
     } finally {
       setIsLoading(false)
-      unlockHandle()
+      unlockHandleForOperation()
     }
   }
 
   const getLocations = async () => {
-    const currentHandle = lockHandle()
+    const currentHandle = lockHandleForOperation()
     
     setIsLoading(true)
     setError(null)
@@ -173,7 +176,7 @@ export function useAdminAPI(handle: string | null) {
       throw error
     } finally {
       setIsLoading(false)
-      unlockHandle()
+      unlockHandleForOperation()
     }
   }
 

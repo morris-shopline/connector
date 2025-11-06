@@ -7,6 +7,7 @@ import {
   signPostRequest,
   verifyWebhookSignature as verifyWebhookSignatureUtil
 } from '../utils/signature'
+import { getRedisClient } from '../utils/redis'
 import { 
   ShoplineAuthParams, 
   ShoplineTokenResponse,
@@ -211,12 +212,97 @@ export class ShoplineService {
   }
 
   /**
-   * 根據 handle 取得商店資訊
+   * 根據 handle 取得商店資訊（含 Redis 快取）
    */
   async getStoreByHandle(handle: string) {
-    return prisma.store.findFirst({
+    const redis = getRedisClient()
+    
+    // 嘗試從 Redis 讀取
+    if (redis) {
+      try {
+        const cached = await redis.get(`token:${handle}`)
+        if (cached) {
+          const store = JSON.parse(cached)
+          // 檢查是否過期
+          if (store.expiresAt) {
+            const expiresAt = new Date(store.expiresAt)
+            if (expiresAt > new Date()) {
+              // 轉換回 Prisma 格式（包含 Date 物件）
+              return {
+                ...store,
+                expiresAt: expiresAt,
+                createdAt: store.createdAt ? new Date(store.createdAt) : null,
+                updatedAt: store.updatedAt ? new Date(store.updatedAt) : null
+              }
+            } else {
+              // 過期則清除快取
+              await redis.del(`token:${handle}`)
+            }
+          } else {
+            // 沒有過期時間，直接返回（但可能已經過期，需要檢查）
+            return {
+              ...store,
+              createdAt: store.createdAt ? new Date(store.createdAt) : null,
+              updatedAt: store.updatedAt ? new Date(store.updatedAt) : null
+            }
+          }
+        }
+      } catch (error) {
+        // Redis 讀取失敗，降級到資料庫查詢
+        console.error('Redis read error:', error)
+      }
+    }
+    
+    // 從資料庫讀取
+    const store = await prisma.store.findFirst({
       where: { handle, isActive: true }
     })
+    
+    if (!store) {
+      return null
+    }
+    
+    // 寫入 Redis 快取
+    if (redis) {
+      try {
+        // 計算 TTL（根據 expiresAt，或預設 30 分鐘）
+        let ttl = 1800 // 預設 30 分鐘（秒）
+        if (store.expiresAt) {
+          const expiresAt = store.expiresAt.getTime()
+          const now = Date.now()
+          const remainingTime = Math.floor((expiresAt - now) / 1000)
+          if (remainingTime > 0) {
+            ttl = remainingTime
+          } else {
+            // 已經過期，不寫入快取
+            return store
+          }
+        }
+        
+        await redis.setex(
+          `token:${handle}`,
+          ttl,
+          JSON.stringify({
+            id: store.id,
+            shoplineId: store.shoplineId,
+            handle: store.handle,
+            accessToken: store.accessToken,
+            scope: store.scope,
+            name: store.name,
+            domain: store.domain,
+            expiresAt: store.expiresAt ? store.expiresAt.toISOString() : null,
+            isActive: store.isActive,
+            createdAt: store.createdAt ? store.createdAt.toISOString() : null,
+            updatedAt: store.updatedAt ? store.updatedAt.toISOString() : null
+          })
+        )
+      } catch (error) {
+        // Redis 寫入失敗，不影響功能，只記錄錯誤
+        console.error('Redis write error:', error)
+      }
+    }
+    
+    return store
   }
 
   /**
