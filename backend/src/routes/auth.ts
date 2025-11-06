@@ -51,8 +51,10 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         })
       }
       
-      // 取得 Session ID（從 request.sessionId 或從 JWT Token 中取得）
+      // 取得 Session ID 和 userId（從 request.sessionId 或從 JWT Token 中取得）
       let sessionId: string | null = null
+      const userId = request.user.id  // 從 authMiddleware 取得
+      
       if (request.sessionId) {
         sessionId = request.sessionId
       } else {
@@ -75,6 +77,17 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         state = encryptState(sessionId)
       } else {
         state = generateRandomString()
+      }
+      
+      // 在 Redis 中暫存 state 和 userId 的對應關係（作為備份，即使 Shopline 不保留 state 也能取得）
+      const { getRedisClient } = await import('../utils/redis')
+      const redis = getRedisClient()
+      if (redis) {
+        // 暫存 10 分鐘（OAuth 流程通常很快）
+        await redis.setex(`oauth:state:${state}`, 600, userId)
+        fastify.log.info({ msg: '✅ 已在 Redis 暫存 state 和 userId 對應關係', userId })
+      } else {
+        fastify.log.warn({ msg: '⚠️  Redis 不可用，無法暫存 state 和 userId 對應關係' })
       }
       
       // 生成授權 URL
