@@ -237,7 +237,7 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
       if (tokenData.success) {
         fastify.log.info('Access token 獲取成功')
         
-        // 從 state 參數中取得 Session ID
+        // 從 state 參數中取得 Session ID 或 userId
         let userId: string | undefined = undefined
         const state = params.state
         
@@ -245,23 +245,39 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         fastify.log.info('State 參數:', state ? state.substring(0, 50) + '...' : '無')
         
         if (state) {
-          fastify.log.info('從 state 參數中解析 Session ID...')
-          const { decryptState } = await import('../utils/state')
-          const sessionId = decryptState(state)
-          
-          if (sessionId) {
-            fastify.log.info('成功解析 Session ID:', sessionId.substring(0, 10) + '...')
-            const { getSession } = await import('../utils/session')
-            const session = await getSession(sessionId)
-            if (session) {
-              userId = session.userId
-              fastify.log.info('✅ 從 Session 取得使用者 ID:', userId)
-            } else {
-              fastify.log.warn('❌ Session 不存在或已過期')
+          // 方法 1: 嘗試從 Redis 取得 userId（最可靠）
+          const { getRedisClient } = await import('../utils/redis')
+          const redis = getRedisClient()
+          if (redis) {
+            const cachedUserId = await redis.get(`oauth:state:${state}`)
+            if (cachedUserId) {
+              userId = cachedUserId
+              fastify.log.info('✅ 從 Redis 取得使用者 ID:', userId)
+              // 取得後刪除（一次性使用）
+              await redis.del(`oauth:state:${state}`)
             }
-          } else {
-            fastify.log.warn('❌ 無法解析 state 參數，可能未登入或 state 格式錯誤')
-            fastify.log.warn('State 原始值:', state.substring(0, 100))
+          }
+          
+          // 方法 2: 如果 Redis 沒有，嘗試解密 state 取得 Session ID
+          if (!userId) {
+            fastify.log.info('從 state 參數中解析 Session ID...')
+            const { decryptState } = await import('../utils/state')
+            const sessionId = decryptState(state)
+            
+            if (sessionId) {
+              fastify.log.info('成功解析 Session ID:', sessionId.substring(0, 10) + '...')
+              const { getSession } = await import('../utils/session')
+              const session = await getSession(sessionId)
+              if (session) {
+                userId = session.userId
+                fastify.log.info('✅ 從 Session 取得使用者 ID:', userId)
+              } else {
+                fastify.log.warn('❌ Session 不存在或已過期')
+              }
+            } else {
+              fastify.log.warn('❌ 無法解析 state 參數，可能未登入或 state 格式錯誤')
+              fastify.log.warn('State 原始值:', state.substring(0, 100))
+            }
           }
         } else {
           fastify.log.warn('❌ 沒有 state 參數，嘗試從 header 取得使用者...')
