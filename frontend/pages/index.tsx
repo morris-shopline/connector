@@ -14,11 +14,10 @@ function Home() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<'stores' | 'events'>('stores')
   const { selectedHandle, setSelectedHandle } = useStoreStore()
-  const { isAuthenticated } = useAuthStore()
+  const { user, isAuthenticated } = useAuthStore()
   const [storeHandle, setStoreHandle] = useState<string>(selectedHandle || 'paykepoc') // 預設測試用的 handle
   const [showAuthDialog, setShowAuthDialog] = useState<boolean>(false)
   const { stores, isLoading: storesLoading, isError: storesError, mutate: refetchStores } = useStores()
-  const { user, isAuthenticated } = useAuthStore()
   
   // 除錯資訊：監控 stores 變化
   useEffect(() => {
