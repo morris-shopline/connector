@@ -74,44 +74,75 @@ function Home() {
         console.log('✅ [DEBUG] OAuth 回調成功，開始恢復認證狀態')
         
         // OAuth 回調成功，恢復使用者認證狀態
+        // 優先使用 URL 中的 token（如果有的話，這是後端新生成的）
+        const tokenFromUrl = urlParams.get('token')
+        if (tokenFromUrl) {
+          console.log('✅ [DEBUG] 從 URL 取得新的 Token（後端生成）')
+          localStorage.setItem('auth_token', tokenFromUrl)
+          const { setToken } = useAuthStore.getState()
+          setToken(tokenFromUrl)
+        }
+        
         // 如果有 session_id，儲存到 localStorage
         if (sessionIdFromUrl) {
           console.log('🔍 [DEBUG] 從 URL 取得 Session ID:', sessionIdFromUrl)
           localStorage.setItem('auth_session_id', sessionIdFromUrl)
           const { setSessionId } = useAuthStore.getState()
           setSessionId(sessionIdFromUrl)
+        }
+        
+        // 如果有 token，直接使用它來恢復認證狀態
+        if (tokenFromUrl) {
+          console.log('🔍 [DEBUG] 使用 URL 中的 Token 恢復認證狀態...')
+          const { checkAuth } = useAuthStore.getState()
+          checkAuth().then(() => {
+            const authState = useAuthStore.getState()
+            console.log('✅ [DEBUG] 認證狀態檢查完成')
+            console.log('🔍 [DEBUG] 當前使用者:', authState.user)
+            console.log('🔍 [DEBUG] 認證狀態:', authState.isAuthenticated ? '✅ 已登入' : '❌ 未登入')
+            
+            if (!authState.isAuthenticated) {
+              console.warn('⚠️  [DEBUG] 認證狀態檢查失敗，使用者未登入')
+              console.warn('⚠️  [DEBUG] 可能需要重新登入')
+            } else {
+              // 認證成功，重新載入商店列表
+              console.log('🔍 [DEBUG] 重新載入商店列表...')
+              refetchStores().then(() => {
+                console.log('✅ [DEBUG] 商店列表重新載入完成')
+              })
+            }
+          })
         } else {
-          console.log('⚠️  [DEBUG] URL 中沒有 session_id，嘗試從 localStorage 恢復認證狀態')
-          // 即使沒有 session_id，也嘗試從 localStorage 恢復認證狀態
-          // 因為使用者在發起 OAuth 授權時已經登入了
+          // 沒有 token，嘗試從 localStorage 恢復認證狀態
+          console.log('⚠️  [DEBUG] URL 中沒有 token，嘗試從 localStorage 恢復認證狀態')
           const existingToken = localStorage.getItem('auth_token')
           const existingSessionId = localStorage.getItem('auth_session_id')
           console.log('🔍 [DEBUG] localStorage 中的 Token:', existingToken ? '存在' : '不存在')
           console.log('🔍 [DEBUG] localStorage 中的 Session ID:', existingSessionId ? existingSessionId.substring(0, 20) + '...' : '不存在')
+          
+          // 檢查認證狀態
+          console.log('🔍 [DEBUG] 檢查認證狀態...')
+          const { checkAuth } = useAuthStore.getState()
+          checkAuth().then(() => {
+            const authState = useAuthStore.getState()
+            console.log('✅ [DEBUG] 認證狀態檢查完成')
+            console.log('🔍 [DEBUG] 當前使用者:', authState.user)
+            console.log('🔍 [DEBUG] 認證狀態:', authState.isAuthenticated ? '✅ 已登入' : '❌ 未登入')
+            
+            if (!authState.isAuthenticated) {
+              console.warn('⚠️  [DEBUG] 認證狀態檢查失敗，使用者未登入')
+              console.warn('⚠️  [DEBUG] 可能需要重新登入')
+            } else {
+              // 認證成功，重新載入商店列表
+              console.log('🔍 [DEBUG] 重新載入商店列表...')
+              refetchStores().then(() => {
+                console.log('✅ [DEBUG] 商店列表重新載入完成')
+              })
+            }
+          })
         }
         
-        // 檢查認證狀態（無論是否有 session_id 參數）
-        console.log('🔍 [DEBUG] 檢查認證狀態...')
-        const { checkAuth } = useAuthStore.getState()
-        checkAuth().then(() => {
-          const authState = useAuthStore.getState()
-          console.log('✅ [DEBUG] 認證狀態檢查完成')
-          console.log('🔍 [DEBUG] 當前使用者:', authState.user)
-          console.log('🔍 [DEBUG] 認證狀態:', authState.isAuthenticated ? '✅ 已登入' : '❌ 未登入')
-          
-          if (!authState.isAuthenticated) {
-            console.warn('⚠️  [DEBUG] 認證狀態檢查失敗，使用者未登入')
-            console.warn('⚠️  [DEBUG] 可能需要重新登入')
-          }
-        })
-        
-        // 重新載入商店列表
-        console.log('🔍 [DEBUG] 重新載入商店列表...')
-        refetchStores().then(() => {
-          console.log('✅ [DEBUG] 商店列表重新載入完成')
-        })
-        
-        // 清除 URL 參數
+        // 清除 URL 參數（在認證狀態恢復後）
         window.history.replaceState({}, document.title, window.location.pathname)
       } else if (!authSuccess && !isAuthenticated) {
         // 如果沒有 auth_success 參數，但使用者未登入，可能是 OAuth 回調後重導向失敗

@@ -459,6 +459,156 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
           })
         }
         
+        // 如果沒有 sessionId 但取得了 userId，生成新的 Session 和 Token
+        // 這樣前端就可以直接恢復登入狀態（因為 OAuth 回調在 Shopline embedded iframe 中，無法取得 localStorage）
+        if (!sessionId && userId) {
+          console.log('🔍 [DEBUG] 沒有 sessionId 但取得了 userId，生成新的 Session 和 Token')
+          
+          // 取得使用者資訊
+          const { PrismaClient } = await import('@prisma/client')
+          const prisma = new PrismaClient()
+          const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true, email: true, name: true }
+          })
+          await prisma.$disconnect()
+          
+          if (user) {
+            // 建立新的 Session
+            const { createSession } = await import('../utils/session')
+            sessionId = await createSession(user.id, user.email)
+            console.log('✅ [DEBUG] 已建立新的 Session:', sessionId.substring(0, 20) + '...')
+            
+            // 生成新的 JWT Token（包含 sessionId）
+            const { generateToken } = await import('../utils/jwt')
+            const token = generateToken(user.id, user.email, sessionId)
+            console.log('✅ [DEBUG] 已生成新的 JWT Token')
+            
+            // 在重導向 URL 中包含 Token 和 Session ID，讓前端可以直接恢復登入狀態
+            const redirectUrl = `${frontendUrl}?auth_success=true&token=${encodeURIComponent(token)}&session_id=${encodeURIComponent(sessionId)}`
+            console.log('✅ [DEBUG] 重導向 URL 包含新的 Token 和 Session ID')
+            console.log('🔍 [DEBUG] 最終重導向 URL:', redirectUrl)
+            console.log('🔍 [DEBUG] Frontend URL:', frontendUrl)
+            
+            // 返回成功頁面 HTML，自動重導向到前端
+            return reply.type('text/html').send(`
+              <!DOCTYPE html>
+              <html>
+                <head>
+                  <meta charset="utf-8">
+                  <title>授權成功</title>
+                  <style>
+                    body {
+                      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                      display: flex;
+                      justify-content: center;
+                      align-items: center;
+                      min-height: 100vh;
+                      margin: 0;
+                      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                      color: white;
+                    }
+                    .container {
+                      text-align: center;
+                      padding: 2rem;
+                      background: rgba(255, 255, 255, 0.1);
+                      border-radius: 1rem;
+                      backdrop-filter: blur(10px);
+                    }
+                    h1 { margin: 0 0 1rem 0; }
+                    p { margin: 0.5rem 0; }
+                    .spinner {
+                      border: 3px solid rgba(255, 255, 255, 0.3);
+                      border-radius: 50%;
+                      border-top: 3px solid white;
+                      width: 30px;
+                      height: 30px;
+                      animation: spin 1s linear infinite;
+                      margin: 1rem auto;
+                    }
+                    @keyframes spin {
+                      0% { transform: rotate(0deg); }
+                      100% { transform: rotate(360deg); }
+                    }
+                  </style>
+                </head>
+                <body>
+                  <div class="container">
+                    <h1>✅ 授權成功！</h1>
+                    <p>商店授權已成功完成</p>
+                    <p>已取得存取權限</p>
+                    <div class="spinner"></div>
+                    <p style="font-size: 0.9rem; opacity: 0.9; margin-top: 1rem;">正在返回應用程式...</p>
+                  </div>
+                  <script>
+                    console.log('🔍 [DEBUG] OAuth 回調頁面載入');
+                    console.log('🔍 [DEBUG] 準備重導向到前端:', '${redirectUrl}');
+                    console.log('🔍 [DEBUG] 當前 URL:', window.location.href);
+                    console.log('🔍 [DEBUG] window.top:', window.top === window ? 'same' : 'different');
+                    console.log('🔍 [DEBUG] window.parent:', window.parent === window ? 'same' : 'different');
+                    console.log('🔍 [DEBUG] window.opener:', window.opener ? 'exists' : 'null');
+                    
+                    // 嘗試關閉視窗 (如果是彈窗)
+                    try {
+                      if (window.opener) {
+                        console.log('🔍 [DEBUG] 嘗試關閉彈窗');
+                        window.close();
+                      }
+                    } catch (e) {
+                      console.log('⚠️  [DEBUG] 無法關閉視窗:', e);
+                    }
+                    
+                    // 嘗試多種重導向方式（Shopline embedded 環境可能需要）
+                    function redirectToFrontend() {
+                      try {
+                        // 方法 1: 嘗試使用 window.top（如果是 iframe）
+                        if (window.top !== window) {
+                          console.log('🔍 [DEBUG] 使用 window.top.location.href 重導向');
+                          window.top.location.href = '${redirectUrl}';
+                          return;
+                        }
+                      } catch (e) {
+                        console.warn('⚠️  [DEBUG] window.top.location.href 失敗:', e);
+                      }
+                      
+                      try {
+                        // 方法 2: 嘗試使用 window.parent（如果是 iframe）
+                        if (window.parent !== window) {
+                          console.log('🔍 [DEBUG] 使用 window.parent.location.href 重導向');
+                          window.parent.location.href = '${redirectUrl}';
+                          return;
+                        }
+                      } catch (e) {
+                        console.warn('⚠️  [DEBUG] window.parent.location.href 失敗:', e);
+                      }
+                      
+                      try {
+                        // 方法 3: 使用 window.location.href（標準方式）
+                        console.log('🔍 [DEBUG] 使用 window.location.href 重導向');
+                        window.location.href = '${redirectUrl}';
+                      } catch (e) {
+                        console.error('❌ [DEBUG] window.location.href 失敗:', e);
+                      }
+                    }
+                    
+                    // 立即重導向
+                    redirectToFrontend();
+                    
+                    // 備用：3秒後重導向（如果立即重導向失敗）
+                    setTimeout(() => {
+                      if (window.location.href.indexOf('auth_success') === -1 && 
+                          window.location.href.indexOf('connector-theta.vercel.app') === -1) {
+                        console.log('⚠️  [DEBUG] 立即重導向可能失敗，嘗試備用重導向');
+                        redirectToFrontend();
+                      }
+                    }, 3000);
+                  </script>
+                </body>
+              </html>
+            `)
+          }
+        }
+        
         // 返回成功頁面 HTML，自動重導向到前端
         // 在重導向 URL 中加入認證狀態參數（如果有 Session ID）
         let redirectUrl = frontendUrl
