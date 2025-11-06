@@ -69,10 +69,11 @@
 
 | Story | 類型 | 所屬 | 狀態 | 完成 Run |
 |-------|------|------|------|----------|
-| [Story 3.1: 使用者認證系統](./stories/story-3-1-user-authentication.md) | Feature | Epic 3 | ⏳ planned | - |
-| [Story 3.2: 基礎權限驗證機制](./stories/story-3-2-basic-authorization.md) | Feature | Epic 3 | ⏳ planned | - |
-| [Story 3.3: 多租戶資料隔離](./stories/story-3-3-multi-tenant-data-isolation.md) | Feature | Epic 3 | ⏳ planned | - |
-| [Story 3.4: Admin 管理介面](./stories/story-3-4-admin-management-interface.md) | Feature | Epic 3 | ⏳ planned | - |
+| [Story 3.1: 使用者認證系統](./stories/story-3-1-user-authentication.md) | Feature | Epic 3 | ✅ completed | run-2025-11-06-01 |
+| [Story 3.2: 基礎權限驗證機制](./stories/story-3-2-basic-authorization.md) | Feature | Epic 3 | ✅ completed | run-2025-11-06-01 |
+| [Story 3.3: 多租戶資料隔離](./stories/story-3-3-multi-tenant-data-isolation.md) | Feature | Epic 3 | ✅ completed | run-2025-11-06-01 |
+| [Story 3.4: Admin 管理介面](./stories/story-3-4-admin-management-interface.md) | Feature | Epic 3 | ✅ completed | run-2025-11-06-01 |
+| [Story 3.5: OAuth 授權流程與會員登入系統銜接](./stories/story-3-5-oauth-auth-integration.md) | Feature | Epic 3 | ✅ completed | run-2025-11-06-01 |
 
 ### Epic 4: 多商店管理（Phase 1.2）
 

@@ -115,6 +115,8 @@
 - **首次部署 Commit**: `e45681d`
 - **修復部署 Git Push**: 2025-11-06
 - **修復部署 Commit**: `44213bf`
+- **Story 3.5 部署 Git Push**: 2025-11-06
+- **Story 3.5 部署 Commit**: 待記錄（請檢查 Git log）
 - **Vercel 部署狀態**: 自動部署中（請檢查 Vercel Dashboard）
 - **Render 部署狀態**: 自動部署中（請檢查 Render Dashboard）
 

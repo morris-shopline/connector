@@ -6,6 +6,45 @@
 
 ## Run 列表
 
+### ✅ Run 2025-11-06-01: Epic 3 Admin 管理系統（Story 3.1-3.5）
+
+**Run ID**: run-2025-11-06-01  
+**類型**: Feature  
+**狀態**: ✅ completed  
+**開始時間**: 2025-11-06  
+**完成時間**: 2025-11-06
+
+**Stories**:
+- [Story 3.1: 使用者認證系統](../backlog/stories/story-3-1-user-authentication.md) ✅
+- [Story 3.2: 基礎權限驗證機制](../backlog/stories/story-3-2-basic-authorization.md) ✅
+- [Story 3.3: 多租戶資料隔離](../backlog/stories/story-3-3-multi-tenant-data-isolation.md) ✅
+- [Story 3.4: Admin 管理介面](../backlog/stories/story-3-4-admin-management-interface.md) ✅
+- [Story 3.5: OAuth 授權流程與會員登入系統銜接](../backlog/stories/story-3-5-oauth-auth-integration.md) ✅
+
+**完成內容**:
+- ✅ Story 3.1: 後端認證 API（註冊、登入、登出、Session 管理、JWT Token）
+- ✅ Story 3.2: 基礎權限驗證機制（認證中間件、API 端點保護、資料過濾）
+- ✅ Story 3.3: 多租戶資料隔離（資料庫設計、查詢過濾器、資料遷移）
+- ✅ Story 3.4: Admin 管理介面（登入/註冊頁面、路由保護、認證狀態管理）
+- ✅ Story 3.5: OAuth 授權流程與會員登入系統銜接（OAuth 回調處理、前端整合、商店關聯）
+
+**測試結果**:
+- ✅ Agent 功能測試：所有 Story 通過
+- ✅ User Test：核心流程通過
+  - 註冊、登入功能正常
+  - 商店授權流程正常
+  - API 使用正常
+  - Webhook 接收正常
+  - 資料隔離正常
+
+**已知問題**:
+- 註冊流程防呆機制不完整（記錄在 `docs/backlog/inbox/note-2025-11-06-002.md`）
+- 前後端 state 控管不順暢（記錄在 `docs/backlog/inbox/note-2025-11-06-002.md`）
+
+**推上線狀態**: ✅ 已推上正式環境並測試通過
+
+---
+
 ### ✅ Run 2025-11-05-01: Zustand 階段 1 核心實作
 
 **Run ID**: run-2025-11-05-01  

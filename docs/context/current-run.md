@@ -3,8 +3,8 @@
 **Run ID**: run-2025-11-06-01  
 **類型**: Feature  
 **開始時間**: 2025-11-06  
-**完成時間**: 待定（User Test 進行中）  
-**狀態**: 🧪 User Test 進行中（正式環境測試）
+**完成時間**: 2025-11-06  
+**狀態**: ✅ completed
 
 ---
 
@@ -50,9 +50,9 @@ Feature Development
 
 ### Story 3.5: OAuth 授權流程與會員登入系統銜接
 - **文件**: `docs/backlog/stories/story-3-5-oauth-auth-integration.md`
-- **狀態**: ⏳ in_progress
+- **狀態**: ✅ completed
 - **描述**: 實作 OAuth 授權流程與會員登入系統的銜接，確保使用者在完成商店授權後，能夠保持登入狀態，並且授權的商店正確關聯到當前使用者
-- **測試狀態**: ⏳ 待測試
+- **測試狀態**: ✅ User Test 完成（核心流程通過）
 
 ---
 

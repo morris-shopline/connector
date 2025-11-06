@@ -1,7 +1,8 @@
 # Story 3.2: 基礎權限驗證機制
 
 **所屬 Epic**: [Epic 3: Admin 管理系統（Phase 1.1）](../epics/epic-3-admin-management-system.md)  
-**狀態**: ⏳ planned  
+**狀態**: ✅ completed  
+**完成 Run**: run-2025-11-06-01  
 **建立日期**: 2025-11-06  
 **對應 Roadmap**: Phase 1.1
 
