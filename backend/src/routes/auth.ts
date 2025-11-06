@@ -83,13 +83,12 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
       const { getRedisClient } = await import('../utils/redis')
       const redis = getRedisClient()
       if (redis) {
-        const timestamp = Date.now()
         const redisKeyByState = `oauth:state:${state}`
-        const redisKeyByHandle = `oauth:handle:${handle}:${userId}`  // 備用 key：使用 handle + userId
+        const redisKeyByHandleOnly = `oauth:handle:${handle}`  // 備用 key：使用 handle（即使沒有 state 也能取得）
         
         console.log('🔍 [DEBUG] 準備在 Redis 暫存 state 和 userId 對應關係')
         console.log('🔍 [DEBUG] Redis Key (by state):', redisKeyByState)
-        console.log('🔍 [DEBUG] Redis Key (by handle):', redisKeyByHandle)
+        console.log('🔍 [DEBUG] Redis Key (by handle only):', redisKeyByHandleOnly)
         console.log('🔍 [DEBUG] UserId:', userId)
         
         // 方法 1: 使用 state 作為 key（主要方式）
@@ -105,11 +104,11 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         
         // 驗證儲存結果
         const verifyByState = await redis.get(redisKeyByState)
-        const verifyByHandle = await redis.get(redisKeyByHandle)
-        if (verifyByState === userId && verifyByHandle === userId) {
+        const verifyByHandleOnly = await redis.get(redisKeyByHandleOnly)
+        if (verifyByState === userId && verifyByHandleOnly === userId) {
           console.log('✅ [DEBUG] Redis 暫存驗證成功（兩種方式都成功）')
         } else {
-          console.error('❌ [DEBUG] Redis 暫存驗證失敗，預期:', userId, '實際 (by state):', verifyByState, '實際 (by handle):', verifyByHandle)
+          console.error('❌ [DEBUG] Redis 暫存驗證失敗，預期:', userId, '實際 (by state):', verifyByState, '實際 (by handle only):', verifyByHandleOnly)
         }
         
         fastify.log.info({ msg: '✅ 已在 Redis 暫存 state 和 userId 對應關係', userId })
