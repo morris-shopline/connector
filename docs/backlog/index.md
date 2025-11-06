@@ -10,7 +10,7 @@
 |------|------|------|--------------|----------|
 | [Epic 0: 基礎架構與 OAuth 授權](./epics/epic-0-foundation.md) | ✅ completed | 100% | Phase 0 | Run 1 |
 | [Epic 2: Admin API 測試功能](./epics/epic-2-admin-api-testing.md) | ✅ completed | 100% | Phase 0.6 | Run 3 |
-| [Epic 3: Admin 管理系統](./epics/epic-3-admin-management-system.md) | ⏳ planned | 0% | Phase 1.1 | - |
+| [Epic 3: Admin 管理系統](./epics/epic-3-admin-management-system.md) | ✅ completed | 100% | Phase 1.1 | run-2025-11-06-01 |
 | [Epic 4: 多商店管理](./epics/epic-4-multi-store-management.md) | ⏳ planned | 0% | Phase 1.2 | - |
 | [Epic 5: 多 API 類型支援](./epics/epic-5-multi-api-types.md) | 🔄 部分完成 | 50% | Phase 1.3 | - |
 
