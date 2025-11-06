@@ -290,14 +290,16 @@ Feature Development
 - [ ] 測試資料隔離
 
 **部署後測試記錄**:
-- Git Push 時間: 2025-11-06
-- Commit Hash: `e45681d`
+- 首次部署 Git Push: 2025-11-06 (Commit: `e45681d`)
+- 修復部署 Git Push: 2025-11-06 (Commit: `44213bf`)
 - Vercel 部署狀態: 自動部署中（請檢查 [Vercel Dashboard](https://vercel.com/dashboard)）
 - Render 部署狀態: 自動部署中（請檢查 [Render Dashboard](https://dashboard.render.com/)）
 - 測試開始時間: 待記錄（部署完成後）
 - 測試結果: 待記錄
-- 發現的問題: 待記錄
-- 修復狀態: 待記錄
+- **發現的問題 1**: Prisma Client 未在生產環境生成（已修復）
+  - 錯誤: `Cannot read properties of undefined (reading 'findUnique')`
+  - 修復: 在 `build` 腳本中加入 `prisma generate`
+  - 狀態: ✅ 已修復並重新部署
 
 ---
 
