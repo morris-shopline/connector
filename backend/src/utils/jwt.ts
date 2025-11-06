@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken'
 interface JWTPayload {
   userId: string
   email: string
+  sessionId?: string  // Session ID（可選）
   iat: number
   exp: number
 }
@@ -14,11 +15,16 @@ const JWT_EXPIRES_IN = '7d'
  * 生成 JWT Token
  * @param userId 使用者 ID
  * @param email 使用者 Email
+ * @param sessionId Session ID（可選）
  * @returns JWT Token
  */
-export function generateToken(userId: string, email: string): string {
+export function generateToken(userId: string, email: string, sessionId?: string): string {
+  const payload: any = { userId, email }
+  if (sessionId) {
+    payload.sessionId = sessionId
+  }
   return jwt.sign(
-    { userId, email },
+    payload,
     JWT_SECRET,
     { expiresIn: JWT_EXPIRES_IN }
   )

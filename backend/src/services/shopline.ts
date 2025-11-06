@@ -97,10 +97,13 @@ export class ShoplineService {
   /**
    * 生成授權 URL
    * 根據 temp 腳本的正確實現
+   * @param state State 參數（包含 Session ID，用於 OAuth 回調時識別使用者）
+   * @param handle 商店 handle
    */
   generateAuthUrl(state: string, handle: string): string {
     const scope = 'read_products,read_orders' // 根據需求設定權限範圍
-    return `https://${handle}.myshopline.com/admin/oauth-web/#/oauth/authorize?appKey=${this.appKey}&responseType=code&scope=${scope}&redirectUri=${encodeURIComponent(this.redirectUri)}`
+    // 在授權 URL 中加入 state 參數
+    return `https://${handle}.myshopline.com/admin/oauth-web/#/oauth/authorize?appKey=${this.appKey}&responseType=code&scope=${scope}&redirectUri=${encodeURIComponent(this.redirectUri)}&state=${encodeURIComponent(state)}`
   }
 
   /**

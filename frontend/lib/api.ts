@@ -255,4 +255,14 @@ export async function getCurrentUser() {
   return response.data
 }
 
+/**
+ * 取得授權 URL（需要登入）
+ * @param handle 商店 handle
+ * @returns 授權 URL 和 state
+ */
+export async function getAuthorizeUrl(handle: string) {
+  const response = await api.get(`/api/auth/shopline/authorize?handle=${encodeURIComponent(handle)}`)
+  return response.data
+}
+
 export default api

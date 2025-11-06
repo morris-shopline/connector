@@ -11,6 +11,7 @@ interface AuthState {
   isAuthenticated: boolean
   isLoading: boolean
   token: string | null
+  sessionId: string | null
   
   // Actions
   login: (email: string, password: string) => Promise<void>
@@ -19,6 +20,7 @@ interface AuthState {
   checkAuth: () => Promise<void>
   setUser: (user: User | null) => void
   setToken: (token: string | null) => void
+  setSessionId: (sessionId: string | null) => void
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -26,6 +28,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: false,
   isLoading: true,
   token: null,
+  sessionId: null,
   
   setUser: (user) => {
     set({ user, isAuthenticated: !!user })
@@ -40,10 +43,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
   
+  setSessionId: (sessionId) => {
+    set({ sessionId })
+    if (sessionId) {
+      localStorage.setItem('auth_session_id', sessionId)
+    } else {
+      localStorage.removeItem('auth_session_id')
+    }
+  },
+  
   checkAuth: async () => {
     const token = localStorage.getItem('auth_token')
+    const sessionId = localStorage.getItem('auth_session_id')
     if (!token) {
-      set({ isLoading: false, isAuthenticated: false })
+      set({ isLoading: false, isAuthenticated: false, sessionId: null })
       return
     }
     
@@ -56,15 +69,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           user: response.user, 
           isAuthenticated: true, 
           token,
+          sessionId: sessionId || null,
           isLoading: false 
         })
       } else {
         localStorage.removeItem('auth_token')
-        set({ user: null, isAuthenticated: false, token: null, isLoading: false })
+        localStorage.removeItem('auth_session_id')
+        set({ user: null, isAuthenticated: false, token: null, sessionId: null, isLoading: false })
       }
     } catch (error) {
       localStorage.removeItem('auth_token')
-      set({ user: null, isAuthenticated: false, token: null, isLoading: false })
+      localStorage.removeItem('auth_session_id')
+      set({ user: null, isAuthenticated: false, token: null, sessionId: null, isLoading: false })
     }
   },
   
@@ -73,10 +89,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const response = await login(email, password)
     if (response.success && response.token && response.user) {
       localStorage.setItem('auth_token', response.token)
+      if (response.sessionId) {
+        localStorage.setItem('auth_session_id', response.sessionId)
+      }
       set({ 
         user: response.user, 
         isAuthenticated: true, 
-        token: response.token 
+        token: response.token,
+        sessionId: response.sessionId || null
       })
     } else {
       throw new Error(response.error || '登入失敗')
@@ -92,10 +112,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const loginResponse = await login(email, password)
       if (loginResponse.success && loginResponse.token && loginResponse.user) {
         localStorage.setItem('auth_token', loginResponse.token)
+        if (loginResponse.sessionId) {
+          localStorage.setItem('auth_session_id', loginResponse.sessionId)
+        }
         set({ 
           user: loginResponse.user, 
           isAuthenticated: true, 
-          token: loginResponse.token 
+          token: loginResponse.token,
+          sessionId: loginResponse.sessionId || null
         })
       } else {
         throw new Error('註冊成功，但自動登入失敗')
@@ -113,7 +137,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       console.error('Logout error:', error)
     } finally {
       localStorage.removeItem('auth_token')
-      set({ user: null, isAuthenticated: false, token: null })
+      localStorage.removeItem('auth_session_id')
+      set({ user: null, isAuthenticated: false, token: null, sessionId: null })
     }
   },
 }))

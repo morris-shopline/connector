@@ -27,12 +27,75 @@ const callbackSchema = z.object({
   handle: z.string(),
   timestamp: z.string(),
   sign: z.string(),
+  state: z.string().optional(), // State 參數（包含 Session ID）
   lang: z.string().optional(),
   customField: z.string().optional()
 })
 
 export async function authRoutes(fastify: FastifyInstance, options: any) {
-  // 處理應用安裝請求
+  // 取得授權 URL（需要登入，返回包含 state 的授權 URL）
+  fastify.get('/api/auth/shopline/authorize', { preHandler: [authMiddleware] }, async (request, reply) => {
+    try {
+      if (!request.user) {
+        return reply.status(401).send({
+          success: false,
+          error: 'Authentication required'
+        })
+      }
+      
+      const { handle } = request.query as { handle: string }
+      if (!handle) {
+        return reply.status(400).send({
+          success: false,
+          error: 'Handle is required'
+        })
+      }
+      
+      // 取得 Session ID（從 request.sessionId 或從 JWT Token 中取得）
+      let sessionId: string | null = null
+      if (request.sessionId) {
+        sessionId = request.sessionId
+      } else {
+        // 嘗試從 JWT Token 中取得 Session ID
+        const authHeader = request.headers.authorization
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+          const token = authHeader.substring(7)
+          const { decodeToken } = await import('../utils/jwt')
+          const payload = decodeToken(token)
+          if (payload && payload.sessionId) {
+            sessionId = payload.sessionId
+          }
+        }
+      }
+      
+      // 生成 state 參數（如果沒有 Session ID，使用隨機字串）
+      let state: string
+      if (sessionId) {
+        const { encryptState } = await import('../utils/state')
+        state = encryptState(sessionId)
+      } else {
+        state = generateRandomString()
+      }
+      
+      // 生成授權 URL
+      const authUrl = shoplineService.generateAuthUrl(state, handle)
+      
+      return reply.send({
+        success: true,
+        authUrl,
+        state
+      })
+    } catch (error: any) {
+      fastify.log.error('Get authorize URL error:', error)
+      return reply.status(500).send({
+        success: false,
+        error: 'Internal server error',
+        message: error.message
+      })
+    }
+  })
+  
+  // 處理應用安裝請求（保留原有功能，用於直接跳轉）
   fastify.get('/api/auth/shopline/install', async (request, reply) => {
     try {
       const startTime = Date.now()
@@ -80,10 +143,43 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
 
       fastify.log.info('✅ 簽名驗證成功')
       
-      // 生成 state 參數
+      // 取得當前使用者（如果有 Session）
+      let sessionId: string | null = null
+      const authHeader = request.headers.authorization
+      let token: string | null = null
+      
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7)
+      }
+      
+      if (token) {
+        const { verifyToken } = await import('../utils/jwt')
+        const payload = verifyToken(token)
+        if (payload) {
+          // 從 JWT Token 中取得 Session ID（需要在 Token 中包含 Session ID）
+          // 目前先使用 Token 的 userId 來查找 Session
+          // 未來可以擴展 JWT Token 包含 Session ID
+          const { getSession } = await import('../utils/session')
+          // 暫時使用 userId 來查找 Session（需要擴展 Session 查詢功能）
+          // 目前先使用隨機 state，在回調時再從 header 取得使用者
+        }
+      } else {
+        sessionId = request.headers['x-session-id'] as string || null
+      }
+      
+      // 生成 state 參數（如果沒有 Session ID，使用隨機字串）
       fastify.log.info('步驟 3: 生成 state 參數...')
-      const state = generateRandomString()
-      fastify.log.info('生成的 state:', state)
+      let state: string
+      if (sessionId) {
+        // 如果有 Session ID，加密後放入 state
+        const { encryptState } = await import('../utils/state')
+        state = encryptState(sessionId)
+        fastify.log.info('生成的 state (包含 Session ID):', state.substring(0, 20) + '...')
+      } else {
+        // 如果沒有 Session ID，使用隨機字串（未登入狀態）
+        state = generateRandomString()
+        fastify.log.info('生成的 state (隨機字串):', state)
+      }
       
       // 重定向到 Shopline 授權頁面
       fastify.log.info('步驟 4: 生成授權 URL...')
@@ -140,29 +236,54 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
       if (tokenData.success) {
         fastify.log.info('Access token 獲取成功')
         
-        // 取得當前使用者（如果有 Session）
-        // 使用 optionalAuthMiddleware 的邏輯來取得使用者
+        // 從 state 參數中取得 Session ID
         let userId: string | undefined = undefined
-        const authHeader = request.headers.authorization
-        let token: string | null = null
+        const state = params.state
         
-        if (authHeader && authHeader.startsWith('Bearer ')) {
-          token = authHeader.substring(7)
-        }
-        
-        if (token) {
-          const { verifyToken } = await import('../utils/jwt')
-          const payload = verifyToken(token)
-          if (payload) {
-            userId = payload.userId
-          }
-        } else {
-          const sessionId = request.headers['x-session-id'] as string
+        if (state) {
+          fastify.log.info('從 state 參數中解析 Session ID...')
+          const { decryptState } = await import('../utils/state')
+          const sessionId = decryptState(state)
+          
           if (sessionId) {
+            fastify.log.info('成功解析 Session ID:', sessionId.substring(0, 10) + '...')
             const { getSession } = await import('../utils/session')
             const session = await getSession(sessionId)
             if (session) {
               userId = session.userId
+              fastify.log.info('從 Session 取得使用者 ID:', userId)
+            } else {
+              fastify.log.warn('Session 不存在或已過期')
+            }
+          } else {
+            fastify.log.warn('無法解析 state 參數，可能未登入或 state 格式錯誤')
+          }
+        } else {
+          fastify.log.warn('沒有 state 參數，嘗試從 header 取得使用者...')
+          // 降級處理：嘗試從 header 取得使用者
+          const authHeader = request.headers.authorization
+          let token: string | null = null
+          
+          if (authHeader && authHeader.startsWith('Bearer ')) {
+            token = authHeader.substring(7)
+          }
+          
+          if (token) {
+            const { verifyToken } = await import('../utils/jwt')
+            const payload = verifyToken(token)
+            if (payload) {
+              userId = payload.userId
+              fastify.log.info('從 JWT Token 取得使用者 ID:', userId)
+            }
+          } else {
+            const sessionId = request.headers['x-session-id'] as string
+            if (sessionId) {
+              const { getSession } = await import('../utils/session')
+              const session = await getSession(sessionId)
+              if (session) {
+                userId = session.userId
+                fastify.log.info('從 x-session-id header 取得使用者 ID:', userId)
+              }
             }
           }
         }
@@ -182,6 +303,22 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         }
         
         // 返回成功頁面 HTML，自動重導向到前端
+        // 在重導向 URL 中加入認證狀態參數（如果有 Session ID）
+        let redirectUrl = frontendUrl
+        const callbackState = params.state  // 從 params 中取得 state
+        if (callbackState) {
+          const { decryptState } = await import('../utils/state')
+          const sessionId = decryptState(callbackState)
+          if (sessionId) {
+            // 在重導向 URL 中加入 Session ID，讓前端可以恢復認證狀態
+            redirectUrl = `${frontendUrl}?auth_success=true&session_id=${encodeURIComponent(sessionId)}`
+          } else {
+            redirectUrl = `${frontendUrl}?auth_success=true`
+          }
+        } else {
+          redirectUrl = `${frontendUrl}?auth_success=true`
+        }
+        
         return reply.type('text/html').send(`
           <!DOCTYPE html>
           <html>
@@ -243,7 +380,7 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
                 
                 // 3秒後重導向到前端
                 setTimeout(() => {
-                  window.location.href = '${frontendUrl}';
+                  window.location.href = '${redirectUrl}';
                 }, 3000);
               </script>
             </body>
@@ -394,8 +531,8 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
       // 建立 Session
       const sessionId = await createSession(user.id, user.email)
 
-      // 生成 JWT Token
-      const token = generateToken(user.id, user.email)
+      // 生成 JWT Token（包含 Session ID）
+      const token = generateToken(user.id, user.email, sessionId)
 
       return reply.send({
         success: true,

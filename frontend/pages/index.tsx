@@ -1,19 +1,23 @@
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/router'
 import { useStores } from '../hooks/useStores'
 import { useWebhookEvents } from '../hooks/useWebhookEvents'
 import { useHealthCheck } from '../hooks/useHealthCheck'
 import { useStoreStore } from '../stores/useStoreStore'
+import { useAuthStore } from '../stores/useAuthStore'
 import { StoreCard } from '../components/StoreCard'
 import { WebhookEventCard } from '../components/WebhookEventCard'
 import { Header } from '../components/Header'
 import { ProtectedRoute } from '../components/ProtectedRoute'
 
 function Home() {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState<'stores' | 'events'>('stores')
   const { selectedHandle, setSelectedHandle } = useStoreStore()
+  const { isAuthenticated } = useAuthStore()
   const [storeHandle, setStoreHandle] = useState<string>(selectedHandle || 'paykepoc') // 預設測試用的 handle
   const [showAuthDialog, setShowAuthDialog] = useState<boolean>(false)
-  const { stores, isLoading: storesLoading, isError: storesError } = useStores()
+  const { stores, isLoading: storesLoading, isError: storesError, mutate: refetchStores } = useStores()
   const { events, isLoading: eventsLoading, isError: eventsError } = useWebhookEvents()
   const { checkHealth, isChecking, status, message, lastChecked } = useHealthCheck()
 
@@ -30,6 +34,35 @@ function Home() {
     window.addEventListener('hashchange', updateTabFromHash)
     return () => window.removeEventListener('hashchange', updateTabFromHash)
   }, [])
+  
+  // 處理 OAuth 回調（檢查 URL 參數）
+  useEffect(() => {
+    if (router.isReady) {
+      const urlParams = new URLSearchParams(window.location.search)
+      const authSuccess = urlParams.get('auth_success')
+      const sessionIdFromUrl = urlParams.get('session_id')
+      
+      if (authSuccess === 'true') {
+        // OAuth 回調成功，恢復使用者認證狀態
+        // 如果有 session_id，儲存到 localStorage
+        if (sessionIdFromUrl) {
+          localStorage.setItem('auth_session_id', sessionIdFromUrl)
+          const { setSessionId } = useAuthStore.getState()
+          setSessionId(sessionIdFromUrl)
+        }
+        
+        // 檢查認證狀態
+        const { checkAuth } = useAuthStore.getState()
+        checkAuth()
+        
+        // 重新載入商店列表
+        refetchStores()
+        
+        // 清除 URL 參數
+        window.history.replaceState({}, document.title, window.location.pathname)
+      }
+    }
+  }, [router.isReady, refetchStores])
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -116,51 +149,31 @@ function Home() {
                       取消
                     </button>
                     <button
-                      onClick={() => {
-                        // 根據環境變數選擇使用的 App 配置
-                        const appType = process.env.NEXT_PUBLIC_APP_TYPE || 'custom'
-                        const appKey = appType === 'public' 
-                          ? (process.env.NEXT_PUBLIC_SHOPLINE_PUBLIC_APP_KEY || 'c6e5110e6e06b928920af61b322e1db0ca446c16')
-                          : (process.env.NEXT_PUBLIC_SHOPLINE_CUSTOM_APP_KEY || '4c951e966557c8374d9a61753dfe3c52441aba3b')
-                        const appSecret = appType === 'public'
-                          ? (process.env.NEXT_PUBLIC_SHOPLINE_PUBLIC_APP_SECRET || '62589f36ba6e496ae37b00fc75c434a5fece4fb9')
-                          : (process.env.NEXT_PUBLIC_SHOPLINE_CUSTOM_APP_SECRET || 'dd46269d6920f49b07e810862d3093062b0fb858')
+                      onClick={async () => {
+                        // 確保使用者已登入
+                        if (!isAuthenticated) {
+                          alert('請先登入後再進行商店授權')
+                          router.push('/login')
+                          return
+                        }
+                        
                         const handle = storeHandle || 'paykepoc'
-                        const timestamp = Math.floor(Date.now() / 1000).toString()
                         
-                        // 生成簽名
-                        const params = { appkey: appKey, handle, timestamp }
-                        const sortedParams = Object.keys(params).sort().map(key => `${key}=${params[key]}`).join('&')
-                        
-                        // 使用 Web Crypto API 生成 HMAC-SHA256
-                        const encoder = new TextEncoder()
-                        const keyData = encoder.encode(appSecret)
-                        const messageData = encoder.encode(sortedParams)
-                        
-                        crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
-                          .then(key => crypto.subtle.sign('HMAC', key, messageData))
-                          .then(signature => {
-                            const hashArray = Array.from(new Uint8Array(signature))
-                            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
-                            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_NGROK_URL
-                            if (!backendUrl) {
-                              alert('❌ 錯誤：請設定 NEXT_PUBLIC_BACKEND_URL 環境變數')
-                              return
-                            }
-                            const cleanUrl = backendUrl.replace(/\/+$/, '') // 移除尾部斜線
-                            const url = `${cleanUrl}/api/auth/shopline/install?appkey=${appKey}&handle=${handle}&timestamp=${timestamp}&sign=${hashHex}`
-                            window.location.href = url
-                          })
-                          .catch(() => {
-                            // 如果 Web Crypto API 失敗，使用簡單的測試簽名
-                            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_NGROK_URL
-                            if (!backendUrl) {
-                              alert('❌ 錯誤：請設定 NEXT_PUBLIC_BACKEND_URL 環境變數')
-                              return
-                            }
-                            const cleanUrl = backendUrl.replace(/\/+$/, '') // 移除尾部斜線
-                            window.location.href = `${cleanUrl}/api/auth/shopline/install?appkey=${appKey}&handle=${handle}&timestamp=${timestamp}&sign=test`
-                          })
+                        try {
+                          // 使用 API 調用取得授權 URL（包含 state 參數）
+                          const { getAuthorizeUrl } = await import('../lib/api')
+                          const response = await getAuthorizeUrl(handle)
+                          
+                          if (response.success && response.authUrl) {
+                            // 跳轉到授權 URL
+                            window.location.href = response.authUrl
+                          } else {
+                            alert('取得授權 URL 失敗：' + (response.error || '未知錯誤'))
+                          }
+                        } catch (error: any) {
+                          console.error('取得授權 URL 錯誤:', error)
+                          alert('取得授權 URL 失敗：' + (error.message || '未知錯誤'))
+                        }
                       }}
                       className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
                     >
