@@ -98,7 +98,6 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         // 方法 2: 使用 handle 作為 key（備用方式，即使沒有 state 也能取得）
         // 注意：同一個 handle 可能被多個使用者授權，所以使用 handle 作為 key 只能儲存最近的一個
         // 但這已經足夠了，因為 OAuth 流程通常很快，不會有並發問題
-        const redisKeyByHandleOnly = `oauth:handle:${handle}`
         await redis.setex(redisKeyByHandleOnly, 600, userId)
         console.log('✅ [DEBUG] 已在 Redis 暫存 state 和 userId 對應關係 (by handle only)')
         
