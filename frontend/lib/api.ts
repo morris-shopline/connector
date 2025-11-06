@@ -34,6 +34,13 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`)
+    
+    // 加入 Token（如果存在）
+    const token = localStorage.getItem('auth_token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    
     return config
   },
   (error) => {
@@ -50,6 +57,21 @@ api.interceptors.response.use(
   },
   (error) => {
     console.error('❌ API Response Error:', error.response?.data || error.message)
+    
+    // 處理 401 錯誤（未授權）
+    if (error.response?.status === 401) {
+      localStorage.removeItem('auth_token')
+      // 清除 Zustand Store 中的認證狀態
+      if (typeof window !== 'undefined') {
+        const { useAuthStore } = require('../stores/useAuthStore')
+        useAuthStore.getState().logout()
+        // 只在非登入/註冊頁面時重導向
+        if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
+          window.location.href = '/login'
+        }
+      }
+    }
+    
     return Promise.reject(error)
   }
 )
@@ -210,6 +232,27 @@ export const apiClient = {
       throw error
     }
   }
+}
+
+// 認證相關 API
+export async function register(email: string, password: string, name?: string) {
+  const response = await api.post('/api/auth/register', { email, password, name })
+  return response.data
+}
+
+export async function login(email: string, password: string) {
+  const response = await api.post('/api/auth/login', { email, password })
+  return response.data
+}
+
+export async function logout() {
+  const response = await api.post('/api/auth/logout')
+  return response.data
+}
+
+export async function getCurrentUser() {
+  const response = await api.get('/api/auth/me')
+  return response.data
 }
 
 export default api

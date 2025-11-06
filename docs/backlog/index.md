@@ -69,10 +69,10 @@
 
 | Story | 類型 | 所屬 | 狀態 | 完成 Run |
 |-------|------|------|------|----------|
-| Story 3.1: 使用者認證系統 | Feature | Epic 3 | ⏳ planned | - |
-| Story 3.2: 權限管理系統 | Feature | Epic 3 | ⏳ planned | - |
-| Story 3.3: 多租戶資料隔離 | Feature | Epic 3 | ⏳ planned | - |
-| Story 3.4: Admin 管理介面 | Feature | Epic 3 | ⏳ planned | - |
+| [Story 3.1: 使用者認證系統](./stories/story-3-1-user-authentication.md) | Feature | Epic 3 | ⏳ planned | - |
+| [Story 3.2: 基礎權限驗證機制](./stories/story-3-2-basic-authorization.md) | Feature | Epic 3 | ⏳ planned | - |
+| [Story 3.3: 多租戶資料隔離](./stories/story-3-3-multi-tenant-data-isolation.md) | Feature | Epic 3 | ⏳ planned | - |
+| [Story 3.4: Admin 管理介面](./stories/story-3-4-admin-management-interface.md) | Feature | Epic 3 | ⏳ planned | - |
 
 ### Epic 4: 多商店管理（Phase 1.2）
 

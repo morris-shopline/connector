@@ -145,8 +145,11 @@ export class ShoplineService {
 
   /**
    * 儲存商店資訊
+   * @param tokenData Token 資料
+   * @param handle 商店 handle
+   * @param userId 使用者 ID（可選，如果沒有則使用系統使用者）
    */
-  async saveStoreInfo(tokenData: ShoplineTokenResponse, handle: string): Promise<void> {
+  async saveStoreInfo(tokenData: ShoplineTokenResponse, handle: string, userId?: string): Promise<void> {
     if (!tokenData.success || !tokenData.data) {
       throw new Error('Invalid token data')
     }
@@ -168,6 +171,18 @@ export class ShoplineService {
       throw new Error(`Missing accessToken in token data`)
     }
 
+    // 如果沒有提供 userId，使用系統使用者
+    let finalUserId = userId
+    if (!finalUserId) {
+      const systemUser = await prisma.user.findUnique({
+        where: { email: 'system@admin.com' }
+      })
+      if (!systemUser) {
+        throw new Error('System user not found. Please run migration script first.')
+      }
+      finalUserId = systemUser.id
+    }
+
     await prisma.store.upsert({
       where: { shoplineId: shop_id },
       update: {
@@ -180,6 +195,7 @@ export class ShoplineService {
         updatedAt: new Date()
       },
       create: {
+        userId: finalUserId,
         shoplineId: shop_id,
         handle: handle,
         accessToken: access_token,
@@ -425,8 +441,19 @@ export class ShoplineService {
     apiVersion: string | null,
     payload: any
   ): Promise<void> {
+    // 從 Store 取得 userId
+    const store = await prisma.store.findUnique({
+      where: { id: storeId },
+      select: { userId: true }
+    })
+    
+    if (!store) {
+      throw new Error(`Store not found: ${storeId}`)
+    }
+    
     await prisma.webhookEvent.create({
       data: {
+        userId: store.userId,
         storeId,
         webhookId,
         topic,

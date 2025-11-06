@@ -10,8 +10,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // bcrypt 加密後的密碼
+  name      String?  // 使用者名稱（可選）
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 關聯（未來擴展）
+  stores    Store[]  // 一個使用者可以管理多個商店（Phase 1.2）
+
+  @@map("users")
+}
+
 model Store {
   id          String   @id @default(cuid())
+  userId      String   // 關聯到使用者（必填）
   shoplineId  String   @unique
   handle      String?  // Shopline 商店 handle (例如: paykepoc)
   name        String?
@@ -23,13 +39,17 @@ model Store {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // 關聯
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   webhookEvents WebhookEvent[]
 
   @@map("stores")
+  @@index([userId]) // 為 userId 建立索引
 }
 
 model WebhookEvent {
   id          String   @id @default(cuid())
+  userId      String   // 關聯到使用者（透過 Store 關聯，但直接儲存以提升查詢效能）
   storeId     String
   webhookId   String   @unique // X-Shopline-Webhook-Id，用於去重
   topic       String   // X-Shopline-Topic，例如：orders/update
@@ -47,4 +67,5 @@ model WebhookEvent {
   @@map("webhook_events")
   @@index([webhookId])
   @@index([storeId, createdAt])
+  @@index([userId, createdAt]) // 為 userId 建立索引
 }

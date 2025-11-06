@@ -1,5 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { ShoplineService } from '../services/shopline'
+import { authMiddleware } from '../middleware/auth'
+import { filterWebhookEventsByUser } from '../utils/query-filter'
 
 const shoplineService = new ShoplineService()
 
@@ -145,13 +147,22 @@ export async function webhookRoutes(fastify: FastifyInstance, options: any) {
     }
   })
 
-  // 取得 webhook 事件列表
-  fastify.get('/webhook/events', async (request, reply) => {
+  // 取得 webhook 事件列表（需要登入）
+  fastify.get('/webhook/events', { preHandler: [authMiddleware] }, async (request, reply) => {
     try {
+      if (!request.user) {
+        return reply.status(401).send({
+          success: false,
+          error: 'Authentication required'
+        })
+      }
+      
+      const userId = request.user.id
       const { PrismaClient } = await import('@prisma/client')
       const prisma = new PrismaClient()
 
       const events = await prisma.webhookEvent.findMany({
+        where: filterWebhookEventsByUser(userId),
         orderBy: { createdAt: 'desc' },
         take: 50,
         include: {
@@ -163,6 +174,8 @@ export async function webhookRoutes(fastify: FastifyInstance, options: any) {
           }
         }
       })
+      
+      await prisma.$disconnect()
 
       // 解析 payload JSON 字串
       const eventsWithParsedPayload = events.map(event => ({
@@ -185,8 +198,8 @@ export async function webhookRoutes(fastify: FastifyInstance, options: any) {
 
   // === Webhook 訂閱管理 API（測試用） ===
 
-  // 訂閱 Webhook
-  fastify.post('/webhook/subscribe', async (request, reply) => {
+  // 訂閱 Webhook（需要登入）
+  fastify.post('/webhook/subscribe', { preHandler: [authMiddleware] }, async (request, reply) => {
     try {
       const { handle, topic, webhookUrl, apiVersion } = request.body as {
         handle?: string
@@ -273,7 +286,7 @@ export async function webhookRoutes(fastify: FastifyInstance, options: any) {
   })
 
   // 取得訂閱列表
-  fastify.get('/webhook/subscribe', async (request, reply) => {
+  fastify.get('/webhook/subscribe', { preHandler: [authMiddleware] }, async (request, reply) => {
     try {
       const { handle } = request.query as { handle?: string }
 
@@ -382,7 +395,7 @@ export async function webhookRoutes(fastify: FastifyInstance, options: any) {
   })
 
   // 取得訂閱數量
-  fastify.get('/webhook/subscribe/count', async (request, reply) => {
+  fastify.get('/webhook/subscribe/count', { preHandler: [authMiddleware] }, async (request, reply) => {
     try {
       const { handle } = request.query as { handle?: string }
 

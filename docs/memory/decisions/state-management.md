@@ -16,10 +16,14 @@
 ### 階段 1（當前）：Zustand + 後端 Session + Redis
 
 **架構**:
-- **前端**: Zustand 管理 UI 狀態（selectedStore, selectedPlatform, selectedAPI）
-- **後端**: Session 管理（handle/token 對應關係）
-- **Redis**: Token 快取（加速查詢）
+- **前端**: Zustand 管理 UI 狀態（selectedStore, selectedPlatform, selectedAPI, authState）
+- **後端**: Session 管理（使用者認證 Session，使用 Redis 儲存）
+- **Redis**: Token 快取（加速查詢）+ Session 管理（使用者認證）
 - **SWR**: 資料獲取（保持現狀）
+
+**Store 結構**：
+- `frontend/stores/useStoreStore.ts` - 商店選擇狀態管理（Refactor 1 成果）
+- `frontend/stores/useAuthStore.ts` - 認證狀態管理（Story 3.4 實作）
 
 **實作範圍**:
 - Zustand 統一狀態管理
@@ -55,6 +59,7 @@
 - ❌ 多租戶本身不需要階段 2（Zustand 足夠）
 - ❌ 多平台本身不需要階段 2（Zustand 足夠）
 - ❌ 簡單資料流不需要階段 2（Zustand 足夠）
+- ❌ 使用者認證狀態管理不需要階段 2（Zustand 足夠，Story 3.4 實作）
 
 ---
 

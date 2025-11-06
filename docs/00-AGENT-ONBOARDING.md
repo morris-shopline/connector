@@ -39,6 +39,20 @@ docs/backlog/index.md
 - 開發 Run → `docs/context/current-run.md` 或 `docs/backlog/stories/`
 - 建立 Story → 見 `docs/memory/methodology.md` 的「Story 建立階段」
 - 討論決策 → 見 `docs/memory/methodology.md` 的「決策記錄階段」
+- **快速收集想法** → `docs/backlog/inbox/`（見下方說明）
+
+**🚨 Run 管理規範（必讀）**：
+- Run 完成後必須按照 `docs/reference/guides/RUN_MANAGEMENT.md` 處理 Run 記錄
+- 關鍵規則：
+  - Run 完成時立即更新 `recent-runs.md`
+  - **下一個 Run 開始時**才歸檔 `current-run.md` 到 `archive/old-runs/`
+  - `recent-runs.md` 只保留最近 10 個 Run
+
+**📝 Backlog Inbox 使用（快速收集）**：
+- 當用戶說「幫我記一下...」或類似表達時，快速在 `docs/backlog/inbox/` 建立 note
+- 使用最小格式記錄，不需要完整 Story 格式
+- 後續在適合的時機整理、分類、轉換為正式的 Epic/Story/Issue
+- 詳細說明：見 `docs/backlog/inbox/README.md`
 
 ---
 
@@ -71,6 +85,8 @@ docs/backlog/index.md
 | 查看所有任務 | `docs/backlog/index.md` |
 | 了解詳細方法論 | `docs/memory/methodology.md` |
 | 了解運作原則 | `docs/memory/principles.md` |
+| **🚨 Run 管理規範（必讀）** | `docs/reference/guides/RUN_MANAGEMENT.md` |
+| **📝 Backlog Inbox 使用指南** | `docs/backlog/inbox/README.md` |
 
 ---
 
@@ -85,6 +101,7 @@ docs/backlog/index.md
 | 討論技術選型、架構設計 | 架構規劃階段 | `docs/memory/architecture/` |
 | 從 roadmap 規劃功能階段 | Epic 規劃階段 | `docs/backlog/epics/` |
 | 準備 Story 詳細資訊 | Story 建立階段 | `docs/memory/methodology.md` → 階段 5 |
+| Story Review（多個相關 Story） | Story Review 階段 | `docs/memory/methodology.md` → 階段 5.7 |
 | 開始開發功能 | 開發 Run 階段 | `docs/context/current-run.md`, `docs/backlog/stories/` |
 | 發現問題要修復 | Issue 處理 | `docs/backlog/issues/` |
 | 需要重構 | 重構階段 | `docs/backlog/refactors/` |
@@ -105,7 +122,26 @@ docs/backlog/index.md
 **你應該做的事**：
 1. 查看 `docs/context/current-run.md` 確認是否有進行中的 Run
 2. 如果有，接續完成；如果沒有，等待用戶指示開始新的 Run
-3. 開發時遵循 Story 文件，完成後更新狀態
+3. **🚨 建立 Run 前**：檢查是否有相關的 Story Review 報告（見下方說明）
+4. 開發時遵循 Story 文件，完成後更新狀態
+5. **Run 完成後**：按照 `docs/reference/guides/RUN_MANAGEMENT.md` 處理 Run 記錄
+6. **下一個 Run 開始時**：將已完成的 Run 歸檔到 `docs/archive/old-runs/`
+
+**🚨 Story Review 檢查（建立 Run 前必做）**：
+- **檢查位置**：`archive/discussions/review-story-*.md`
+- **檢查內容**：
+  - 是否有對應的 Review 報告（如果建立多個相關 Story）
+  - Review 報告是否已完成（所有問題已修正）
+  - Review 報告的結論是否為「準備就緒」
+- **如果沒有 Review 報告**：
+  - 提醒用戶是否需要進行 Story Review
+  - 如果用戶確認不需要，可以繼續建立 Run
+- **如果有 Review 報告但未完成**：
+  - **必須等待 Review 完成**，確保 Story 完全遵循最新架構要求
+  - 提醒用戶完成 Review 流程
+- **如果 Review 報告已完成**：
+  - 確認所有問題已修正
+  - 可以繼續建立 Run
 
 ---
 

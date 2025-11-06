@@ -269,13 +269,37 @@ planned → in-progress → dev-completed → user-test-passed → completed
 6. **狀態調整**
    - 確定可以進入開發時，Story 狀態從 `planned` → 準備好進入開發
 
+7. **🚨 Story Review 流程（重要）**
+   - **當建立多個相關 Story 時**（例如：Story 3.1-3.4），必須進行技術檢視
+   - **檢視範圍**：
+     - 架構一致性（狀態管理策略、檔案結構、API 設計）
+     - 技術內容完整性（資料模型、API 端點、程式碼範例）
+     - 與 Refactor 成果的整合（Redis、Zustand 等）
+     - 依賴關係清晰度（前置條件、Story 順序）
+   - **產出**：技術檢視報告（存放在 `archive/discussions/review-story-{id}-{slug}.md`）
+   - **檢視者**：TPM 或負責 Story 建立的 Agent
+   - **檢視後**：修正所有發現的問題，確保 Story 完全遵循最新架構要求
+   - **完成標準**：所有問題已修正，Story 準備就緒，可以安排到開發 run
+
 **Agent 角色**：
 - 充分閱讀所有相關 memory
 - 搜集必要資訊（從 user、網路、reference）
 - 整理成自包含的 Story 文件
 - 確保架構一致性
+- **建立多個相關 Story 時**：進行技術檢視並產出 Review 報告
 
 **重要**：Story 建立是一個文件閱讀量很大的工作，但這是為了確保架構一致性。
+
+**🚨 Review 報告存放位置**：
+- **存放位置**：`archive/discussions/review-story-{id}-{slug}.md`
+- **命名規範**：
+  - 一般 Review：`review-story-{id}-{slug}.md`
+  - TPM 技術檢視：`tpm-review-story-{id}-{slug}.md`
+- **報告內容**：
+  - 檢視摘要（發現的問題、修正的問題）
+  - 詳細檢視結果（架構一致性、技術內容、整合檢查）
+  - 修正摘要（修正的檔案、修正內容）
+  - 結論（整體評估、建議行動）
 
 ---
 
@@ -294,31 +318,56 @@ planned → in-progress → dev-completed → user-test-passed → completed
 
 **流程**：
 
-1. **建立 Run**
+1. **🚨 檢查 Story Review（重要）**
+   - **在建立 Run 前**，檢查是否有相關的 Story Review 報告
+   - **檢查位置**：`archive/discussions/review-story-*.md`
+   - **檢查內容**：
+     - 是否有對應的 Review 報告（如果建立多個相關 Story）
+     - Review 報告是否已完成（所有問題已修正）
+     - Review 報告的結論是否為「準備就緒」
+   - **如果沒有 Review 報告**：
+     - 提醒用戶是否需要進行 Story Review
+     - 如果用戶確認不需要，可以繼續建立 Run
+   - **如果有 Review 報告但未完成**：
+     - **必須等待 Review 完成**，確保 Story 完全遵循最新架構要求
+     - 提醒用戶完成 Review 流程
+   - **如果 Review 報告已完成**：
+     - 確認所有問題已修正
+     - 可以繼續建立 Run
+
+2. **建立 Run**
    - 用戶決定要開始開發 Run
    - 建立 `context/current-run.md`
    - 列出要完成的 Stories（1-3 個）
+   - **記錄 Review 狀態**：在 Run 文件中記錄相關 Review 報告的位置和狀態
 
-2. **開發**
+3. **開發**
    - 讀取 Story 文件（不需要再讀 memory/）
    - 直接依據 Story 文件實作
    - 持續更新 `context/current-run.md` 的進度
 
-3. **功能測試**
+4. **功能測試**
    - 完成所有 Agent 可測試的項目
    - 確保型別檢查、語法檢查、基礎邏輯都通過
    - 記錄測試結果到 Story 文件
 
-4. **列出 User Test 步驟**
+5. **列出 User Test 步驟**
    - 提供清晰的 User Test 步驟
    - 說明無法自動測試的項目
    - 說明可能出現的問題
 
-5. **完成 Run**
+6. **完成 Run**
    - 更新 Story 狀態為 `dev-completed`
    - 更新 Epic/Refactor/Issue 進度
-   - 更新 `context/recent-runs.md`
-   - 清空或標記 `context/current-run.md`
+   - 更新 `context/recent-runs.md`（在列表最上方新增完成的 Run）
+   - 更新 `context/current-run.md`（標記狀態為 `completed`，記錄完成時間和測試結果）
+   - **注意**：此時不歸檔 `current-run.md`，等到下一個 Run 開始時才歸檔到 `archive/old-runs/`
+
+7. **下一個 Run 開始時**
+   - 將 `context/current-run.md` 移動到 `docs/archive/old-runs/`（使用原 Run ID 作為檔案名稱）
+   - 建立新的 `context/current-run.md` 記錄
+
+**詳細 Run 管理規範**：見 `docs/reference/guides/RUN_MANAGEMENT.md`
 
 **Run 特點**：
 - 相當於以前的 sprint
@@ -355,6 +404,71 @@ planned → in-progress → dev-completed → user-test-passed → completed
 **關鍵**：
 - 驗收 = user 在 browser 中測試
 - 通過就過，不通過就修
+
+---
+
+### 階段 8.5: 收集階段（貫穿整個流程）
+
+**時機**：用戶隨時想到功能、優化、問題，但不想立即進入正式流程
+
+**產出**：
+- `backlog/inbox/note-{date}-{seq}.md` - Inbox Note（快速記錄）
+
+**流程**：
+1. **用戶表達想法**：例如「幫我記一下...」、「應該加個...功能」
+2. **Agent 快速記錄**：
+   - 在 `backlog/inbox/` 建立 note 文件
+   - 使用最小格式記錄想法
+   - 標記類型（Feature/Optimization/Refactor/Bug/Question）
+   - 狀態：`collected`
+3. **不影響流程**：這些 note 不計入正式 backlog，不會影響現有流程
+
+**關鍵原則**：
+- **快速記錄**：不需要完整格式，重點是快速記錄想法
+- **不破壞流程**：這些 note 不計入正式 backlog
+- **後續整理**：在適合的時機統一整理
+
+**詳細說明**：見 `docs/backlog/inbox/README.md`
+
+---
+
+### 階段 8.6: 整理階段（定期進行）
+
+**時機**：
+- 定期（例如：每週或每幾個 Run）
+- 在規劃新 Epic/Story 時
+- 在開始新的開發階段時
+- 用戶明確要求整理時
+
+**輸入**：
+- `backlog/inbox/` - 所有收集的 notes
+
+**產出**：
+- 轉換為正式的 Epic/Story/Issue
+- 更新 `backlog/index.md`
+
+**流程**：
+1. **讀取所有 notes**
+   - 讀取 `backlog/inbox/` 中的所有 note 文件
+2. **分類整理**：
+   - **轉換為 Epic**：如果想法夠大，需要多個 Story
+   - **轉換為 Story**：如果可以直接實作
+   - **轉換為 Issue**：如果是 Bug 或需要追蹤的問題
+   - **合併到現有 Epic/Story**：如果屬於現有任務
+   - **棄置**：如果不需要了
+3. **更新記錄**：
+   - 更新 note 的「後續處理」欄位
+   - 記錄轉換結果和相關文件連結
+4. **歸檔處理**：
+   - 將已處理的 note 移動到 `archive/inbox/processed/`
+   - 更新 `backlog/inbox/index.md`
+
+**關鍵原則**：
+- **分類判斷**：根據想法的大小和性質決定轉換類型
+- **合併優先**：如果屬於現有 Epic/Story，優先合併
+- **明確記錄**：在 note 中記錄轉換結果和相關文件連結
+
+**詳細說明**：見 `docs/backlog/inbox/README.md`
 
 ---
 
@@ -405,6 +519,8 @@ planned → in-progress → dev-completed → user-test-passed → completed
 | 討論技術選型、架構設計 | 架構規劃階段 | 建立/更新 architecture/ | 基於 vision + roadmap 提出建議 | vision.md, roadmap.md | architecture/current.md |
 | 從 roadmap 規劃功能階段 | Epic 規劃階段 | 建立 Epic 文件 | 識別 roadmap 階段，建立 Epic | roadmap.md | backlog/epics/ |
 | 討論實作方案、技術決策 | 決策記錄階段 | 建立決策記錄 | 討論 → 記錄決策摘要 | 相關 memory | memory/decisions/ |
+| **快速收集想法** | **收集階段** | **建立 Inbox Note** | **快速記錄，最小格式** | **-** | **backlog/inbox/** |
+| 整理 Inbox | 整理階段 | 分類轉換 Inbox Notes | 檢視 → 分類 → 轉換 | backlog/inbox/ | backlog/epics/, stories/, issues/ |
 | 準備 Story 詳細資訊 | Story 建立階段 | 建立完整 Story 文件 | 充分閱讀 memory，整理資訊 | memory/, reference/ | backlog/stories/ |
 | 開始開發功能 | 開發 Run 階段 | 執行開發 Run | 依據 Story 文件實作 | Story 文件 | context/current-run.md |
 | 發現問題要修復 | Issue 處理 | 建立 Issue + Story | 判斷是否需要開 Issue | - | backlog/issues/ |
@@ -422,11 +538,18 @@ planned → in-progress → dev-completed → user-test-passed → completed
 所有文件必須放在對應的目錄下，違反此規範會導致文件體系混亂。
 
 **文件放置規則**：
-- 討論留底、分析報告 → `archive/discussions/`
+- 討論留底、分析報告、Review 報告 → `archive/discussions/`
 - Epic/Story/Issue/Refactor → `backlog/` 對應子目錄
 - 當前上下文 → `context/`
 - 核心記憶、決策、架構 → `memory/` 對應子目錄
 - 參考資料、API 文檔、指南 → `reference/` 對應子目錄
+
+**Review 報告存放規範**：
+- **存放位置**：`archive/discussions/review-story-{id}-{slug}.md`
+- **命名規範**：
+  - 一般 Review：`review-story-{id}-{slug}.md`
+  - TPM 技術檢視：`tpm-review-story-{id}-{slug}.md`
+- **建立時機**：當建立多個相關 Story 時（例如：Story 3.1-3.4）
 
 **不確定時**：先查閱 `docs/README.md` 或參考現有類似文件的位置。
 
@@ -453,6 +576,7 @@ planned → in-progress → dev-completed → user-test-passed → completed
 
 **內容**：
 - `index.md` - 所有任務的總覽
+- `inbox/` - 📝 收集區（快速收集想法，待整理）
 - `epics/` - Feature Epics
 - `refactors/` - 重構任務
 - `issues/` - Bug/Issue 追蹤

@@ -1,13 +1,31 @@
 import { FastifyInstance } from 'fastify'
 import { ShoplineService } from '../services/shopline'
+import { authMiddleware } from '../middleware/auth'
+import { filterStoresByUser, verifyStoreOwnership, verifyStoreHandleOwnership } from '../utils/query-filter'
 
 const shoplineService = new ShoplineService()
 
 export async function apiRoutes(fastify: FastifyInstance, options: any) {
-  // 取得所有已授權的商店
-  fastify.get('/api/stores', async (request, reply) => {
+  // 取得所有已授權的商店（需要登入）
+  fastify.get('/api/stores', { preHandler: [authMiddleware] }, async (request, reply) => {
     try {
-      const stores = await shoplineService.getAllStores()
+      if (!request.user) {
+        return reply.status(401).send({
+          success: false,
+          error: 'Authentication required'
+        })
+      }
+      
+      const userId = request.user.id
+      const { PrismaClient } = await import('@prisma/client')
+      const prisma = new PrismaClient()
+      
+      const stores = await prisma.store.findMany({
+        where: filterStoresByUser(userId),
+        orderBy: { createdAt: 'desc' },
+      })
+      
+      await prisma.$disconnect()
       
       return reply.send({
         success: true,
@@ -22,11 +40,36 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
     }
   })
 
-  // 取得特定商店資訊
-  fastify.get('/api/stores/:shopId', async (request, reply) => {
+  // 取得特定商店資訊（需要登入）
+  fastify.get('/api/stores/:shopId', { preHandler: [authMiddleware] }, async (request, reply) => {
     try {
+      if (!request.user) {
+        return reply.status(401).send({
+          success: false,
+          error: 'Authentication required'
+        })
+      }
+      
       const { shopId } = request.params as { shopId: string }
-      const store = await shoplineService.getStoreInfo(shopId)
+      const userId = request.user.id
+      
+      // 驗證商店所有權
+      const hasAccess = await verifyStoreOwnership(shopId, userId)
+      if (!hasAccess) {
+        return reply.status(403).send({
+          success: false,
+          error: 'Forbidden: Store does not belong to current user'
+        })
+      }
+      
+      const { PrismaClient } = await import('@prisma/client')
+      const prisma = new PrismaClient()
+      
+      const store = await prisma.store.findUnique({
+        where: { id: shopId },
+      })
+      
+      await prisma.$disconnect()
       
       if (!store) {
         return reply.status(404).send({
@@ -56,10 +99,28 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
     }
   })
 
-  // Store Info API
-  fastify.get('/api/stores/:handle/info', async (request, reply) => {
+  // Store Info API（需要登入）
+  fastify.get('/api/stores/:handle/info', { preHandler: [authMiddleware] }, async (request, reply) => {
     try {
+      if (!request.user) {
+        return reply.status(401).send({
+          success: false,
+          error: 'Authentication required'
+        })
+      }
+      
       const { handle } = request.params as { handle: string }
+      const userId = request.user.id
+      
+      // 驗證 handle 是否屬於當前使用者
+      const hasAccess = await verifyStoreHandleOwnership(handle, userId)
+      if (!hasAccess) {
+        return reply.status(403).send({
+          success: false,
+          error: 'Forbidden: Store does not belong to current user'
+        })
+      }
+      
       const storeInfo = await shoplineService.getStoreInfoFromAPI(handle)
       
       return reply.send({
@@ -84,10 +145,27 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
     }
   })
 
-  // Products API
-  fastify.get('/api/stores/:handle/products', async (request, reply) => {
+  // Products API（需要登入）
+  fastify.get('/api/stores/:handle/products', { preHandler: [authMiddleware] }, async (request, reply) => {
     try {
+      if (!request.user) {
+        return reply.status(401).send({
+          success: false,
+          error: 'Authentication required'
+        })
+      }
+      
       const { handle } = request.params as { handle: string }
+      const userId = request.user.id
+      
+      // 驗證 handle 是否屬於當前使用者
+      const hasAccess = await verifyStoreHandleOwnership(handle, userId)
+      if (!hasAccess) {
+        return reply.status(403).send({
+          success: false,
+          error: 'Forbidden: Store does not belong to current user'
+        })
+      }
       const { page, limit, ids } = request.query as { page?: string; limit?: string; ids?: string }
       
       const params: any = {}
@@ -119,9 +197,26 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
     }
   })
 
-  fastify.get('/api/stores/:handle/products/:productId', async (request, reply) => {
+  fastify.get('/api/stores/:handle/products/:productId', { preHandler: [authMiddleware] }, async (request, reply) => {
     try {
+      if (!request.user) {
+        return reply.status(401).send({
+          success: false,
+          error: 'Authentication required'
+        })
+      }
+      
       const { handle, productId } = request.params as { handle: string; productId: string }
+      const userId = request.user.id
+      
+      // 驗證 handle 是否屬於當前使用者
+      const hasAccess = await verifyStoreHandleOwnership(handle, userId)
+      if (!hasAccess) {
+        return reply.status(403).send({
+          success: false,
+          error: 'Forbidden: Store does not belong to current user'
+        })
+      }
       const product = await shoplineService.getProduct(handle, productId)
       
       return reply.send({
@@ -153,9 +248,26 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
     }
   })
 
-  fastify.post('/api/stores/:handle/products', async (request, reply) => {
+  fastify.post('/api/stores/:handle/products', { preHandler: [authMiddleware] }, async (request, reply) => {
     try {
+      if (!request.user) {
+        return reply.status(401).send({
+          success: false,
+          error: 'Authentication required'
+        })
+      }
+      
       const { handle } = request.params as { handle: string }
+      const userId = request.user.id
+      
+      // 驗證 handle 是否屬於當前使用者
+      const hasAccess = await verifyStoreHandleOwnership(handle, userId)
+      if (!hasAccess) {
+        return reply.status(403).send({
+          success: false,
+          error: 'Forbidden: Store does not belong to current user'
+        })
+      }
       const productData = request.body as any
       
       const product = await shoplineService.createProduct(handle, productData)
@@ -182,10 +294,27 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
     }
   })
 
-  // Locations API
-  fastify.get('/api/stores/:handle/locations', async (request, reply) => {
+  // Locations API（需要登入）
+  fastify.get('/api/stores/:handle/locations', { preHandler: [authMiddleware] }, async (request, reply) => {
     try {
+      if (!request.user) {
+        return reply.status(401).send({
+          success: false,
+          error: 'Authentication required'
+        })
+      }
+      
       const { handle } = request.params as { handle: string }
+      const userId = request.user.id
+      
+      // 驗證 handle 是否屬於當前使用者
+      const hasAccess = await verifyStoreHandleOwnership(handle, userId)
+      if (!hasAccess) {
+        return reply.status(403).send({
+          success: false,
+          error: 'Forbidden: Store does not belong to current user'
+        })
+      }
       const locations = await shoplineService.getLocations(handle)
       
       return reply.send({
@@ -210,10 +339,27 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
     }
   })
 
-  // Orders API
-  fastify.get('/api/stores/:handle/orders', async (request, reply) => {
+  // Orders API（需要登入）
+  fastify.get('/api/stores/:handle/orders', { preHandler: [authMiddleware] }, async (request, reply) => {
     try {
+      if (!request.user) {
+        return reply.status(401).send({
+          success: false,
+          error: 'Authentication required'
+        })
+      }
+      
       const { handle } = request.params as { handle: string }
+      const userId = request.user.id
+      
+      // 驗證 handle 是否屬於當前使用者
+      const hasAccess = await verifyStoreHandleOwnership(handle, userId)
+      if (!hasAccess) {
+        return reply.status(403).send({
+          success: false,
+          error: 'Forbidden: Store does not belong to current user'
+        })
+      }
       const { page, limit, status } = request.query as { page?: string; limit?: string; status?: string }
       
       const params: any = {}
@@ -245,9 +391,26 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
     }
   })
 
-  fastify.post('/api/stores/:handle/orders', async (request, reply) => {
+  fastify.post('/api/stores/:handle/orders', { preHandler: [authMiddleware] }, async (request, reply) => {
     try {
+      if (!request.user) {
+        return reply.status(401).send({
+          success: false,
+          error: 'Authentication required'
+        })
+      }
+      
       const { handle } = request.params as { handle: string }
+      const userId = request.user.id
+      
+      // 驗證 handle 是否屬於當前使用者
+      const hasAccess = await verifyStoreHandleOwnership(handle, userId)
+      if (!hasAccess) {
+        return reply.status(403).send({
+          success: false,
+          error: 'Forbidden: Store does not belong to current user'
+        })
+      }
       const orderData = request.body as any
       
       const order = await shoplineService.createOrder(handle, orderData)

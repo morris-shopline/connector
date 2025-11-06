@@ -179,3 +179,19 @@ export interface LocationListResponse {
   [key: string]: any
 }
 
+// Auth Types
+export interface User {
+  id: string
+  email: string
+  name: string | null
+}
+
+export interface AuthResponse {
+  success: boolean
+  token?: string
+  sessionId?: string
+  user?: User
+  error?: string
+  message?: string
+}
+

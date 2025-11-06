@@ -49,9 +49,19 @@
                              │
                 ┌────────────▼────────────┐
                 │  Neon PostgreSQL        │
+                │  - users 表             │
                 │  - stores 表            │
                 │  - webhook_events 表    │
                 └─────────────────────────┘
+                
+┌─────────────────────────────────────────────────────────────┐
+│                    Redis (Refactor 1)                       │
+│  ┌───────────────────────────────────────────────────────┐ │
+│  │  Redis Client (`backend/src/utils/redis.ts`)          │ │
+│  │  - Token 快取（`token:${handle}`）                    │ │
+│  │  - Session 管理（`session:${sessionId}`）             │ │
+│  └───────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
 │                  外部服務 (External)                         │
@@ -67,6 +77,20 @@
 
 ## 資料庫設計
 
+### users 表
+
+存儲使用者認證資訊（Story 3.1 實作）。
+
+| 欄位 | 類型 | 說明 |
+|------|------|------|
+| id | String (cuid) | 主鍵 |
+| email | String (unique) | 使用者 Email |
+| password | String | bcrypt 加密後的密碼 |
+| name | String? | 使用者名稱（可選） |
+| isActive | Boolean | 是否啟用 |
+| createdAt | DateTime | 建立時間 |
+| updatedAt | DateTime | 更新時間 |
+
 ### stores 表
 
 存儲已授權的商店資訊。
@@ -74,6 +98,7 @@
 | 欄位 | 類型 | 說明 |
 |------|------|------|
 | id | String (cuid) | 主鍵 |
+| userId | String | 關聯的使用者 ID（Story 3.3 新增） |
 | shoplineId | String (unique) | Shopline 商店 ID |
 | handle | String? | 商店 Handle (如: paykepoc) |
 | name | String? | 商店名稱 |
@@ -92,8 +117,15 @@
 | 欄位 | 類型 | 說明 |
 |------|------|------|
 | id | String (cuid) | 主鍵 |
+| userId | String | 關聯的使用者 ID（Story 3.3 新增） |
 | storeId | String | 關聯的商店 ID |
-| eventType | String | 事件類型 |
+| webhookId | String (unique) | X-Shopline-Webhook-Id，用於去重 |
+| topic | String | X-Shopline-Topic，例如：orders/update |
+| eventType | String | 與 topic 相同，保留作為兼容欄位 |
+| shopDomain | String? | X-Shopline-Shop-Domain |
+| shoplineId | String? | X-Shopline-Shop-Id（商店 ID） |
+| merchantId | String? | X-Shopline-Merchant-Id |
+| apiVersion | String? | X-Shopline-API-Version |
 | payload | String | 事件資料 (JSON) |
 | processed | Boolean | 是否已處理 |
 | createdAt | DateTime | 建立時間 |
@@ -101,6 +133,30 @@
 ## API 端點
 
 ### 認證端點
+
+#### 使用者認證（Story 3.1 實作）
+
+**POST /api/auth/register**
+- 描述: 使用者註冊
+- Request Body: `{ email: string, password: string, name?: string }`
+- 回應: `{ success: boolean, user?: User, error?: string, message?: string }`
+
+**POST /api/auth/login**
+- 描述: 使用者登入
+- Request Body: `{ email: string, password: string }`
+- 回應: `{ success: boolean, token?: string, sessionId?: string, user?: User, error?: string, message?: string }`
+
+**POST /api/auth/logout**
+- 描述: 使用者登出
+- Headers: `Authorization: Bearer ${token}` 或 `Cookie: sessionId=${sessionId}`
+- 回應: `{ success: boolean, message?: string, error?: string }`
+
+**GET /api/auth/me**
+- 描述: 取得當前使用者資訊
+- Headers: `Authorization: Bearer ${token}` 或 `Cookie: sessionId=${sessionId}`
+- 回應: `{ success: boolean, user?: User, error?: string }`
+
+#### Shopline OAuth（現有功能）
 
 **GET /api/auth/shopline/install**
 - 描述: 處理 Shopline 應用安裝請求
@@ -124,13 +180,17 @@
 ### 資料端點
 
 **GET /api/stores**
-- 描述: 取得所有已授權的商店
-- 回應: JSON 陣列
+- 描述: 取得所有已授權的商店（需要登入，Story 3.2 保護）
+- Headers: `Authorization: Bearer ${token}` 或 `Cookie: sessionId=${sessionId}`
+- 回應: `{ success: boolean, data?: Store[], error?: string }`
+- **資料隔離**：只返回當前使用者的商店（Story 3.2, 3.3 實作）
 
 **GET /api/stores/:shopId**
-- 描述: 取得特定商店資訊
+- 描述: 取得特定商店資訊（需要登入，Story 3.2 保護）
 - URL 參數: `shopId`
-- 回應: JSON 物件
+- Headers: `Authorization: Bearer ${token}` 或 `Cookie: sessionId=${sessionId}`
+- 回應: `{ success: boolean, data?: Store, error?: string }`
+- **資料隔離**：驗證商店所有權（Story 3.2, 3.3 實作）
 
 ### Webhook 端點
 
@@ -142,10 +202,10 @@
 - 回應: JSON 確認訊息
 
 **GET /webhook/events**
-- 描述: 取得 Webhook 事件列表
-- 查詢參數:
-  - 無
-- 回應: JSON 陣列
+- 描述: 取得 Webhook 事件列表（需要登入，Story 3.2 保護）
+- Headers: `Authorization: Bearer ${token}` 或 `Cookie: sessionId=${sessionId}`
+- 回應: `{ success: boolean, data?: WebhookEvent[], error?: string }`
+- **資料隔離**：只返回當前使用者的 Webhook 事件（Story 3.2, 3.3 實作）
 
 ## 安全機制
 
@@ -246,6 +306,21 @@
   - 顯示事件資料
   - 顯示處理狀態
 
+### 狀態管理
+
+**策略**：使用 Zustand（階段 1），遵循 `docs/memory/decisions/state-management.md`
+
+**Store 結構**：
+- `frontend/stores/useStoreStore.ts` - 商店選擇狀態管理（Refactor 1 成果）
+- `frontend/stores/useAuthStore.ts` - 認證狀態管理（Story 3.4 實作）
+
+**重要原則**：
+- ✅ **使用 Zustand Store** 管理所有 UI 狀態
+- ❌ **不使用 React Context** 管理狀態（階段 1 策略）
+- ✅ **遵循現有 Store 模式**（參考 `useStoreStore.ts`）
+
+**詳細決策**：見 `docs/memory/decisions/state-management.md`
+
 ### 資料獲取
 
 使用 SWR (stale-while-revalidate) 進行資料獲取：
@@ -257,6 +332,7 @@
 
 - `useStores()`: 獲取商店列表
 - `useWebhookEvents()`: 獲取 Webhook 事件
+- `useAuthStore()`: 認證狀態管理（Zustand Store，Story 3.4 實作）
 
 ## 部署考量
 

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
+import { useAuthStore } from '../stores/useAuthStore'
 
 type NavItem = {
   label: string
@@ -12,6 +13,7 @@ export function Header() {
   const router = useRouter()
   const currentPath = router.pathname
   const [currentHash, setCurrentHash] = useState('')
+  const { user, isAuthenticated, logout } = useAuthStore()
 
   // 監聽 hash 變化
   useEffect(() => {
@@ -63,7 +65,31 @@ export function Header() {
           <h1 className="text-xl font-semibold text-gray-900">
             {getPageTitle()}
           </h1>
-          <nav className="flex space-x-4">
+          <nav className="flex items-center space-x-4">
+            {isAuthenticated && user && (
+              <div className="flex items-center space-x-3">
+                <span className="text-sm text-gray-700">
+                  {user.name || user.email}
+                </span>
+                <button
+                  onClick={async () => {
+                    await logout()
+                    router.push('/login')
+                  }}
+                  className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  登出
+                </button>
+              </div>
+            )}
+            {!isAuthenticated && (
+              <Link
+                href="/login"
+                className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                登入
+              </Link>
+            )}
             {navItems.map((item) => {
               const active = isActive(item.href)
               // 處理 hash 路由的特殊情況

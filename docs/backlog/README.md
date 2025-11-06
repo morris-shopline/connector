@@ -9,6 +9,7 @@
 ```
 backlog/
 ├── index.md          # 所有任務的總覽
+├── inbox/            # 📝 收集區（快速收集想法，待整理）
 ├── epics/            # Feature Epics
 ├── refactors/        # 重構任務
 ├── issues/           # Bug/Issue 追蹤
@@ -73,6 +74,27 @@ Bug/Issue 追蹤。
 
 ---
 
+### `inbox/`
+快速收集區，用於收集臨時想法、功能建議、優化點子。
+
+**用途**：
+- 快速記錄想法，不需要完整格式
+- 不影響現有 backlog 結構
+- 後續在適合的時機整理、分類、轉換為正式的 Story/Epic/Issue
+
+**文件格式**：`note-{date}-{seq}.md`
+
+**狀態**：
+- `collected` - 剛收集，尚未整理
+- `reviewed` - 已檢視，準備轉換
+- `converted` - 已轉換為正式的 Epic/Story/Issue
+- `archived` - 已處理或棄置
+
+**需要更多資訊？**
+- Inbox 使用流程：見 `docs/backlog/inbox/README.md`
+
+---
+
 ### `stories/`
 所有 Story（統一管理），包含 Feature Story、Refactor Story、Bug Fix Story。
 
@@ -116,5 +138,52 @@ Bug/Issue 追蹤。
 
 ---
 
-**最後更新**: 2025-11-05
+---
+
+## 🔄 Backlog 工作流程
+
+### 快速收集（Inbox）
+
+**時機**：用戶隨時想到功能、優化、問題
+
+**流程**：
+1. 在 `backlog/inbox/` 建立 note 文件
+2. 使用最小格式快速記錄
+3. 標記類型（Feature/Optimization/Refactor/Bug/Question）
+4. 狀態：`collected`
+
+**詳細說明**：見 `docs/backlog/inbox/README.md`
+
+---
+
+### 定期整理（Inbox → 正式任務）
+
+**時機**：
+- 定期（例如：每週或每幾個 Run）
+- 在規劃新 Epic/Story 時
+- 用戶明確要求整理時
+
+**流程**：
+1. 讀取所有 `backlog/inbox/` 中的 note
+2. 分類整理：
+   - 轉換為 Epic（如果夠大）
+   - 轉換為 Story（如果可以直接實作）
+   - 轉換為 Issue（如果是 Bug）
+   - 合併到現有 Epic/Story（如果屬於現有任務）
+   - 棄置（如果不需要了）
+3. 更新 note 的「後續處理」欄位
+4. 將已處理的 note 移動到 `archive/inbox/processed/`
+
+**詳細說明**：見 `docs/backlog/inbox/README.md`
+
+---
+
+## 📚 相關文件
+
+- **Inbox 使用指南**：`docs/backlog/inbox/README.md`
+- **Run 管理規範**：`docs/reference/guides/RUN_MANAGEMENT.md`
+
+---
+
+**最後更新**: 2025-11-06
 

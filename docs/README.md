@@ -26,6 +26,7 @@ docs/
 │
 ├── backlog/                        # 任務管理（進行中/剛完成）
 │   ├── index.md                    # 所有任務的總覽
+│   ├── inbox/                      # 📝 收集區（快速收集想法，待整理）
 │   ├── epics/                      # Feature Epics
 │   ├── refactors/                  # 重構任務
 │   ├── issues/                     # Bug/Issue 追蹤
@@ -80,7 +81,7 @@ docs/
 
 | 文件類型 | 應該放在 | 範例 |
 |---------|---------|------|
-| 討論留底、分析報告 | `archive/discussions/` | `archive/discussions/roadmap-epic-alignment-check-2025-11-05.md` |
+| 討論留底、分析報告、Review 報告 | `archive/discussions/` | `archive/discussions/roadmap-epic-alignment-check-2025-11-05.md`、`archive/discussions/review-story-3-1-to-3-4.md` |
 | Epic 文件 | `backlog/epics/` | `backlog/epics/epic-3-state-management-refactor.md` |
 | Story 文件 | `backlog/stories/` | `backlog/stories/story-r1-0-zustand-implementation.md` |
 | Issue 文件 | `backlog/issues/` | `backlog/issues/issue-2025-11-05-001.md` |

@@ -10,8 +10,9 @@ import { SubscriptionItem } from '../components/SubscriptionItem'
 import { SubscriptionStats } from '../components/SubscriptionStats'
 import { SubscriptionForm } from '../components/SubscriptionForm'
 import { WebhookEventCard } from '../components/WebhookEventCard'
+import { ProtectedRoute } from '../components/ProtectedRoute'
 
-export default function WebhookTest() {
+function WebhookTest() {
   const { selectedHandle, setSelectedHandle, lockedHandle } = useStoreStore()
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null)
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null)
@@ -310,6 +311,14 @@ export default function WebhookTest() {
         defaultHandle={selectedHandle || ''}
       />
     </div>
+  )
+}
+
+export default function WebhookTestPage() {
+  return (
+    <ProtectedRoute>
+      <WebhookTest />
+    </ProtectedRoute>
   )
 }
 

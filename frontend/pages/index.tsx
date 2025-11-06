@@ -6,8 +6,9 @@ import { useStoreStore } from '../stores/useStoreStore'
 import { StoreCard } from '../components/StoreCard'
 import { WebhookEventCard } from '../components/WebhookEventCard'
 import { Header } from '../components/Header'
+import { ProtectedRoute } from '../components/ProtectedRoute'
 
-export default function Home() {
+function Home() {
   const [activeTab, setActiveTab] = useState<'stores' | 'events'>('stores')
   const { selectedHandle, setSelectedHandle } = useStoreStore()
   const [storeHandle, setStoreHandle] = useState<string>(selectedHandle || 'paykepoc') // 預設測試用的 handle
@@ -251,5 +252,13 @@ export default function Home() {
         )}
       </main>
     </div>
+  )
+}
+
+export default function HomePage() {
+  return (
+    <ProtectedRoute>
+      <Home />
+    </ProtectedRoute>
   )
 }

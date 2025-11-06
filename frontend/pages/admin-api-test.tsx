@@ -4,6 +4,7 @@ import { useStores } from '../hooks/useStores'
 import { useAdminAPI } from '../hooks/useAdminAPI'
 import { useStoreStore } from '../stores/useStoreStore'
 import { Header } from '../components/Header'
+import { ProtectedRoute } from '../components/ProtectedRoute'
 
 // API 功能定義
 type ApiFunction = {
@@ -82,7 +83,7 @@ const FUNCTION_GROUPS = {
   inventory: '庫存'
 }
 
-export default function AdminAPITest() {
+function AdminAPITest() {
   const router = useRouter()
   const { selectedHandle, setSelectedHandle, lockedHandle } = useStoreStore()
   const [selectedFunction, setSelectedFunction] = useState<string | null>(null)
@@ -477,5 +478,13 @@ export default function AdminAPITest() {
         </div>
       </main>
     </div>
+  )
+}
+
+export default function AdminAPITestPage() {
+  return (
+    <ProtectedRoute>
+      <AdminAPITest />
+    </ProtectedRoute>
   )
 }
