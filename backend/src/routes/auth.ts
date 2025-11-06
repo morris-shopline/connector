@@ -252,6 +252,7 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         
         // 從 state 參數中取得 Session ID 或 userId
         let userId: string | undefined = undefined
+        let sessionId: string | null = null  // 用於重導向時傳遞給前端
         const state = params.state
         
         fastify.log.info('=== OAuth 回調處理 ===')
@@ -275,9 +276,10 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
           if (!userId) {
             fastify.log.info('從 state 參數中解析 Session ID...')
             const { decryptState } = await import('../utils/state')
-            const sessionId = decryptState(state)
+            const decryptedSessionId = decryptState(state)
             
-            if (sessionId) {
+            if (decryptedSessionId) {
+              sessionId = decryptedSessionId  // 保存 sessionId 用於重導向
               fastify.log.info('成功解析 Session ID:', sessionId.substring(0, 10) + '...')
               const { getSession } = await import('../utils/session')
               const session = await getSession(sessionId)
@@ -286,10 +288,24 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
                 fastify.log.info('✅ 從 Session 取得使用者 ID:', userId)
               } else {
                 fastify.log.warn('❌ Session 不存在或已過期')
+                sessionId = null  // Session 無效，清除 sessionId
               }
             } else {
               fastify.log.warn('❌ 無法解析 state 參數，可能未登入或 state 格式錯誤')
               fastify.log.warn('State 原始值:', state.substring(0, 100))
+            }
+          } else {
+            // 如果從 Redis 取得了 userId，嘗試從 state 解密 sessionId 用於重導向
+            const { decryptState } = await import('../utils/state')
+            const decryptedSessionId = decryptState(state)
+            if (decryptedSessionId) {
+              const { getSession } = await import('../utils/session')
+              const session = await getSession(decryptedSessionId)
+              if (session && session.userId === userId) {
+                // 確認 Session 有效且 userId 匹配
+                sessionId = decryptedSessionId
+                fastify.log.info('✅ 從 state 取得 Session ID 用於重導向:', sessionId.substring(0, 10) + '...')
+              }
             }
           }
         } else {
@@ -307,13 +323,17 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
             const payload = verifyToken(token)
             if (payload) {
               userId = payload.userId
+              if (payload.sessionId) {
+                sessionId = payload.sessionId
+              }
               fastify.log.info('從 JWT Token 取得使用者 ID:', userId)
             }
           } else {
-            const sessionId = request.headers['x-session-id'] as string
-            if (sessionId) {
+            const headerSessionId = request.headers['x-session-id'] as string
+            if (headerSessionId) {
+              sessionId = headerSessionId
               const { getSession } = await import('../utils/session')
-              const session = await getSession(sessionId)
+              const session = await getSession(headerSessionId)
               if (session) {
                 userId = session.userId
                 fastify.log.info('從 x-session-id header 取得使用者 ID:', userId)
@@ -345,18 +365,13 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         // 返回成功頁面 HTML，自動重導向到前端
         // 在重導向 URL 中加入認證狀態參數（如果有 Session ID）
         let redirectUrl = frontendUrl
-        const callbackState = params.state  // 從 params 中取得 state
-        if (callbackState) {
-          const { decryptState } = await import('../utils/state')
-          const sessionId = decryptState(callbackState)
-          if (sessionId) {
-            // 在重導向 URL 中加入 Session ID，讓前端可以恢復認證狀態
-            redirectUrl = `${frontendUrl}?auth_success=true&session_id=${encodeURIComponent(sessionId)}`
-          } else {
-            redirectUrl = `${frontendUrl}?auth_success=true`
-          }
+        if (sessionId) {
+          // 在重導向 URL 中加入 Session ID，讓前端可以恢復認證狀態
+          redirectUrl = `${frontendUrl}?auth_success=true&session_id=${encodeURIComponent(sessionId)}`
+          fastify.log.info('✅ 重導向 URL 包含 Session ID')
         } else {
           redirectUrl = `${frontendUrl}?auth_success=true`
+          fastify.log.info('⚠️  重導向 URL 不包含 Session ID（Session 無效或不存在）')
         }
         
         return reply.type('text/html').send(`
