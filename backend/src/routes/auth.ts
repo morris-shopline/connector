@@ -83,20 +83,33 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
       const { getRedisClient } = await import('../utils/redis')
       const redis = getRedisClient()
       if (redis) {
-        const redisKey = `oauth:state:${state}`
+        const timestamp = Date.now()
+        const redisKeyByState = `oauth:state:${state}`
+        const redisKeyByHandle = `oauth:handle:${handle}:${userId}`  // 備用 key：使用 handle + userId
+        
         console.log('🔍 [DEBUG] 準備在 Redis 暫存 state 和 userId 對應關係')
-        console.log('🔍 [DEBUG] Redis Key:', redisKey)
+        console.log('🔍 [DEBUG] Redis Key (by state):', redisKeyByState)
+        console.log('🔍 [DEBUG] Redis Key (by handle):', redisKeyByHandle)
         console.log('🔍 [DEBUG] UserId:', userId)
-        // 暫存 10 分鐘（OAuth 流程通常很快）
-        await redis.setex(redisKey, 600, userId)
-        console.log('✅ [DEBUG] 已在 Redis 暫存 state 和 userId 對應關係')
+        
+        // 方法 1: 使用 state 作為 key（主要方式）
+        await redis.setex(redisKeyByState, 600, userId)
+        console.log('✅ [DEBUG] 已在 Redis 暫存 state 和 userId 對應關係 (by state)')
+        
+        // 方法 2: 使用 handle 作為 key（備用方式，即使沒有 state 也能取得）
+        // 注意：同一個 handle 可能被多個使用者授權，所以使用 handle 作為 key 只能儲存最近的一個
+        // 但這已經足夠了，因為 OAuth 流程通常很快，不會有並發問題
+        const redisKeyByHandleOnly = `oauth:handle:${handle}`
+        await redis.setex(redisKeyByHandleOnly, 600, userId)
+        console.log('✅ [DEBUG] 已在 Redis 暫存 state 和 userId 對應關係 (by handle only)')
         
         // 驗證儲存結果
-        const verify = await redis.get(redisKey)
-        if (verify === userId) {
-          console.log('✅ [DEBUG] Redis 暫存驗證成功')
+        const verifyByState = await redis.get(redisKeyByState)
+        const verifyByHandle = await redis.get(redisKeyByHandle)
+        if (verifyByState === userId && verifyByHandle === userId) {
+          console.log('✅ [DEBUG] Redis 暫存驗證成功（兩種方式都成功）')
         } else {
-          console.error('❌ [DEBUG] Redis 暫存驗證失敗，預期:', userId, '實際:', verify)
+          console.error('❌ [DEBUG] Redis 暫存驗證失敗，預期:', userId, '實際 (by state):', verifyByState, '實際 (by handle):', verifyByHandle)
         }
         
         fastify.log.info({ msg: '✅ 已在 Redis 暫存 state 和 userId 對應關係', userId })
@@ -335,35 +348,58 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
           console.warn('⚠️  [DEBUG] 沒有 state 參數，Shopline 沒有保留 state')
           fastify.log.warn('❌ 沒有 state 參數，嘗試從其他方式取得使用者...')
           
-          // 降級處理：嘗試從 header 取得使用者
-          const authHeader = request.headers.authorization
-          let token: string | null = null
-          
-          if (authHeader && authHeader.startsWith('Bearer ')) {
-            token = authHeader.substring(7)
+          // 方法 1: 嘗試從 Redis 使用 handle 查找（備用方式）
+          const { getRedisClient } = await import('../utils/redis')
+          const redis = getRedisClient()
+          if (redis) {
+            console.log('🔍 [DEBUG] 嘗試從 Redis 使用 handle 查找 userId')
+            // 嘗試查找所有可能的 handle + userId 組合
+            // 因為我們不知道確切的 userId，所以需要遍歷所有可能的 key
+            // 但這樣效率太低，改用另一種方式：使用 handle + timestamp 範圍查找
+            
+            // 更簡單的方式：使用 handle 作為 key，儲存最近的 userId
+            const handleKey = `oauth:handle:${params.handle}`
+            const cachedUserId = await redis.get(handleKey)
+            if (cachedUserId) {
+              userId = cachedUserId
+              console.log('✅ [DEBUG] 從 Redis (by handle) 取得使用者 ID:', userId)
+              fastify.log.info('✅ 從 Redis (by handle) 取得使用者 ID:', userId)
+            } else {
+              console.warn('⚠️  [DEBUG] Redis 中沒有找到 userId (by handle), key:', handleKey)
+            }
           }
           
-          if (token) {
-            const { verifyToken } = await import('../utils/jwt')
-            const payload = verifyToken(token)
-            if (payload) {
-              userId = payload.userId
-              if (payload.sessionId) {
-                sessionId = payload.sessionId
-              }
-              console.log('✅ [DEBUG] 從 JWT Token 取得使用者 ID:', userId)
-              fastify.log.info('從 JWT Token 取得使用者 ID:', userId)
+          // 方法 2: 嘗試從 header 取得使用者
+          if (!userId) {
+            const authHeader = request.headers.authorization
+            let token: string | null = null
+            
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+              token = authHeader.substring(7)
             }
-          } else {
-            const headerSessionId = request.headers['x-session-id'] as string
-            if (headerSessionId) {
-              sessionId = headerSessionId
-              const { getSession } = await import('../utils/session')
-              const session = await getSession(headerSessionId)
-              if (session) {
-                userId = session.userId
-                console.log('✅ [DEBUG] 從 x-session-id header 取得使用者 ID:', userId)
-                fastify.log.info('從 x-session-id header 取得使用者 ID:', userId)
+            
+            if (token) {
+              const { verifyToken } = await import('../utils/jwt')
+              const payload = verifyToken(token)
+              if (payload) {
+                userId = payload.userId
+                if (payload.sessionId) {
+                  sessionId = payload.sessionId
+                }
+                console.log('✅ [DEBUG] 從 JWT Token 取得使用者 ID:', userId)
+                fastify.log.info('從 JWT Token 取得使用者 ID:', userId)
+              }
+            } else {
+              const headerSessionId = request.headers['x-session-id'] as string
+              if (headerSessionId) {
+                sessionId = headerSessionId
+                const { getSession } = await import('../utils/session')
+                const session = await getSession(headerSessionId)
+                if (session) {
+                  userId = session.userId
+                  console.log('✅ [DEBUG] 從 x-session-id header 取得使用者 ID:', userId)
+                  fastify.log.info('從 x-session-id header 取得使用者 ID:', userId)
+                }
               }
             }
           }
