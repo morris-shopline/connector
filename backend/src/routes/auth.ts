@@ -343,11 +343,39 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         }
         
         // 儲存商店資訊（如果有 userId 則使用，否則使用系統使用者）
+        console.log('🔍 [DEBUG] 準備儲存商店資訊...')
+        console.log('🔍 [DEBUG] UserId:', userId || '未提供（將使用系統使用者）')
+        console.log('🔍 [DEBUG] Handle:', params.handle)
+        console.log('🔍 [DEBUG] Token Data:', {
+          success: tokenData.success,
+          hasData: !!tokenData.data,
+          shopId: tokenData.data?.accessToken ? '存在' : '不存在'
+        })
+        
         fastify.log.info('準備儲存商店資訊...')
         fastify.log.info('UserId:', userId || '未提供（將使用系統使用者）')
         fastify.log.info('Handle:', params.handle)
         
         await shoplineService.saveStoreInfo(tokenData, params.handle, userId)
+        
+        console.log('✅ [DEBUG] 商店資訊已儲存')
+        console.log('🔍 [DEBUG] 驗證儲存結果...')
+        
+        // 驗證儲存結果
+        const { PrismaClient } = await import('@prisma/client')
+        const prisma = new PrismaClient()
+        const savedStore = await prisma.store.findFirst({
+          where: { handle: params.handle },
+          include: { user: { select: { id: true, email: true } } }
+        })
+        console.log('🔍 [DEBUG] 儲存後的商店:', {
+          id: savedStore?.id,
+          shoplineId: savedStore?.shoplineId,
+          handle: savedStore?.handle,
+          userId: savedStore?.userId,
+          userEmail: savedStore?.user?.email
+        })
+        await prisma.$disconnect()
         
         fastify.log.info('✅ 商店資訊已儲存')
         

@@ -9,7 +9,11 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
   // 取得所有已授權的商店（需要登入）
   fastify.get('/api/stores', { preHandler: [authMiddleware] }, async (request, reply) => {
     try {
+      console.log('🔍 [DEBUG] GET /api/stores 請求')
+      console.log('🔍 [DEBUG] request.user:', request.user ? { id: request.user.id, email: request.user.email } : 'null')
+      
       if (!request.user) {
+        console.error('❌ [DEBUG] 沒有使用者認證')
         return reply.status(401).send({
           success: false,
           error: 'Authentication required'
@@ -17,12 +21,22 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
       }
       
       const userId = request.user.id
+      console.log('🔍 [DEBUG] 查詢商店，userId:', userId)
+      
       const { PrismaClient } = await import('@prisma/client')
       const prisma = new PrismaClient()
       
+      const filter = filterStoresByUser(userId)
+      console.log('🔍 [DEBUG] 查詢條件:', JSON.stringify(filter, null, 2))
+      
       const stores = await prisma.store.findMany({
-        where: filterStoresByUser(userId),
+        where: filter,
         orderBy: { createdAt: 'desc' },
+      })
+      
+      console.log('🔍 [DEBUG] 查詢結果:', {
+        count: stores.length,
+        stores: stores.map(s => ({ id: s.id, shoplineId: s.shoplineId, handle: s.handle, userId: s.userId }))
       })
       
       await prisma.$disconnect()
@@ -32,6 +46,7 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
         data: stores
       })
     } catch (error) {
+      console.error('❌ [DEBUG] Get stores error:', error)
       fastify.log.error({ msg: 'Get stores error:', error })
       return reply.status(500).send({
         success: false,

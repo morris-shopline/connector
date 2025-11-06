@@ -18,6 +18,20 @@ function Home() {
   const [storeHandle, setStoreHandle] = useState<string>(selectedHandle || 'paykepoc') // 預設測試用的 handle
   const [showAuthDialog, setShowAuthDialog] = useState<boolean>(false)
   const { stores, isLoading: storesLoading, isError: storesError, mutate: refetchStores } = useStores()
+  const { user, isAuthenticated } = useAuthStore()
+  
+  // 除錯資訊：監控 stores 變化
+  useEffect(() => {
+    console.log('🔍 [DEBUG] Stores 狀態變化:', {
+      storesCount: stores.length,
+      stores: stores,
+      isLoading: storesLoading,
+      isError: storesError,
+      isAuthenticated,
+      userId: user?.id,
+      userEmail: user?.email
+    })
+  }, [stores, storesLoading, storesError, isAuthenticated, user])
   const { events, isLoading: eventsLoading, isError: eventsError } = useWebhookEvents()
   const { checkHealth, isChecking, status, message, lastChecked } = useHealthCheck()
 
@@ -42,21 +56,37 @@ function Home() {
       const authSuccess = urlParams.get('auth_success')
       const sessionIdFromUrl = urlParams.get('session_id')
       
+      console.log('🔍 [DEBUG] OAuth 回調檢查:', {
+        authSuccess,
+        sessionIdFromUrl,
+        allParams: Object.fromEntries(urlParams.entries())
+      })
+      
       if (authSuccess === 'true') {
+        console.log('✅ [DEBUG] OAuth 回調成功，開始恢復認證狀態')
+        
         // OAuth 回調成功，恢復使用者認證狀態
         // 如果有 session_id，儲存到 localStorage
         if (sessionIdFromUrl) {
+          console.log('🔍 [DEBUG] 儲存 Session ID:', sessionIdFromUrl)
           localStorage.setItem('auth_session_id', sessionIdFromUrl)
           const { setSessionId } = useAuthStore.getState()
           setSessionId(sessionIdFromUrl)
         }
         
         // 檢查認證狀態
+        console.log('🔍 [DEBUG] 檢查認證狀態...')
         const { checkAuth } = useAuthStore.getState()
-        checkAuth()
+        checkAuth().then(() => {
+          console.log('✅ [DEBUG] 認證狀態檢查完成')
+          console.log('🔍 [DEBUG] 當前使用者:', useAuthStore.getState().user)
+        })
         
         // 重新載入商店列表
-        refetchStores()
+        console.log('🔍 [DEBUG] 重新載入商店列表...')
+        refetchStores().then(() => {
+          console.log('✅ [DEBUG] 商店列表重新載入完成')
+        })
         
         // 清除 URL 參數
         window.history.replaceState({}, document.title, window.location.pathname)
@@ -117,6 +147,21 @@ function Home() {
                     </span>
                   )}
                 </button>
+              </div>
+            </div>
+            
+            {/* 除錯資訊面板 */}
+            <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+              <h3 className="text-sm font-bold text-yellow-800 mb-2">🔍 除錯資訊</h3>
+              <div className="text-xs text-yellow-700 space-y-1">
+                <div>認證狀態: {isAuthenticated ? '✅ 已登入' : '❌ 未登入'}</div>
+                <div>使用者 ID: {user?.id || '無'}</div>
+                <div>使用者 Email: {user?.email || '無'}</div>
+                <div>商店數量: {stores.length}</div>
+                <div>載入中: {storesLoading ? '是' : '否'}</div>
+                <div>錯誤: {storesError ? String(storesError) : '無'}</div>
+                <div>Token: {localStorage.getItem('auth_token') ? '✅ 存在' : '❌ 不存在'}</div>
+                <div>Session ID: {localStorage.getItem('auth_session_id') || '無'}</div>
               </div>
             </div>
             

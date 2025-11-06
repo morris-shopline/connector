@@ -79,8 +79,28 @@ api.interceptors.response.use(
 export const apiClient = {
   // 取得所有商店
   async getStores(): Promise<ApiResponse<StoreInfo[]>> {
-    const response = await api.get('/api/stores')
-    return response.data
+    console.log('🔍 [DEBUG] getStores() 開始調用')
+    console.log('🔍 [DEBUG] Token:', localStorage.getItem('auth_token') ? '存在' : '不存在')
+    console.log('🔍 [DEBUG] Session ID:', localStorage.getItem('auth_session_id') || '不存在')
+    
+    try {
+      const response = await api.get('/api/stores')
+      console.log('🔍 [DEBUG] getStores() 回應:', {
+        status: response.status,
+        success: response.data.success,
+        dataLength: response.data.data?.length || 0,
+        data: response.data.data,
+        error: response.data.error
+      })
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [DEBUG] getStores() 錯誤:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      })
+      throw error
+    }
   },
 
   // 取得特定商店
