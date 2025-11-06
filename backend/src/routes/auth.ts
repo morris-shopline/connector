@@ -204,7 +204,8 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
   // 處理 OAuth 回調
   fastify.get('/api/auth/shopline/callback', async (request, reply) => {
     try {
-      fastify.log.info('收到授權回調:', request.query)
+      fastify.log.info('收到授權回調:', JSON.stringify(request.query, null, 2))
+      fastify.log.info('State 參數:', request.query.state)
       
       const parseResult = callbackSchema.safeParse(request.query)
       if (!parseResult.success) {
@@ -240,6 +241,9 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         let userId: string | undefined = undefined
         const state = params.state
         
+        fastify.log.info('=== OAuth 回調處理 ===')
+        fastify.log.info('State 參數:', state ? state.substring(0, 50) + '...' : '無')
+        
         if (state) {
           fastify.log.info('從 state 參數中解析 Session ID...')
           const { decryptState } = await import('../utils/state')
@@ -251,15 +255,16 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
             const session = await getSession(sessionId)
             if (session) {
               userId = session.userId
-              fastify.log.info('從 Session 取得使用者 ID:', userId)
+              fastify.log.info('✅ 從 Session 取得使用者 ID:', userId)
             } else {
-              fastify.log.warn('Session 不存在或已過期')
+              fastify.log.warn('❌ Session 不存在或已過期')
             }
           } else {
-            fastify.log.warn('無法解析 state 參數，可能未登入或 state 格式錯誤')
+            fastify.log.warn('❌ 無法解析 state 參數，可能未登入或 state 格式錯誤')
+            fastify.log.warn('State 原始值:', state.substring(0, 100))
           }
         } else {
-          fastify.log.warn('沒有 state 參數，嘗試從 header 取得使用者...')
+          fastify.log.warn('❌ 沒有 state 參數，嘗試從 header 取得使用者...')
           // 降級處理：嘗試從 header 取得使用者
           const authHeader = request.headers.authorization
           let token: string | null = null
@@ -289,7 +294,13 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         }
         
         // 儲存商店資訊（如果有 userId 則使用，否則使用系統使用者）
+        fastify.log.info('準備儲存商店資訊...')
+        fastify.log.info('UserId:', userId || '未提供（將使用系統使用者）')
+        fastify.log.info('Handle:', params.handle)
+        
         await shoplineService.saveStoreInfo(tokenData, params.handle, userId)
+        
+        fastify.log.info('✅ 商店資訊已儲存')
         
         // 取得前端 URL (從環境變數或使用預設值)
         // 生產環境必須設定 FRONTEND_URL

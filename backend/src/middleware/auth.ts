@@ -35,6 +35,10 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
       id: payload.userId,
       email: payload.email
     }
+    // 如果 JWT Token 包含 Session ID，也設定到 request.sessionId
+    if (payload.sessionId) {
+      request.sessionId = payload.sessionId
+    }
     return
   }
   
