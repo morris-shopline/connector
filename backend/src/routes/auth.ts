@@ -538,6 +538,7 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
                     <p>已取得存取權限</p>
                     <div class="spinner"></div>
                     <p style="font-size: 0.9rem; opacity: 0.9; margin-top: 1rem;">正在返回應用程式...</p>
+                    <a href="${redirectUrl}" style="display: inline-block; margin-top: 1.5rem; padding: 0.75rem 1.5rem; background: white; color: #667eea; text-decoration: none; border-radius: 0.5rem; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">如果沒有自動跳轉，請點擊這裡返回</a>
                   </div>
                   <script>
                     console.log('🔍 [DEBUG] OAuth 回調頁面載入');
