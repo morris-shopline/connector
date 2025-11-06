@@ -491,24 +491,65 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
                 <p style="font-size: 0.9rem; opacity: 0.9; margin-top: 1rem;">正在返回應用程式...</p>
               </div>
               <script>
+                console.log('🔍 [DEBUG] OAuth 回調頁面載入');
+                console.log('🔍 [DEBUG] 準備重導向到前端:', '${redirectUrl}');
+                console.log('🔍 [DEBUG] 當前 URL:', window.location.href);
+                console.log('🔍 [DEBUG] window.top:', window.top === window ? 'same' : 'different');
+                console.log('🔍 [DEBUG] window.parent:', window.parent === window ? 'same' : 'different');
+                console.log('🔍 [DEBUG] window.opener:', window.opener ? 'exists' : 'null');
+                
                 // 嘗試關閉視窗 (如果是彈窗)
                 try {
                   if (window.opener) {
+                    console.log('🔍 [DEBUG] 嘗試關閉彈窗');
                     window.close();
                   }
                 } catch (e) {
-                  console.log('Could not close window:', e);
+                  console.log('⚠️  [DEBUG] 無法關閉視窗:', e);
                 }
                 
-                // 立即重導向到前端（不等待 3 秒）
-                console.log('🔍 [DEBUG] 準備重導向到前端:', '${redirectUrl}');
-                window.location.href = '${redirectUrl}';
+                // 嘗試多種重導向方式（Shopline embedded 環境可能需要）
+                function redirectToFrontend() {
+                  try {
+                    // 方法 1: 嘗試使用 window.top（如果是 iframe）
+                    if (window.top !== window) {
+                      console.log('🔍 [DEBUG] 使用 window.top.location.href 重導向');
+                      window.top.location.href = '${redirectUrl}';
+                      return;
+                    }
+                  } catch (e) {
+                    console.warn('⚠️  [DEBUG] window.top.location.href 失敗:', e);
+                  }
+                  
+                  try {
+                    // 方法 2: 嘗試使用 window.parent（如果是 iframe）
+                    if (window.parent !== window) {
+                      console.log('🔍 [DEBUG] 使用 window.parent.location.href 重導向');
+                      window.parent.location.href = '${redirectUrl}';
+                      return;
+                    }
+                  } catch (e) {
+                    console.warn('⚠️  [DEBUG] window.parent.location.href 失敗:', e);
+                  }
+                  
+                  try {
+                    // 方法 3: 使用 window.location.href（標準方式）
+                    console.log('🔍 [DEBUG] 使用 window.location.href 重導向');
+                    window.location.href = '${redirectUrl}';
+                  } catch (e) {
+                    console.error('❌ [DEBUG] window.location.href 失敗:', e);
+                  }
+                }
+                
+                // 立即重導向
+                redirectToFrontend();
                 
                 // 備用：3秒後重導向（如果立即重導向失敗）
                 setTimeout(() => {
-                  if (window.location.href.indexOf('auth_success') === -1) {
+                  if (window.location.href.indexOf('auth_success') === -1 && 
+                      window.location.href.indexOf('connector-theta.vercel.app') === -1) {
                     console.log('⚠️  [DEBUG] 立即重導向可能失敗，嘗試備用重導向');
-                    window.location.href = '${redirectUrl}';
+                    redirectToFrontend();
                   }
                 }, 3000);
               </script>
