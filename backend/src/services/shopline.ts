@@ -189,6 +189,7 @@ export class ShoplineService {
     await prisma.store.upsert({
       where: { shoplineId: shop_id },
       update: {
+        userId: finalUserId,  // 更新 userId（如果商店已存在，重新關聯到正確的使用者）
         handle: handle,
         accessToken: access_token,
         scope: scope,
