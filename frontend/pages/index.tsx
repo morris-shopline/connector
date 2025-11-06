@@ -154,14 +154,22 @@ function Home() {
             <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
               <h3 className="text-sm font-bold text-yellow-800 mb-2">🔍 除錯資訊</h3>
               <div className="text-xs text-yellow-700 space-y-1">
+                <div className="font-bold">認證狀態</div>
                 <div>認證狀態: {isAuthenticated ? '✅ 已登入' : '❌ 未登入'}</div>
                 <div>使用者 ID: {user?.id || '無'}</div>
                 <div>使用者 Email: {user?.email || '無'}</div>
+                <div className="font-bold mt-2">商店資訊</div>
                 <div>商店數量: {stores.length}</div>
                 <div>載入中: {storesLoading ? '是' : '否'}</div>
                 <div>錯誤: {storesError ? String(storesError) : '無'}</div>
+                <div className="font-bold mt-2">Token & Session</div>
                 <div>Token: {localStorage.getItem('auth_token') ? '✅ 存在' : '❌ 不存在'}</div>
-                <div>Session ID: {localStorage.getItem('auth_session_id') || '無'}</div>
+                <div>Session ID: {localStorage.getItem('auth_session_id') ? localStorage.getItem('auth_session_id')?.substring(0, 20) + '...' : '無'}</div>
+                <div className="font-bold mt-2">檢查步驟</div>
+                <div>1. 按 F12 開啟 Console 查看詳細日誌</div>
+                <div>2. 檢查 Render Logs 查看後端日誌</div>
+                <div>3. 確認 Redis 連線狀態（後端 Logs）</div>
+                <div>4. 確認 Session 建立和讀取（後端 Logs）</div>
               </div>
             </div>
             

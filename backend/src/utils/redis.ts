@@ -32,11 +32,19 @@ export function getRedisClient(): Redis | null {
         
         redis.on('connect', () => {
           const isTLS = redisUrl.startsWith('rediss://')
-          console.log(`Redis Client Connected${isTLS ? ' (TLS)' : ''}`)
+          console.log(`✅ [DEBUG] Redis Client Connected${isTLS ? ' (TLS)' : ''}`)
         })
         
         redis.on('ready', () => {
-          console.log('Redis Client Ready')
+          console.log('✅ [DEBUG] Redis Client Ready')
+        })
+        
+        redis.on('close', () => {
+          console.log('⚠️  [DEBUG] Redis Client Closed')
+        })
+        
+        redis.on('reconnecting', (delay) => {
+          console.log(`🔄 [DEBUG] Redis Client Reconnecting (delay: ${delay}ms)`)
         })
       } catch (error) {
         console.error('Failed to initialize Redis:', error)

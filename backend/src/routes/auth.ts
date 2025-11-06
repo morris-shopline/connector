@@ -83,10 +83,25 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
       const { getRedisClient } = await import('../utils/redis')
       const redis = getRedisClient()
       if (redis) {
+        const redisKey = `oauth:state:${state}`
+        console.log('🔍 [DEBUG] 準備在 Redis 暫存 state 和 userId 對應關係')
+        console.log('🔍 [DEBUG] Redis Key:', redisKey)
+        console.log('🔍 [DEBUG] UserId:', userId)
         // 暫存 10 分鐘（OAuth 流程通常很快）
-        await redis.setex(`oauth:state:${state}`, 600, userId)
+        await redis.setex(redisKey, 600, userId)
+        console.log('✅ [DEBUG] 已在 Redis 暫存 state 和 userId 對應關係')
+        
+        // 驗證儲存結果
+        const verify = await redis.get(redisKey)
+        if (verify === userId) {
+          console.log('✅ [DEBUG] Redis 暫存驗證成功')
+        } else {
+          console.error('❌ [DEBUG] Redis 暫存驗證失敗，預期:', userId, '實際:', verify)
+        }
+        
         fastify.log.info({ msg: '✅ 已在 Redis 暫存 state 和 userId 對應關係', userId })
       } else {
+        console.error('❌ [DEBUG] Redis 不可用，無法暫存 state 和 userId 對應關係')
         fastify.log.warn({ msg: '⚠️  Redis 不可用，無法暫存 state 和 userId 對應關係' })
       }
       
@@ -263,13 +278,21 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
           const { getRedisClient } = await import('../utils/redis')
           const redis = getRedisClient()
           if (redis) {
-            const cachedUserId = await redis.get(`oauth:state:${state}`)
+            const redisKey = `oauth:state:${state}`
+            console.log('🔍 [DEBUG] 嘗試從 Redis 取得 userId，key:', redisKey)
+            const cachedUserId = await redis.get(redisKey)
             if (cachedUserId) {
               userId = cachedUserId
+              console.log('✅ [DEBUG] 從 Redis 取得使用者 ID:', userId)
               fastify.log.info('✅ 從 Redis 取得使用者 ID:', userId)
               // 取得後刪除（一次性使用）
-              await redis.del(`oauth:state:${state}`)
+              await redis.del(redisKey)
+              console.log('✅ [DEBUG] 已刪除 Redis key（一次性使用）:', redisKey)
+            } else {
+              console.warn('⚠️  [DEBUG] Redis 中沒有找到 userId，key:', redisKey)
             }
+          } else {
+            console.error('❌ [DEBUG] Redis 不可用，無法從 Redis 取得 userId')
           }
           
           // 方法 2: 如果 Redis 沒有，嘗試解密 state 取得 Session ID

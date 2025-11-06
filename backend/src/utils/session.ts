@@ -17,13 +17,16 @@ const SESSION_TTL = 7 * 24 * 60 * 60 // 7 天（秒）
  * @returns Session ID
  */
 export async function createSession(userId: string, email: string): Promise<string> {
+  console.log('🔍 [DEBUG] createSession() 開始')
   const redis = getRedisClient()
   if (!redis) {
+    console.error('❌ [DEBUG] Redis 不可用，無法建立 Session')
     // 如果 Redis 不可用，可以降級到資料庫儲存（未來擴展）
     // 目前先拋出錯誤，確保 Session 管理的一致性
     throw new Error('Redis not available')
   }
 
+  console.log('✅ [DEBUG] Redis 可用，開始建立 Session')
   const sessionId = crypto.randomBytes(32).toString('hex')
   const now = Date.now()
   const expiresAt = now + SESSION_TTL * 1000
@@ -35,11 +38,30 @@ export async function createSession(userId: string, email: string): Promise<stri
     expiresAt,
   }
 
+  const redisKey = `session:${sessionId}`
+  console.log('🔍 [DEBUG] Session 資訊:', {
+    sessionId: sessionId.substring(0, 10) + '...',
+    userId,
+    email,
+    expiresAt: new Date(expiresAt).toISOString(),
+    redisKey
+  })
+
   await redis.setex(
-    `session:${sessionId}`,
+    redisKey,
     SESSION_TTL,
     JSON.stringify(session)
   )
+
+  console.log('✅ [DEBUG] Session 已儲存到 Redis:', redisKey)
+  
+  // 驗證儲存結果
+  const verify = await redis.get(redisKey)
+  if (verify) {
+    console.log('✅ [DEBUG] Session 驗證成功，Redis 中確實存在')
+  } else {
+    console.error('❌ [DEBUG] Session 驗證失敗，Redis 中不存在')
+  }
 
   return sessionId
 }
@@ -50,18 +72,33 @@ export async function createSession(userId: string, email: string): Promise<stri
  * @returns Session 或 null（如果不存在）
  */
 export async function getSession(sessionId: string): Promise<Session | null> {
+  console.log('🔍 [DEBUG] getSession() 開始，sessionId:', sessionId ? sessionId.substring(0, 10) + '...' : 'null')
   const redis = getRedisClient()
   if (!redis) {
+    console.error('❌ [DEBUG] Redis 不可用，無法取得 Session')
     // 如果 Redis 不可用，返回 null（降級處理）
     return null
   }
 
-  const data = await redis.get(`session:${sessionId}`)
+  const redisKey = `session:${sessionId}`
+  console.log('🔍 [DEBUG] 從 Redis 讀取 Session，key:', redisKey)
+  
+  const data = await redis.get(redisKey)
   if (!data) {
+    console.warn('⚠️  [DEBUG] Session 不存在或已過期，key:', redisKey)
     return null
   }
 
-  return JSON.parse(data) as Session
+  const session = JSON.parse(data) as Session
+  console.log('✅ [DEBUG] Session 讀取成功:', {
+    sessionId: sessionId.substring(0, 10) + '...',
+    userId: session.userId,
+    email: session.email,
+    expiresAt: new Date(session.expiresAt).toISOString(),
+    isExpired: session.expiresAt < Date.now()
+  })
+
+  return session
 }
 
 /**

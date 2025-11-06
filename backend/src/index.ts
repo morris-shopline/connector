@@ -81,6 +81,22 @@ async function registerRoutes() {
 
 // 啟動伺服器
 async function start() {
+  // 檢查 Redis 連線狀態
+  console.log('🔍 [DEBUG] 檢查 Redis 連線狀態...')
+  const { getRedisClient } = await import('./utils/redis')
+  const redis = getRedisClient()
+  if (redis) {
+    console.log('✅ [DEBUG] Redis 客戶端已初始化')
+    try {
+      // 測試 Redis 連線
+      await redis.ping()
+      console.log('✅ [DEBUG] Redis PING 成功，連線正常')
+    } catch (error) {
+      console.error('❌ [DEBUG] Redis PING 失敗:', error)
+    }
+  } else {
+    console.error('❌ [DEBUG] Redis 客戶端未初始化，請檢查 REDIS_URL 環境變數')
+  }
   try {
     await registerPlugins()
     await registerRoutes()
