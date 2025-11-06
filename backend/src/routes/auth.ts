@@ -332,7 +332,9 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
             }
           }
         } else {
-          fastify.log.warn('❌ 沒有 state 參數，嘗試從 header 取得使用者...')
+          console.warn('⚠️  [DEBUG] 沒有 state 參數，Shopline 沒有保留 state')
+          fastify.log.warn('❌ 沒有 state 參數，嘗試從其他方式取得使用者...')
+          
           // 降級處理：嘗試從 header 取得使用者
           const authHeader = request.headers.authorization
           let token: string | null = null
@@ -349,6 +351,7 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
               if (payload.sessionId) {
                 sessionId = payload.sessionId
               }
+              console.log('✅ [DEBUG] 從 JWT Token 取得使用者 ID:', userId)
               fastify.log.info('從 JWT Token 取得使用者 ID:', userId)
             }
           } else {
@@ -359,9 +362,17 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
               const session = await getSession(headerSessionId)
               if (session) {
                 userId = session.userId
+                console.log('✅ [DEBUG] 從 x-session-id header 取得使用者 ID:', userId)
                 fastify.log.info('從 x-session-id header 取得使用者 ID:', userId)
               }
             }
+          }
+          
+          // 如果還是沒有取得 userId，記錄警告
+          if (!userId) {
+            console.warn('⚠️  [DEBUG] 無法取得使用者 ID，將使用系統使用者')
+            console.warn('⚠️  [DEBUG] 前端需要從 localStorage 恢復認證狀態')
+            fastify.log.warn('⚠️  無法取得使用者 ID，將使用系統使用者')
           }
         }
         

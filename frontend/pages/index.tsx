@@ -67,18 +67,33 @@ function Home() {
         // OAuth 回調成功，恢復使用者認證狀態
         // 如果有 session_id，儲存到 localStorage
         if (sessionIdFromUrl) {
-          console.log('🔍 [DEBUG] 儲存 Session ID:', sessionIdFromUrl)
+          console.log('🔍 [DEBUG] 從 URL 取得 Session ID:', sessionIdFromUrl)
           localStorage.setItem('auth_session_id', sessionIdFromUrl)
           const { setSessionId } = useAuthStore.getState()
           setSessionId(sessionIdFromUrl)
+        } else {
+          console.log('⚠️  [DEBUG] URL 中沒有 session_id，嘗試從 localStorage 恢復認證狀態')
+          // 即使沒有 session_id，也嘗試從 localStorage 恢復認證狀態
+          // 因為使用者在發起 OAuth 授權時已經登入了
+          const existingToken = localStorage.getItem('auth_token')
+          const existingSessionId = localStorage.getItem('auth_session_id')
+          console.log('🔍 [DEBUG] localStorage 中的 Token:', existingToken ? '存在' : '不存在')
+          console.log('🔍 [DEBUG] localStorage 中的 Session ID:', existingSessionId ? existingSessionId.substring(0, 20) + '...' : '不存在')
         }
         
-        // 檢查認證狀態
+        // 檢查認證狀態（無論是否有 session_id 參數）
         console.log('🔍 [DEBUG] 檢查認證狀態...')
         const { checkAuth } = useAuthStore.getState()
         checkAuth().then(() => {
+          const authState = useAuthStore.getState()
           console.log('✅ [DEBUG] 認證狀態檢查完成')
-          console.log('🔍 [DEBUG] 當前使用者:', useAuthStore.getState().user)
+          console.log('🔍 [DEBUG] 當前使用者:', authState.user)
+          console.log('🔍 [DEBUG] 認證狀態:', authState.isAuthenticated ? '✅ 已登入' : '❌ 未登入')
+          
+          if (!authState.isAuthenticated) {
+            console.warn('⚠️  [DEBUG] 認證狀態檢查失敗，使用者未登入')
+            console.warn('⚠️  [DEBUG] 可能需要重新登入')
+          }
         })
         
         // 重新載入商店列表
