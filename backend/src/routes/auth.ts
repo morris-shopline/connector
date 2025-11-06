@@ -430,11 +430,16 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         if (sessionId) {
           // 在重導向 URL 中加入 Session ID，讓前端可以恢復認證狀態
           redirectUrl = `${frontendUrl}?auth_success=true&session_id=${encodeURIComponent(sessionId)}`
+          console.log('✅ [DEBUG] 重導向 URL 包含 Session ID:', redirectUrl)
           fastify.log.info('✅ 重導向 URL 包含 Session ID')
         } else {
           redirectUrl = `${frontendUrl}?auth_success=true`
+          console.log('⚠️  [DEBUG] 重導向 URL 不包含 Session ID（Session 無效或不存在）:', redirectUrl)
           fastify.log.info('⚠️  重導向 URL 不包含 Session ID（Session 無效或不存在）')
         }
+        
+        console.log('🔍 [DEBUG] 最終重導向 URL:', redirectUrl)
+        console.log('🔍 [DEBUG] Frontend URL:', frontendUrl)
         
         return reply.type('text/html').send(`
           <!DOCTYPE html>
@@ -495,9 +500,16 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
                   console.log('Could not close window:', e);
                 }
                 
-                // 3秒後重導向到前端
+                // 立即重導向到前端（不等待 3 秒）
+                console.log('🔍 [DEBUG] 準備重導向到前端:', '${redirectUrl}');
+                window.location.href = '${redirectUrl}';
+                
+                // 備用：3秒後重導向（如果立即重導向失敗）
                 setTimeout(() => {
-                  window.location.href = '${redirectUrl}';
+                  if (window.location.href.indexOf('auth_success') === -1) {
+                    console.log('⚠️  [DEBUG] 立即重導向可能失敗，嘗試備用重導向');
+                    window.location.href = '${redirectUrl}';
+                  }
                 }, 3000);
               </script>
             </body>
