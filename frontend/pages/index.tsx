@@ -54,14 +54,23 @@ function Home() {
       const urlParams = new URLSearchParams(window.location.search)
       const authSuccess = urlParams.get('auth_success')
       const sessionIdFromUrl = urlParams.get('session_id')
+      const currentUrl = window.location.href
       
       console.log('🔍 [DEBUG] OAuth 回調檢查:', {
+        currentUrl,
         authSuccess,
         sessionIdFromUrl,
-        allParams: Object.fromEntries(urlParams.entries())
+        allParams: Object.fromEntries(urlParams.entries()),
+        pathname: window.location.pathname,
+        search: window.location.search
       })
       
-      if (authSuccess === 'true') {
+      // 檢查是否為 OAuth 回調（有 auth_success 參數，或從 Shopline 回調後重導向）
+      const isOAuthCallback = authSuccess === 'true' || 
+                              currentUrl.includes('shopline/callback') ||
+                              (currentUrl.includes('connector-theta.vercel.app') && !authSuccess && sessionIdFromUrl)
+      
+      if (isOAuthCallback || authSuccess === 'true') {
         console.log('✅ [DEBUG] OAuth 回調成功，開始恢復認證狀態')
         
         // OAuth 回調成功，恢復使用者認證狀態
@@ -104,9 +113,29 @@ function Home() {
         
         // 清除 URL 參數
         window.history.replaceState({}, document.title, window.location.pathname)
+      } else if (!authSuccess && !isAuthenticated) {
+        // 如果沒有 auth_success 參數，但使用者未登入，可能是 OAuth 回調後重導向失敗
+        // 嘗試從 localStorage 恢復認證狀態
+        console.log('⚠️  [DEBUG] 沒有 auth_success 參數，但使用者未登入，嘗試恢復認證狀態')
+        const existingToken = localStorage.getItem('auth_token')
+        const existingSessionId = localStorage.getItem('auth_session_id')
+        
+        if (existingToken || existingSessionId) {
+          console.log('🔍 [DEBUG] 發現 localStorage 中有認證資訊，嘗試恢復')
+          const { checkAuth } = useAuthStore.getState()
+          checkAuth().then(() => {
+            const authState = useAuthStore.getState()
+            if (authState.isAuthenticated) {
+              console.log('✅ [DEBUG] 成功從 localStorage 恢復認證狀態')
+              refetchStores()
+            } else {
+              console.warn('⚠️  [DEBUG] 無法從 localStorage 恢復認證狀態')
+            }
+          })
+        }
       }
     }
-  }, [router.isReady, refetchStores])
+  }, [router.isReady, refetchStores, isAuthenticated])
 
   return (
     <div className="min-h-screen bg-gray-50">
