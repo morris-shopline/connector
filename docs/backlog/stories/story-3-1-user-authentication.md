@@ -423,40 +423,40 @@ fastify.get('/api/protected', { preHandler: [authMiddleware] }, async (request, 
 ### Agent 功能測試
 
 #### 資料庫測試
-- [ ] Prisma Schema 更新完成（`User` 模型）
-- [ ] Migration 執行成功
-- [ ] `users` 表已建立，欄位正確
+- [x] Prisma Schema 更新完成（`User` 模型）
+- [x] Migration 執行成功
+- [x] `users` 表已建立，欄位正確
 
 #### 工具函數測試
-- [ ] 密碼加密函數正常運作
-- [ ] 密碼驗證函數正常運作
-- [ ] JWT Token 生成正常運作
-- [ ] JWT Token 驗證正常運作
-- [ ] Session 建立正常運作
-- [ ] Session 讀取正常運作
-- [ ] Session 刪除正常運作
+- [x] 密碼加密函數正常運作
+- [x] 密碼驗證函數正常運作
+- [x] JWT Token 生成正常運作
+- [x] JWT Token 驗證正常運作
+- [x] Session 建立正常運作
+- [x] Session 讀取正常運作
+- [x] Session 刪除正常運作
 
 #### API 端點測試
-- [ ] 註冊 API 正常運作
-  - [ ] 成功註冊新使用者
-  - [ ] Email 重複檢查
-  - [ ] 密碼長度驗證
-  - [ ] Email 格式驗證
-- [ ] 登入 API 正常運作
-  - [ ] 成功登入並返回 Token/Session
-  - [ ] 錯誤密碼驗證
-  - [ ] 不存在的使用者驗證
-- [ ] 登出 API 正常運作
-  - [ ] Session 正確清除
-- [ ] 驗證 Session API 正常運作
-  - [ ] 有效 Token 返回使用者資訊
-  - [ ] 無效 Token 返回錯誤
+- [x] 註冊 API 正常運作
+  - [x] 成功註冊新使用者
+  - [x] Email 重複檢查
+  - [x] 密碼長度驗證
+  - [x] Email 格式驗證
+- [x] 登入 API 正常運作
+  - [x] 成功登入並返回 Token/Session
+  - [x] 錯誤密碼驗證
+  - [x] 不存在的使用者驗證
+- [x] 登出 API 正常運作
+  - [x] Session 正確清除
+- [x] 驗證 Session API 正常運作
+  - [x] 有效 Token 返回使用者資訊
+  - [x] 無效 Token 返回錯誤
 
 #### Redis Session 測試
-- [ ] Session 正確儲存到 Redis
-- [ ] Session TTL 設定正確（7 天）
-- [ ] Session 過期自動清除
-- [ ] Session 讀取正常
+- [x] Session 正確儲存到 Redis
+- [x] Session TTL 設定正確（7 天）
+- [x] Session 過期自動清除
+- [x] Session 讀取正常
 
 #### TypeScript 類型檢查
 - [ ] 所有 TypeScript 類型定義正確
@@ -509,6 +509,22 @@ fastify.get('/api/protected', { preHandler: [authMiddleware] }, async (request, 
    - 登入後，手動修改 Redis 中的 Session TTL 為 1 秒
    - 等待 2 秒後，使用 Token 呼叫 `/api/auth/me`
    - **驗證**：返回錯誤訊息（Session 已過期）
+
+## 測試紀錄（2025-11-07）
+
+| 測試項目 | 結果 | 備註 |
+| --- | --- | --- |
+| 註冊 API | ✅ | `qa-story31-user1@example.com` 建立成功，資料庫密碼為 bcrypt 雜湊（`$2b$10...`） |
+| 重複註冊阻擋 | ✅ | 第二次註冊相同 Email 返回 400 `Email already exists` |
+| Email / 密碼格式驗證 | ✅ | 無效 Email 與短密碼皆被 `zod` 驗證拒絕（400） |
+| 登入 API | ✅ | 200；取得 JWT 與 Redis Session `session:{id}`，TTL ≈ 604792 秒 |
+| 錯誤密碼 / 不存在使用者登入 | ✅ | 401 `Invalid email or password` |
+| `/api/auth/me` 有效 Token | ✅ | 200；返回使用者 id/email/name |
+| `/api/auth/me` 無效 Token | ✅ | 401 `Invalid or expired token` |
+| 登出流程 | ✅ | 登出後相同 JWT 呼叫 `/api/auth/me`、`/api/stores` 皆返回 401 `Invalid or expired session` |
+| Session 過期測試 | ✅ | 將 Session TTL 設為 1 秒後過期，JWT 再呼叫 `/api/auth/me` 返回 401 |
+
+> 測試環境：本機啟動 `brew services start redis`，以 `REDIS_URL=redis://localhost:6379 npm run dev` 啟動後端；資料準備執行 `npx tsx scripts/migrate-existing-data.ts`。
 
 ---
 

@@ -47,6 +47,11 @@ docs/backlog/index.md
   - Run 完成時立即更新 `recent-runs.md`
   - **下一個 Run 開始時**才歸檔 `current-run.md` 到 `archive/old-runs/`
   - `recent-runs.md` 只保留最近 10 個 Run
+  - Story 狀態流程：`planned`（規劃中）→ `ready-for-dev`（文件/測項備妥，可安排進 Run）→ `in-development`（開發中）→ `agent-testing`（Agent 自測中）→ `ready-for-user-test`（待 User 驗收）→ `user-test-passed` → `completed`
+  - Run 狀態流程：`draft` → `in-progress` → `ready-for-acceptance`（全數 Story 待 User 驗收）→ `in-acceptance` → `accepted` → `closed`
+  - 放進 Run 的 Story 必須已達 `ready-for-dev`
+  - 正在開發的 Story 未完成 `ready-for-user-test` 前，不得切換至下一個 Story
+  - Agent 測試清單需對應實際實作範圍，逐項記錄於 Story 文件並全數勾選後，方可進入 User 驗收階段
 
 **📝 Backlog Inbox 使用（快速收集）**：
 - 當用戶說「幫我記一下...」或類似表達時，快速在 `docs/backlog/inbox/` 建立 note
@@ -154,4 +159,4 @@ docs/backlog/index.md
 
 ---
 
-**最後更新**: 2025-11-05
+**最後更新**: 2025-11-07

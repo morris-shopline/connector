@@ -47,11 +47,11 @@
 ## 🚨 前置條件（需要 Human 先處理）
 
 ### 1. Story 3.1 必須完成
-- [ ] Story 3.1: 使用者認證系統已完成
-- [ ] JWT Token 生成與驗證功能可用（`backend/src/utils/jwt.ts`）
-- [ ] Session 管理功能可用（`backend/src/utils/session.ts`）
-- [ ] 認證中間件已建立（`backend/src/middleware/auth.ts`）
-- [ ] 註冊、登入、登出 API 已實作（`backend/src/routes/auth.ts`）
+- [x] Story 3.1: 使用者認證系統已完成
+- [x] JWT Token 生成與驗證功能可用（`backend/src/utils/jwt.ts`）
+- [x] Session 管理功能可用（`backend/src/utils/session.ts`）
+- [x] 認證中間件已建立（`backend/src/middleware/auth.ts`）
+- [x] 註冊、登入、登出 API 已實作（`backend/src/routes/auth.ts`）
 
 ### 2. 環境變數需求
 
@@ -222,18 +222,18 @@ fastify.get('/api/stores', { preHandler: [authMiddleware] }, async (request, rep
 ### Agent 功能測試
 
 #### 後端認證中間件測試
-- [ ] 認證中間件正確驗證 JWT Token
-- [ ] 認證中間件正確驗證 Session ID
-- [ ] 認證中間件正確處理無效 Token
-- [ ] 認證中間件正確處理未提供 Token 的情況
-- [ ] 認證中間件正確將使用者資訊附加到 `request.user`
+- [x] 認證中間件正確驗證 JWT Token
+- [x] 認證中間件正確驗證 Session ID
+- [x] 認證中間件正確處理無效 Token
+- [x] 認證中間件正確處理未提供 Token 的情況
+- [x] 認證中間件正確將使用者資訊附加到 `request.user`
 
 #### API 端點保護測試
-- [ ] 需要保護的 API 端點正確使用認證中間件
-- [ ] 未登入時訪問保護端點返回 401 錯誤
-- [ ] 登入後訪問保護端點返回正確資料
-- [ ] 公開端點不受認證中間件影響
-- [ ] 資料過濾正確（使用者只能看到自己的資料）
+- [x] 需要保護的 API 端點正確使用認證中間件
+- [x] 未登入時訪問保護端點返回 401 錯誤
+- [x] 登入後訪問保護端點返回正確資料
+- [x] 公開端點不受認證中間件影響
+- [x] 資料過濾正確（使用者只能看到自己的資料）
 
 **注意**：前端路由保護和 API 請求保護由 Story 3.4 統一實作。
 
@@ -285,6 +285,19 @@ fastify.get('/api/stores', { preHandler: [authMiddleware] }, async (request, rep
    - **驗證**：應該可以正常登入
    - 未登入時訪問 `/api/auth/shopline/install`
    - **驗證**：應該可以正常訪問（Shopline OAuth 流程）
+
+## 測試紀錄（2025-11-07）
+
+| 測試項目 | 結果 | 備註 |
+| --- | --- | --- |
+| 未登入訪問 `/api/stores` | ✅ | 401 `Authentication required` |
+| 未登入訪問 `/api/stores/:shopId` | ✅ | 401 `Authentication required` |
+| 使用者登入後取得自己的商店列表 | ✅ | User1/User2 皆僅看到自身商店（200） |
+| 使用者登入後取得自己的商店詳情 | ✅ | `/api/stores/{self}` 返回 200 與商店資訊 |
+| 跨使用者存取 | ✅ | `/api/stores/{others}` 返回 403 `Forbidden` |
+| 登出後再訪問保護端點 | ✅ | `/api/stores` 返回 401 `Invalid or expired session` |
+| 公開端點驗證 | ✅ | 未登入註冊 `qa-story32-public@example.com` 成功（200） |
+| Webhook 事件列表 | ✅ | 登入請求返回 200，資料為 `[]` |
 
 ---
 

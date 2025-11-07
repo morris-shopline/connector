@@ -2,7 +2,11 @@
 
 ## 概述
 
-本專案是一個 Shopline API 整合應用程式，採用前後端分離的架構，支援 OAuth 2.0 授權和多商店管理。
+本專案是一個多平台連線（Connection）管理與資料整合系統，採用前後端分離架構，支援 OAuth 2.0 授權與多租戶隔離。核心目標：
+
+- 管理使用者對各平台（Shopline、Next Engine 等）的 Connection
+- 為每個 Connection 提供資料同步、Webhook 處理、後續資料流基礎
+- 在保持 Admin 體驗一致的前提下擴充到多平台、多帳戶
 
 ## 系統架構
 
@@ -21,8 +25,8 @@
 │                     前端層 (Frontend)                        │
 │  ┌───────────────────────────────────────────────────────┐ │
 │  │  Next.js App (部署到 Vercel)                          │ │
-│  │  - 商店列表展示                                       │ │
-│  │  - 授權對話框                                         │ │
+│  │  - Connection 列表與切換                               │ │
+│  │  - 授權／重新授權流程                                 │ │
 │  │  - Webhook 事件查看                                   │ │
 │  │  - 型別定義：frontend/types.ts                        │ │
 │  └───────────────────────────────────────────────────────┘ │
@@ -38,10 +42,10 @@
 │  │        └───────────────┼───────────────┘            │ │
 │  │                        │                              │ │
 │  │              ┌─────────▼──────────┐                  │ │
-│  │              │ ShoplineService    │                  │ │
-│  │              │ - OAuth 流程        │                  │ │
-│  │              │ - 簽名驗證          │                  │ │
-│  │              │ - Token 管理        │                  │ │
+│  │              │ PlatformServiceFactory               │ │
+│  │              │ - 依據 platform 載入對應 Adapter     │ │
+│  │              │ - 共用 OAuth / Token 流程             │ │
+│  │              │ - Connection 狀態同步                 │ │
 │  │              └─────────┬──────────┘                  │ │
 │  │  - 型別定義：backend/src/types.ts                    │ │
 │  └────────────────────────┼──────────────────────────────┘ │
@@ -50,7 +54,8 @@
                 ┌────────────▼────────────┐
                 │  Neon PostgreSQL        │
                 │  - users 表             │
-                │  - stores 表            │
+                │  - integration_accounts │
+                │  - connection_items     │
                 │  - webhook_events 表    │
                 └─────────────────────────┘
                 
@@ -66,14 +71,22 @@
 ┌─────────────────────────────────────────────────────────────┐
 │                  外部服務 (External)                         │
 │  ┌───────────────────────────────────────────────────────┐ │
-│  │  Shopline Platform                                    │ │
-│  │  - OAuth 授權                                         │ │
-│  │  - API 端點                                           │ │
-│  │  - Webhook 推送                                       │ │
+│  │  多個外部平台（Shopline / Next Engine …）            │ │
+│  │  - OAuth / Token API                                  │ │
+│  │  - 平台資料 API                                       │ │
+│  │  - Webhook / Callback                                 │ │
 │  └───────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
 
 ```
+
+### Connection 流程概覽
+
+1. 使用者登入後，前端透過 `/api/connections` 取得所有 Connection 與所屬 `connection_items`。
+2. 前端以 URL Query (`platform`, `connectionId`, `itemId`) 表示目前選擇；Zustand store 維持 Router 事件的映射，不直接寫入 URL。
+3. 後端 API 根據請求帶入的 `platform` 從 `PlatformServiceFactory` 取得對應 Adapter（Shopline、Next Engine …）。
+4. Adapter 讀取 `integration_accounts.authPayload` 與 `connection_items`，執行平台 API 或 Webhook 流程。
+5. 若發生 Token 問題，Adapter 拋出標準化錯誤碼（`TOKEN_EXPIRED` 等），前端依據錯誤碼引導重新授權 Connection。
 
 ## 資料庫設計
 
@@ -91,22 +104,35 @@
 | createdAt | DateTime | 建立時間 |
 | updatedAt | DateTime | 更新時間 |
 
-### stores 表
+### integration_accounts 表（Connection）
 
-存儲已授權的商店資訊。
+儲存使用者對外部平台的授權 Connection（平台 × 帳戶）。
+
+| 欄位 | 類型 | 說明 |
+|------|------|------|
+| id | String (cuid) | 主鍵（Connection Id） |
+| userId | String | 擁有此 Connection 的使用者 |
+| platform | String | 平台識別（例如：`shopline`、`next_engine`） |
+| externalAccountId | String | 平台帳戶 ID（Shopline handle、Next Engine uid） |
+| displayName | String? | 前端顯示名稱 |
+| authPayload | Json | 儲存 access token、refresh token、scope、expiresAt 等資訊 |
+| status | String | `active` / `revoked` / `error` |
+| createdAt | DateTime | 建立時間 |
+| updatedAt | DateTime | 更新時間 |
+
+### connection_items 表（Connection 底下的資源）
+
+記錄 Connection 可操作的細部資源（例如商店、店舖、Workspace）。
 
 | 欄位 | 類型 | 說明 |
 |------|------|------|
 | id | String (cuid) | 主鍵 |
-| userId | String | 關聯的使用者 ID（Story 3.3 新增） |
-| shoplineId | String (unique) | Shopline 商店 ID |
-| handle | String? | 商店 Handle (如: paykepoc) |
-| name | String? | 商店名稱 |
-| domain | String? | 商店域名 |
-| accessToken | String | Access Token (JWT) |
-| expiresAt | DateTime? | Token 到期時間 |
-| scope | String | 授權範圍 |
-| isActive | Boolean | 是否啟用 |
+| integrationAccountId | String | 關聯的 Connection Id |
+| platform | String | 平台識別（冗餘欄位，加速查詢） |
+| externalResourceId | String | 平台資源 ID（Shopline store_id、Next Engine shop_id） |
+| displayName | String? | 前端顯示名稱 |
+| metadata | Json? | 平台專屬欄位（domain、scope 等） |
+| status | String | `active` / `disabled` |
 | createdAt | DateTime | 建立時間 |
 | updatedAt | DateTime | 更新時間 |
 
@@ -118,12 +144,12 @@
 |------|------|------|
 | id | String (cuid) | 主鍵 |
 | userId | String | 關聯的使用者 ID（Story 3.3 新增） |
-| storeId | String | 關聯的商店 ID |
+| connectionItemId | String | 關聯的 Connection 資源 |
 | webhookId | String (unique) | X-Shopline-Webhook-Id，用於去重 |
 | topic | String | X-Shopline-Topic，例如：orders/update |
 | eventType | String | 與 topic 相同，保留作為兼容欄位 |
 | shopDomain | String? | X-Shopline-Shop-Domain |
-| shoplineId | String? | X-Shopline-Shop-Id（商店 ID） |
+| externalResourceId | String? | 平台資源 ID |
 | merchantId | String? | X-Shopline-Merchant-Id |
 | apiVersion | String? | X-Shopline-API-Version |
 | payload | String | 事件資料 (JSON) |
@@ -156,10 +182,10 @@
 - Headers: `Authorization: Bearer ${token}` 或 `Cookie: sessionId=${sessionId}`
 - 回應: `{ success: boolean, user?: User, error?: string }`
 
-#### Shopline OAuth（現有功能）
+#### Connection OAuth（現有功能：Shopline）
 
 **GET /api/auth/shopline/install**
-- 描述: 處理 Shopline 應用安裝請求
+- 描述: 處理 Shopline Connection 安裝請求（Refactor 3 後將整合為 `/api/connections/:platform/install`）
 - 查詢參數:
   - `appkey`: 應用 Key
   - `handle`: 商店 Handle
@@ -167,8 +193,7 @@
   - `sign`: HMAC-SHA256 簽名
 - 回應: 302 重導向到 Shopline 授權頁面
 
-**GET /api/auth/shopline/callback**
-- 描述: 處理 OAuth 授權回調
+- 描述: 處理 Shopline OAuth 授權回調（Refactor 3 後將整合為 `/api/connections/:platform/callback`）
 - 查詢參數:
   - `appkey`: 應用 Key
   - `code`: 授權碼

@@ -11,7 +11,7 @@
 | [Epic 0: 基礎架構與 OAuth 授權](./epics/epic-0-foundation.md) | ✅ completed | 100% | Phase 0 | Run 1 |
 | [Epic 2: Admin API 測試功能](./epics/epic-2-admin-api-testing.md) | ✅ completed | 100% | Phase 0.6 | Run 3 |
 | [Epic 3: Admin 管理系統](./epics/epic-3-admin-management-system.md) | ✅ completed | 100% | Phase 1.1 | run-2025-11-06-01 |
-| [Epic 4: 多商店管理](./epics/epic-4-multi-store-management.md) | ⏳ planned | 0% | Phase 1.2 | - |
+| [Epic 4: Connection 管理體驗](./epics/epic-4-multi-store-management.md) | ⏸ blocked | 0% | Phase 1.2 | - |
 | [Epic 5: 多 API 類型支援](./epics/epic-5-multi-api-types.md) | 🔄 部分完成 | 50% | Phase 1.3 | - |
 
 ---
@@ -23,6 +23,7 @@
 | [Epic 1: Bug 修復與架構優化](./epics/epic-1-bug-fix-and-optimization.md) | ✅ completed | 100% | Phase 0 | Run 2 |
 | [Refactor 1: 狀態管理階段 1 基礎架構（Phase 1 準備）](./refactors/refactor-1-state-management-phase1.md) | 🔄 in-progress | 75% | Phase 1 準備 | run-2025-11-05-01 |
 | [Refactor 2: 狀態管理階段 2 Redux 遷移（Phase 3.2 觸發）](./refactors/refactor-2-redux-migration.md) | ⏳ planned | 0% | Phase 3.2 準備 | - |
+| [Refactor 3: Connection 基礎重構（Phase 1.2 前置）](./refactors/refactor-3-connection-foundation.md) | ⏳ planned | 0% | Phase 1.2 前置 | - |
 
 ---
 
@@ -31,6 +32,7 @@
 | Issue | 類型 | 狀態 | 優先級 | 相關 Run |
 |-------|------|------|--------|----------|
 | [Issue 2025-11-06-001: URL 參數與 Zustand Store 同步機制導致閃跳問題](./issues/issue-2025-11-06-001.md) | 架構設計 | 🔄 open | High | run-2025-11-05-01 |
+| [Issue 2025-11-07-001: OAuth Token 過期時誤觸發 Admin 登出](./issues/issue-2025-11-07-001.md) | Bug | 🔄 open | High | run-2025-11-06-01 |
 
 ---
 
@@ -75,14 +77,15 @@
 | [Story 3.4: Admin 管理介面](./stories/story-3-4-admin-management-interface.md) | Feature | Epic 3 | ✅ completed | run-2025-11-06-01 |
 | [Story 3.5: OAuth 授權流程與會員登入系統銜接](./stories/story-3-5-oauth-auth-integration.md) | Feature | Epic 3 | ✅ completed | run-2025-11-06-01 |
 
-### Epic 4: 多商店管理（Phase 1.2）
+### Epic 4: Connection 管理體驗（Phase 1.2）
 
 | Story | 類型 | 所屬 | 狀態 | 完成 Run |
 |-------|------|------|------|----------|
-| Story 4.1: 多商店資料模型 | Feature | Epic 4 | ⏳ planned | - |
-| Story 4.2: 商店選擇與切換 | Feature | Epic 4 | ⏳ planned | - |
-| Story 4.3: 商店級別權限管理 | Feature | Epic 4 | ⏳ planned | - |
-| Story 4.4: 商店管理介面 | Feature | Epic 4 | ⏳ planned | - |
+| Story 4.1: Connection Dashboard 與列表體驗 | Feature | Epic 4 | ⏳ planned | - |
+| Story 4.2: Connection 建立與重新授權工作流 | Feature | Epic 4 | ⏳ planned | - |
+| Story 4.3: Connection 層級權限與端點保護 | Feature | Epic 4 | ⏳ planned | - |
+| Story 4.4: Admin 模組 Connection 化 | Feature | Epic 4 | ⏳ planned | - |
+| Story 4.5: Connection Insight 與通知（可選） | Feature | Epic 4 | ⏳ planned | - |
 
 ### Epic 5: 多 API 類型支援（Phase 1.3）
 
@@ -110,6 +113,14 @@
 | Story R2.2: Redux Store 建立與核心功能 | Refactor | Refactor 2 | ⏳ planned | - |
 | Story R2.3: Job 管理狀態實作 | Refactor | Refactor 2 | ⏳ planned | - |
 | Story R2.4: Zustand → Redux 遷移 | Refactor | Refactor 2 | ⏳ planned | - |
+
+### Refactor 3: Connection 基礎重構（Phase 1.2 前置）
+
+| Story | 類型 | 所屬 | 狀態 | 完成 Run |
+|-------|------|------|------|----------|
+| [Story R3.0: Connection 資料模型與 Migration](./stories/story-r3-0-connection-data-model.md) | Refactor | Refactor 3 | ⏳ planned | - |
+| [Story R3.1: Connection 狀態同步與 URL 單一來源](./stories/story-r3-1-connection-state-sync.md) | Refactor | Refactor 3 | ⏳ planned | - |
+| [Story R3.2: Token Lifecycle 與重新授權流程](./stories/story-r3-2-token-lifecycle.md) | Refactor | Refactor 3 | ⏳ planned | - |
 
 ---
 
@@ -140,7 +151,7 @@
 | Feature Epic | 對應 Roadmap | 前置條件 |
 |--------------|--------------|----------|
 | **Epic 3: Admin 管理系統** | Phase 1.1 | Refactor 1 完成 |
-| **Epic 4: 多商店管理** | Phase 1.2 | Epic 3 + Refactor 1 完成 |
+| **Epic 4: Connection 管理體驗** | Phase 1.2 | Epic 3 + Refactor 1 + Refactor 3 完成 |
 | **Epic 5: 多 API 類型支援** | Phase 1.3 | Epic 4 + Refactor 1 完成 |
 
 ---
@@ -155,5 +166,5 @@
 
 ---
 
-**最後更新**: 2025-11-06
+**最後更新**: 2025-11-07
 

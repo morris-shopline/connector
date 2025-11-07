@@ -9,11 +9,24 @@
 ### Run 的完整生命週期
 
 ```
-建立 Run → 開發中 → 完成 → 歸檔
-    ↓         ↓        ↓        ↓
-current-run.md  →  →  →  archive/old-runs/
-recent-runs.md  (更新)   (更新)
+建立 Run → 開發中 → 待驗收 → 驗收中 → 驗收完成 → 結案 → 歸檔
+    ↓         ↓        ↓         ↓         ↓         ↓        ↓
+current-run.md  →  →  →  →  →  →  archive/old-runs/
+recent-runs.md  (更新)   (更新)   (更新)   (更新)
 ```
+
+### Run 狀態定義與轉換
+
+| 狀態 | 說明 | 觸發條件 |
+|------|------|----------|
+| `draft` | Run 文件剛建立，等待確認 Story 清單 | 建立 `current-run.md`，尚未開始實作 |
+| `in-progress` | Run 內所有 Story 開始進行開發 | 第一個 Story 切換為 `in-development` 時設定 |
+| `ready-for-acceptance` | Run 內所有 Story 狀態皆為 `ready-for-user-test` | 完成最後一項 Agent 測試並更新 Story 狀態後立即設定 |
+| `in-acceptance` | User 開始驗收 Run | User 進行 User Test 或驗收時設定 |
+| `accepted` | User 驗收完成，等待最終確認 | User 表示測試通過但尚未宣告結案時設定 |
+| `closed` | User 明確表示驗收通過且無後續修正需求 | User 宣告結案 |
+
+> ❗️ Run 內的 Story 必須逐一完成（依序達到 `ready-for-user-test`）後才能切換到下一個 Story 的實作。
 
 ---
 
@@ -62,25 +75,25 @@ recent-runs.md  (更新)   (更新)
 ### 步驟 1: 更新 Run 狀態
 
 在 `context/current-run.md` 中：
-1. 標記 Run 狀態為 `completed`
-2. 記錄完成時間
-3. 記錄所有 Story 的完成狀態
-4. 記錄測試結果（Agent 測試 + User Test）
+1. 當所有 Story 都達到 `ready-for-user-test` 時，將 Run 狀態調整為 `ready-for-acceptance`
+2. 記錄完成時間與版本資訊
+3. 更新每個 Story 的當前狀態與測試勾稽結果
+4. 梳理並記錄 Agent 測試結果、待執行的 User Test 項目與風險提示
 
 ### 步驟 2: 更新 recent-runs.md
 
 **更新時機**：每次 Run 完成時立即更新
 
 **更新內容**：
-1. 在 `recent-runs.md` 的 Run 列表最上方新增完成的 Run
+1. 在 `recent-runs.md` 的 Run 列表最上方新增剛達到 `ready-for-acceptance` 的 Run
 2. 包含 Run 的基本資訊：
    - Run ID
    - 類型（Feature/Refactor/Bug Fix）
-   - 狀態（completed）
-   - 開始時間、完成時間
-   - 完成的 Stories 清單
-   - 測試結果摘要
-   - 推上線狀態
+   - 狀態（ready-for-acceptance／in-acceptance／accepted／closed）
+   - 開始時間、達到當前狀態的時間
+   - 涉及的 Stories 與各自狀態
+   - 測試結果摘要（Agent 測試完成情況、待驗收項目）
+   - 推上線狀態或部署情況（若適用）
 
 **維護規則**：
 - **保留數量**：最近 10 個 Run（超過 10 個時，移除最舊的）
@@ -112,8 +125,8 @@ recent-runs.md  (更新)   (更新)
 ### 步驟 4: 更新相關文件
 
 **更新 Story 狀態**：
-- 將 Story 狀態更新為 `dev-completed` 或 `completed`
-- 記錄測試結果
+- 依序將 Story 狀態從 `in-development` → `agent-testing` → `ready-for-user-test`，並逐項記錄功能測試結果
+- User Test 通過後更新為 `user-test-passed`，解決所有回饋後再標記為 `completed`
 
 **更新 Epic/Refactor/Issue**：
 - 更新對應的 Epic/Refactor/Issue 進度
@@ -194,20 +207,20 @@ recent-runs.md  (更新)   (更新)
 ### ✅ Run 完成檢查清單
 
 - [ ] 更新 `context/current-run.md`：
-  - [ ] 標記狀態為 `completed`
-  - [ ] 記錄完成時間
-  - [ ] 記錄所有 Story 的完成狀態
-  - [ ] 記錄測試結果（Agent 測試 + User Test）
-  - [ ] 列出 User Test 步驟（如果有的話）
+  - [ ] 依實際進度切換 Run 狀態（`draft` → `in-progress` → `ready-for-acceptance` → `in-acceptance` → `accepted` → `closed`）
+  - [ ] 每次狀態切換時記錄時間戳與摘要
+  - [ ] 維護 Run 內所有 Story 的目前狀態與測試結果
+  - [ ] 清楚列出待執行的 User Test 步驟與限制（若適用）
 
 - [ ] 更新 `docs/context/recent-runs.md`：
-  - [ ] 在列表最上方新增完成的 Run
-  - [ ] 包含 Run 的基本資訊（ID、類型、狀態、時間、Stories、測試結果）
+  - [ ] 在列表最上方新增最新狀態的 Run（至少包含達到 `ready-for-acceptance` 的時間點）
+  - [ ] 包含 Run 的基本資訊（ID、類型、狀態、時間、Stories、測試結果、部署狀態）
   - [ ] 如果超過 10 個 Run，移除最舊的記錄
 
 - [ ] 更新 Story 狀態：
-  - [ ] 更新所有完成的 Story 狀態為 `dev-completed` 或 `completed`
-  - [ ] 記錄測試結果到 Story 文件
+  - [ ] 依序調整狀態：`ready-for-dev` → `in-development` → `agent-testing` → `ready-for-user-test`
+  - [ ] 完成 User Test 後更新為 `user-test-passed`，確認無後續修正再標記為 `completed`
+  - [ ] 將每一項功能測試結果記錄到 Story 文件（包含新增的邊界條件）
 
 - [ ] 更新 Epic/Refactor/Issue：
   - [ ] 更新對應的 Epic/Refactor/Issue 進度
@@ -266,6 +279,6 @@ recent-runs.md  (更新)   (更新)
 
 ---
 
-**最後更新**: 2025-11-06  
+**最後更新**: 2025-11-07  
 **維護者**: 專案團隊
 

@@ -300,16 +300,17 @@ useEffect(() => {
 
 ### Agent 功能測試
 
-- [x] OAuth 授權 URL 中包含 `state` 參數
-- [x] OAuth 回調時，能從 `state` 參數中取得 Session ID
-- [x] OAuth 回調時，能正確驗證使用者
-- [x] 授權的商店正確關聯到當前使用者
-- [x] OAuth 回調後重導向到前端時，使用者認證狀態保持
-- [x] 前端在 OAuth 回調後，能正確恢復使用者認證狀態
-- [x] JWT Token 包含 Session ID
-- [x] 前端授權流程確保使用者已登入
-- [x] 資料備份腳本已建立
-- [x] 資料清理腳本已建立
+> ℹ️ 本次 QA 以逐項 code review 驗證以下項目，未執行實機流程。
+- [x] OAuth 授權 URL 中包含 `state` 參數（逐項 code review 確認）
+- [x] OAuth 回調時，能從 `state` 參數中取得 Session ID（逐項 code review 確認）
+- [x] OAuth 回調時，能正確驗證使用者（逐項 code review 確認）
+- [x] 授權的商店正確關聯到當前使用者（逐項 code review 確認）
+- [x] OAuth 回調後重導向到前端時，使用者認證狀態保持（逐項 code review 確認）
+- [x] 前端在 OAuth 回調後，能正確恢復使用者認證狀態（逐項 code review 確認）
+- [x] JWT Token 包含 Session ID（逐項 code review 確認）
+- [x] 前端授權流程確保使用者已登入（逐項 code review 確認）
+- [x] 資料備份腳本已建立（逐項 code review 確認）
+- [x] 資料清理腳本已建立（逐項 code review 確認）
 
 ### User Test 驗收標準
 
@@ -352,5 +353,5 @@ useEffect(() => {
 
 ---
 
-**最後更新**: 2025-11-06
+**最後更新**: 2025-11-07
 

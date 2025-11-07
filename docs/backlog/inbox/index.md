@@ -6,8 +6,8 @@
 
 ## 📊 當前狀態
 
-**未整理數量**: 2  
-**上次整理時間**: -  
+**未整理數量**: 0  
+**上次整理時間**: 2025-11-07  
 **下次整理**: 待定
 
 ---
@@ -16,10 +16,7 @@
 
 ### 📝 collected（待整理）
 
-| Note | 類型 | 建立日期 | 摘要 |
-|------|------|----------|------|
-| [Note 2025-11-06-002: Story 3.1-3.5 未涵蓋測試項目與優化建議](./note-2025-11-06-002.md) | Optimization / Bug | 2025-11-06 | Story 3.1-3.5 未涵蓋的測試項目、註冊流程防呆機制不完整、前後端 state 控管不順暢 |
-| [Note 2025-11-06-001: Render 免費方案冷啟動問題應對機制](./note-2025-11-06-001.md) | Optimization | 2025-11-06 | Render 免費方案冷啟動問題，需要建立前端狀態判斷、定期檢查機制、cron job 等應對方案 |
+目前沒有新的 collected notes。
 
 ---
 
@@ -29,7 +26,9 @@
 
 | Note | 類型 | 轉換日期 | 轉換為 | 相關文件 |
 |------|------|----------|--------|----------|
-| - | - | - | - | 目前沒有已轉換的 note |
+| [Note 2025-11-06-001: Render 免費方案冷啟動問題應對機制](../archive/inbox/processed/note-2025-11-06-001.md) | Optimization | 2025-11-07 | 轉為架構討論輸入（待後續建構獨立 Optimization Story） | 討論：`docs/archive/discussions/discussion-2025-11-07-multi-store-architecture.md` |
+| [Note 2025-11-06-002: Story 3.1-3.5 未涵蓋測試項目與優化建議](../archive/inbox/processed/note-2025-11-06-002.md) | Optimization / Bug | 2025-11-07 | 整合到 Epic 4 Stories（測試/UX 需求） | `docs/backlog/epics/epic-4-multi-store-management.md` |
+| [Note 2025-11-07-001: 商店授權端點公開性檢視](../archive/inbox/processed/note-2025-11-07-001.md) | Question | 2025-11-07 | 納入多商店權限決策議程與 Story 4.3 驗收 | `docs/archive/discussions/discussion-2025-11-07-multi-store-architecture.md` |
 
 ---
 

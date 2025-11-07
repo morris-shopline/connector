@@ -71,7 +71,7 @@
 
 **狀態流程**：
 ```
-planned → in-progress → dev-completed → user-test-passed → completed
+planned → ready-for-dev → in-development → agent-testing → ready-for-user-test → user-test-passed → completed
 ```
 
 ### Run
@@ -266,8 +266,9 @@ planned → in-progress → dev-completed → user-test-passed → completed
    - 如果碰到需要決策實作方案，就需要討論
    - 做成決策記錄到 `memory/decisions/`
 
-6. **狀態調整**
-   - 確定可以進入開發時，Story 狀態從 `planned` → 準備好進入開發
+6. **狀態調整與檢查**
+   - 所有前置資訊（技術需求、功能測試清單、User Test 步驟）整理完成後，才可將 Story 狀態從 `planned` 調整為 `ready-for-dev`
+   - 若仍有資料缺漏或測項未定義，維持 `planned` 狀態並補齊缺口
 
 7. **🚨 Story Review 流程（重要）**
    - **當建立多個相關 Story 時**（例如：Story 3.1-3.4），必須進行技術檢視
@@ -341,26 +342,32 @@ planned → in-progress → dev-completed → user-test-passed → completed
    - 列出要完成的 Stories（1-3 個）
    - **記錄 Review 狀態**：在 Run 文件中記錄相關 Review 報告的位置和狀態
 
-3. **開發**
+3. **開發啟動**
+   - 確認 Story 狀態為 `ready-for-dev`
+   - 將 Story 狀態調整為 `in-development` 後開始實作
    - 讀取 Story 文件（不需要再讀 memory/）
    - 直接依據 Story 文件實作
    - 持續更新 `context/current-run.md` 的進度
 
 4. **功能測試**
-   - 完成所有 Agent 可測試的項目
+   - 完成所有 Story 中列出的 Agent 功能測試項目
+   - 實作完成後將 Story 狀態調整為 `agent-testing`
+   - 逐項勾選測項並記錄測試結果到 Story 文件（若實作過程新增邊界條件，需同步補列測項）
    - 確保型別檢查、語法檢查、基礎邏輯都通過
-   - 記錄測試結果到 Story 文件
 
 5. **列出 User Test 步驟**
    - 提供清晰的 User Test 步驟
    - 說明無法自動測試的項目
    - 說明可能出現的問題
+   - 所有測項勾選完成且無待修正事項後，將 Story 狀態調整為 `ready-for-user-test`
 
 6. **完成 Run**
-   - 更新 Story 狀態為 `dev-completed`
+   - 確認本 Run 中的每個 Story 皆已達 `ready-for-user-test`
+   - 未達成前不得切換至下一個 Story 的實作
+   - 將 Run 狀態自 `in-progress` 調整為 `ready-for-acceptance`
    - 更新 Epic/Refactor/Issue 進度
    - 更新 `context/recent-runs.md`（在列表最上方新增完成的 Run）
-   - 更新 `context/current-run.md`（標記狀態為 `completed`，記錄完成時間和測試結果）
+   - 更新 `context/current-run.md`（標記狀態為 `ready-for-acceptance`，記錄完成時間和測試結果）
    - **注意**：此時不歸檔 `current-run.md`，等到下一個 Run 開始時才歸檔到 `archive/old-runs/`
 
 7. **下一個 Run 開始時**
@@ -391,15 +398,18 @@ planned → in-progress → dev-completed → user-test-passed → completed
 1. **User 執行測試**
    - 按照 Story 文件中的「User Test 預期步驟」
    - 在 browser 中實際操作
+   - 將 Run 狀態從 `ready-for-acceptance` 調整為 `in-acceptance`
 
 2. **結果記錄**
-   - 如果通過：Story 狀態 `dev-completed` → `user-test-passed`
-   - 如果有問題：記錄問題，可能需要開 Issue 或直接修復
+   - Story 初始狀態為 `ready-for-user-test`
+   - 如果通過：將 Story 狀態調整為 `user-test-passed`
+   - 如果有問題：記錄問題，回退至 `in-development` 或 `agent-testing` 後修復（必要時開 Issue）
 
 3. **Story 完成**
-   - User Test 通過後，觀察 1-2 個 Run
-   - 確認無問題後，Story 狀態 `user-test-passed` → `completed`
+   - User Test 通過後，觀察 1-2 個 Run（或等待用戶確認無後續修正需求）
+   - 確認無問題後，將 Story 狀態調整為 `completed`
    - 移動到 `archive/stories/`
+   - 所有相關 Story 完成後，將 Run 狀態依序調整為 `accepted`（用戶確認核心驗收通過）→ `closed`（用戶宣告結案）
 
 **關鍵**：
 - 驗收 = user 在 browser 中測試
@@ -583,9 +593,11 @@ planned → in-progress → dev-completed → user-test-passed → completed
 - `stories/` - 所有 Story（統一管理）
 
 **狀態**：
-- `planned` - 規劃中
-- `in-progress` - 進行中
-- `dev-completed` - 開發完成，等待 User Test
+- `planned` - 規劃中，需求與測項尚未定稿
+- `ready-for-dev` - 已完成規劃、測項與文件資訊準備，可以安排進 Run
+- `in-development` - 開發中
+- `agent-testing` - 開發完成，Agent 正在執行功能測試並逐項記錄結果
+- `ready-for-user-test` - Agent 測試全數通過，等待用戶驗收
 - `user-test-passed` - User Test 通過，觀察中
 - `completed` - 已完成且確認無問題（1-2 個 Run 後移到 archive）
 
@@ -724,6 +736,12 @@ planned → in-progress → dev-completed → user-test-passed → completed
 1. 無法自動測試的項目（明確列出步驟，說明為什麼）
 2. 可能出現的問題（列出問題及解決方案）
 3. User Test 步驟（提供清晰的步驟，說明預期結果）
+
+**狀態節點**：
+- `in-progress` → `ready-for-acceptance`：Run 內所有 Story 狀態皆為 `ready-for-user-test`
+- `ready-for-acceptance` → `in-acceptance`：User 開始驗收，逐一檢視故事
+- `in-acceptance` → `accepted`：User 完成驗收，但仍等待最終確認或潛在回饋
+- `accepted` → `closed`：User 明確表示驗收通過，Run 正式結案（若 User 提出問題需回退對應 Story 狀態並重新啟動 Run 或新建 Run）
 
 ---
 
