@@ -1,17 +1,6 @@
 import { getRedisClient } from './redis'
 import crypto from 'crypto'
 
-const inMemorySessions = new Map<string, Session>()
-
-function cleanupExpiredSessions(): void {
-  const now = Date.now()
-  for (const [sessionId, session] of inMemorySessions.entries()) {
-    if (session.expiresAt <= now) {
-      inMemorySessions.delete(sessionId)
-    }
-  }
-}
-
 interface Session {
   userId: string
   email: string
@@ -30,12 +19,14 @@ const SESSION_TTL = 7 * 24 * 60 * 60 // 7 天（秒）
 export async function createSession(userId: string, email: string): Promise<string> {
   console.log('🔍 [DEBUG] createSession() 開始')
   const redis = getRedisClient()
-  if (redis) {
-    console.log('✅ [DEBUG] Redis 可用，開始建立 Session')
-  } else {
-    console.warn('⚠️  [DEBUG] Redis 不可用，改用記憶體暫存 Session（僅開發環境建議）')
+  if (!redis) {
+    console.error('❌ [DEBUG] Redis 不可用，無法建立 Session')
+    // 如果 Redis 不可用，可以降級到資料庫儲存（未來擴展）
+    // 目前先拋出錯誤，確保 Session 管理的一致性
+    throw new Error('Redis not available')
   }
 
+  console.log('✅ [DEBUG] Redis 可用，開始建立 Session')
   const sessionId = crypto.randomBytes(32).toString('hex')
   const now = Date.now()
   const expiresAt = now + SESSION_TTL * 1000
@@ -47,35 +38,29 @@ export async function createSession(userId: string, email: string): Promise<stri
     expiresAt,
   }
 
-  if (redis) {
-    const redisKey = `session:${sessionId}`
-    console.log('🔍 [DEBUG] Session 資訊:', {
-      sessionId: sessionId.substring(0, 10) + '...',
-      userId,
-      email,
-      expiresAt: new Date(expiresAt).toISOString(),
-      redisKey
-    })
+  const redisKey = `session:${sessionId}`
+  console.log('🔍 [DEBUG] Session 資訊:', {
+    sessionId: sessionId.substring(0, 10) + '...',
+    userId,
+    email,
+    expiresAt: new Date(expiresAt).toISOString(),
+    redisKey
+  })
 
-    await redis.setex(
-      redisKey,
-      SESSION_TTL,
-      JSON.stringify(session)
-    )
+  await redis.setex(
+    redisKey,
+    SESSION_TTL,
+    JSON.stringify(session)
+  )
 
-    console.log('✅ [DEBUG] Session 已儲存到 Redis:', redisKey)
-    
-    // 驗證儲存結果
-    const verify = await redis.get(redisKey)
-    if (verify) {
-      console.log('✅ [DEBUG] Session 驗證成功，Redis 中確實存在')
-    } else {
-      console.error('❌ [DEBUG] Session 驗證失敗，Redis 中不存在')
-    }
+  console.log('✅ [DEBUG] Session 已儲存到 Redis:', redisKey)
+  
+  // 驗證儲存結果
+  const verify = await redis.get(redisKey)
+  if (verify) {
+    console.log('✅ [DEBUG] Session 驗證成功，Redis 中確實存在')
   } else {
-    inMemorySessions.set(sessionId, session)
-    cleanupExpiredSessions()
-    console.log('✅ [DEBUG] Session 已儲存到記憶體暫存（開發模式）')
+    console.error('❌ [DEBUG] Session 驗證失敗，Redis 中不存在')
   }
 
   return sessionId
@@ -90,15 +75,9 @@ export async function getSession(sessionId: string): Promise<Session | null> {
   console.log('🔍 [DEBUG] getSession() 開始，sessionId:', sessionId ? sessionId.substring(0, 10) + '...' : 'null')
   const redis = getRedisClient()
   if (!redis) {
-    cleanupExpiredSessions()
-    const session = inMemorySessions.get(sessionId) ?? null
-    if (!session) {
-      console.warn('⚠️  [DEBUG] 記憶體暫存無對應 Session，可能尚未登入或已過期')
-      return null
-    }
-
-    console.log('✅ [DEBUG] 從記憶體暫存取得 Session')
-    return session
+    console.error('❌ [DEBUG] Redis 不可用，無法取得 Session')
+    // 如果 Redis 不可用，返回 null（降級處理）
+    return null
   }
 
   const redisKey = `session:${sessionId}`
@@ -129,8 +108,7 @@ export async function getSession(sessionId: string): Promise<Session | null> {
 export async function deleteSession(sessionId: string): Promise<void> {
   const redis = getRedisClient()
   if (!redis) {
-    inMemorySessions.delete(sessionId)
-    cleanupExpiredSessions()
+    // 如果 Redis 不可用，靜默失敗（降級處理）
     return
   }
 
