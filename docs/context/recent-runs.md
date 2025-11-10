@@ -56,7 +56,7 @@
 - ✅ Issue 2025-11-06-001: URL 參數與 Zustand Store 同步機制導致閃跳問題 → resolved
 - ✅ Issue 2025-11-07-001: OAuth Token 過期時誤觸發 Admin 登出 → resolved
 
-**推上線狀態**: ✅ 準備推上線
+**推上線狀態**: ✅ 已推上線（2025-11-10，Commit: 235dfd6）
 
 ---
 
