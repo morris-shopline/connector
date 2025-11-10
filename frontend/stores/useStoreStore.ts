@@ -1,46 +1,123 @@
 import { create } from 'zustand'
 
-interface StoreState {
-  selectedHandle: string | null
-  lockedHandle: string | null
-  selectedPlatform: string | null
-  selectedAPI: string | null
-  
-  setSelectedHandle: (handle: string | null) => void
-  lockHandle: (handle: string) => void
-  unlockHandle: () => void
-  setSelectedPlatform: (platform: string | null) => void
-  setSelectedAPI: (api: string | null) => void
+type Nullable<T> = T | null
+
+interface ConnectionState {
+  selectedPlatform: Nullable<string>
+  selectedConnectionId: Nullable<string>
+  selectedConnectionItemId: Nullable<string>
+  lockedConnectionItemId: Nullable<string>
+
+  setSelectedPlatform: (platform: Nullable<string>) => void
+  setSelectedConnectionId: (connectionId: Nullable<string>) => void
+  setSelectedConnectionItemId: (connectionItemId: Nullable<string>) => void
+  setSelectedConnection: (params: {
+    platform: Nullable<string>
+    connectionId: Nullable<string>
+    connectionItemId: Nullable<string>
+  }) => void
+  lockConnectionItem: (connectionItemId: string) => void
+  unlockConnectionItem: () => void
+  resetState: () => void
 }
 
-export const useStoreStore = create<StoreState>((set, get) => ({
-  selectedHandle: null,
-  lockedHandle: null,
+const initialState: Pick<
+  ConnectionState,
+  | 'selectedPlatform'
+  | 'selectedConnectionId'
+  | 'selectedConnectionItemId'
+  | 'lockedConnectionItemId'
+> = {
   selectedPlatform: null,
-  selectedAPI: null,
-  
-  setSelectedHandle: (handle) => {
-    const { lockedHandle } = get()
-    if (lockedHandle && handle !== lockedHandle) {
-      console.warn(`Cannot switch store: ${lockedHandle} is locked`)
+  selectedConnectionId: null,
+  selectedConnectionItemId: null,
+  lockedConnectionItemId: null,
+}
+
+export const useStoreStore = create<ConnectionState>((set, get) => ({
+  ...initialState,
+
+  setSelectedPlatform: (platform) => {
+    if (get().selectedPlatform === platform) {
       return
     }
-    set({ selectedHandle: handle })
-  },
-  
-  lockHandle: (handle) => {
-    set({ lockedHandle: handle })
-  },
-  
-  unlockHandle: () => {
-    set({ lockedHandle: null })
-  },
-  
-  setSelectedPlatform: (platform) => {
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[Store] setSelectedPlatform', { platform })
+    }
     set({ selectedPlatform: platform })
   },
+
+  setSelectedConnectionId: (connectionId) => {
+    if (get().selectedConnectionId === connectionId) {
+      return
+    }
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[Store] setSelectedConnectionId', { connectionId })
+    }
+    set({ selectedConnectionId: connectionId })
+  },
+
+  setSelectedConnectionItemId: (connectionItemId) => {
+    const { lockedConnectionItemId } = get()
+    if (lockedConnectionItemId && connectionItemId && lockedConnectionItemId !== connectionItemId) {
+      console.warn(`Cannot switch connection item: ${lockedConnectionItemId} is locked`)
+      return
+    }
+    if (get().selectedConnectionItemId === connectionItemId) {
+      return
+    }
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[Store] setSelectedConnectionItemId', { connectionItemId })
+    }
+    set({ selectedConnectionItemId: connectionItemId })
+  },
   
-  setSelectedAPI: (api) => {
-    set({ selectedAPI: api })
+  setSelectedConnection: ({ platform, connectionId, connectionItemId }) => {
+    const { lockedConnectionItemId } = get()
+    if (lockedConnectionItemId && connectionItemId && lockedConnectionItemId !== connectionItemId) {
+      console.warn(`Cannot switch connection: ${lockedConnectionItemId} is locked`)
+      return
+    }
+    const state = get()
+    if (
+      state.selectedPlatform === (platform ?? null) &&
+      state.selectedConnectionId === (connectionId ?? null) &&
+      state.selectedConnectionItemId === (connectionItemId ?? null)
+    ) {
+      return
+    }
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[Store] setSelectedConnection', {
+        platform,
+        connectionId,
+        connectionItemId,
+      })
+    }
+    set({
+      selectedPlatform: platform ?? null,
+      selectedConnectionId: connectionId ?? null,
+      selectedConnectionItemId: connectionItemId ?? null,
+    })
+  },
+  
+  lockConnectionItem: (connectionItemId) => {
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[Store] lockConnectionItem', { connectionItemId })
+    }
+    set({ lockedConnectionItemId: connectionItemId })
+  },
+
+  unlockConnectionItem: () => {
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[Store] unlockConnectionItem')
+    }
+    set({ lockedConnectionItemId: null })
+  },
+
+  resetState: () => {
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[Store] resetState')
+    }
+    set({ ...initialState })
   },
 }))

@@ -1,10 +1,18 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/router'
 import { useStores } from '../hooks/useStores'
 import { useAdminAPI } from '../hooks/useAdminAPI'
 import { useStoreStore } from '../stores/useStoreStore'
 import { Header } from '../components/Header'
 import { ProtectedRoute } from '../components/ProtectedRoute'
+import { useConnection, type ConnectionParams } from '../hooks/useConnection'
+import type { StoreInfo } from '@/types'
+
+type StoreLike = StoreInfo & {
+  platform?: string | null
+  connectionId?: string | null
+  connectionItemId?: string | null
+}
 
 // API 功能定義
 type ApiFunction = {
@@ -85,7 +93,7 @@ const FUNCTION_GROUPS = {
 
 function AdminAPITest() {
   const router = useRouter()
-  const { selectedHandle, setSelectedHandle, lockedHandle } = useStoreStore()
+  const lockedConnectionItemId = useStoreStore((state) => state.lockedConnectionItemId)
   const [selectedFunction, setSelectedFunction] = useState<string | null>(null)
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set(['store', 'products', 'orders', 'inventory']))
   const [response, setResponse] = useState<any>(null)
@@ -95,66 +103,136 @@ function AdminAPITest() {
   const [paramValues, setParamValues] = useState<Record<string, string>>({})
 
   const { stores } = useStores()
-  const adminAPI = useAdminAPI(selectedHandle || null)
-  
-  // 使用 ref 追蹤上次處理的 URL handle，避免不必要的更新
-  const lastProcessedUrlHandleRef = useRef<string | null>(null)
-  
-  // 從 URL 參數讀取 handle 並自動選擇（只在 URL 變化時執行）
-  useEffect(() => {
-    if (!router.isReady) return
-    
-    const handleFromQuery = router.query.handle as string || null
-    
-    // 只在 URL handle 真正變化時才處理（避免重複執行）
-    if (handleFromQuery !== lastProcessedUrlHandleRef.current) {
-      lastProcessedUrlHandleRef.current = handleFromQuery
-      
-      // 如果 URL 有 handle，更新 Zustand Store（即使已經相同也要更新，確保狀態一致）
-      if (handleFromQuery) {
-        const currentHandle = useStoreStore.getState().selectedHandle
-        if (handleFromQuery !== currentHandle) {
-          setSelectedHandle(handleFromQuery)
+  const mapStoreToConnection = useCallback((store: StoreLike): ConnectionParams => {
+    const platform = store.platform ?? 'shopline'
+    const connectionId = store.connectionId ?? store.shoplineId ?? store.id ?? null
+    const connectionItem = store.connectionItemId ?? store.id ?? store.shoplineId ?? null
+
+    return {
+      platform,
+      connectionId,
+      connectionItemId: connectionItem,
+    }
+  }, [])
+
+  const resolveConnectionItem = useCallback(
+    (connectionItemId: string) => {
+      const target = stores.find((store) => {
+        if (!store) return false
+        const enriched = store as StoreLike
+        const candidateIds = [enriched.id, enriched.shoplineId, enriched.connectionItemId]
+        return candidateIds.filter(Boolean).includes(connectionItemId)
+      })
+
+      if (!target) {
+        return null
+      }
+
+      return mapStoreToConnection(target as StoreLike)
+    },
+    [stores, mapStoreToConnection]
+  )
+
+  const { currentConnection, applyConnection } = useConnection()
+
+  const defaultConnection = useMemo(() => {
+    if (!stores.length) {
+      return null
+    }
+    return mapStoreToConnection(stores[0])
+  }, [stores, mapStoreToConnection])
+
+  // ⚠️ 移除自動設置 Connection 的邏輯（違反 State 分層原則）
+  // 如果 URL 沒有 Connection 參數，應該顯示「請選擇商店」，不自動設置
+  // useEffect(() => {
+  //   if (!defaultConnection) {
+  //     return
+  //   }
+  //   if (currentConnection.connectionItemId) {
+  //     return
+  //   }
+  //   applyConnection(defaultConnection)
+  // }, [applyConnection, currentConnection.connectionItemId, defaultConnection])
+
+  const activeStore = useMemo(() => {
+    return (
+      stores.find((store) => {
+        if (!store) return false
+        const params = mapStoreToConnection(store)
+        if (currentConnection.connectionItemId && params.connectionItemId === currentConnection.connectionItemId) {
+          return true
+        }
+        if (currentConnection.connectionId && params.connectionId === currentConnection.connectionId) {
+          return true
+        }
+        return false
+      }) || null
+    )
+  }, [currentConnection.connectionId, currentConnection.connectionItemId, stores, mapStoreToConnection])
+
+  const activeHandle = useMemo(
+    () =>
+      activeStore?.handle ||
+      activeStore?.shoplineId ||
+      currentConnection.connectionItemId ||
+      currentConnection.connectionId ||
+      null,
+    [activeStore, currentConnection.connectionId, currentConnection.connectionItemId]
+  )
+
+  const activeConnectionItemId = useMemo(() => {
+    if (activeStore) {
+      return mapStoreToConnection(activeStore).connectionItemId ?? null
+    }
+    return currentConnection.connectionItemId ?? null
+  }, [activeStore, currentConnection.connectionItemId, mapStoreToConnection])
+
+  const adminAPI = useAdminAPI({
+    handle: activeHandle,
+    connectionItemId: activeConnectionItemId,
+  })
+
+  const handleStoreChange = async (newHandle: string | null) => {
+    if (!newHandle) {
+      await applyConnection({
+        platform: null,
+        connectionId: null,
+        connectionItemId: null,
+      })
           setResponse(null)
           setError(null)
           setSelectedFunction(null)
-        }
-      }
+      return
     }
-  }, [router.isReady, router.query.handle, setSelectedHandle]) // 只依賴 URL，不依賴 selectedHandle，避免循環
 
-  // 當用戶手動選擇商店時，同時更新 Zustand Store 和 URL
-  const handleStoreChange = (newHandle: string | null) => {
-    // 檢查是否有鎖定的 handle
-    if (lockedHandle && newHandle !== lockedHandle) {
-      alert(`無法切換商店：${lockedHandle} 正在操作中，請等待操作完成`)
+    const targetStore = stores.find((store) => {
+      if (!store) return false
+      return (
+        store.handle === newHandle ||
+        store.shoplineId === newHandle ||
+        store.id === newHandle
+      )
+    })
+
+    if (!targetStore) {
+      return
+    }
+
+    const params = mapStoreToConnection(targetStore)
+
+    if (
+      lockedConnectionItemId &&
+      params.connectionItemId &&
+      lockedConnectionItemId !== params.connectionItemId
+    ) {
+      alert(`無法切換商店：${lockedConnectionItemId} 正在操作中，請等待操作完成`)
       return
     }
     
-    // 更新 ref，避免第一個 useEffect 重複執行
-    lastProcessedUrlHandleRef.current = newHandle || null
-    
-    // 更新 Zustand Store
-    setSelectedHandle(newHandle)
+    await applyConnection(params)
     setResponse(null)
     setError(null)
     setSelectedFunction(null)
-    
-    // 更新 URL（使用 replace 避免觸發第一個 useEffect 的循環）
-    if (router.isReady) {
-      if (newHandle) {
-        router.replace({
-          pathname: router.pathname,
-          query: { ...router.query, handle: newHandle }
-        }, undefined, { shallow: true })
-      } else {
-        const { handle, ...restQuery } = router.query
-        router.replace({
-          pathname: router.pathname,
-          query: restQuery
-        }, undefined, { shallow: true })
-      }
-    }
   }
 
   const toggleGroup = (group: string) => {
@@ -176,7 +254,7 @@ function AdminAPITest() {
   }
 
   const handleSubmit = async () => {
-    if (!selectedHandle || !selectedFunction) return
+    if (!activeHandle || !selectedFunction) return
 
     setError(null)
     setResponse(null)
@@ -228,8 +306,8 @@ function AdminAPITest() {
   }
 
   const currentFunction = selectedFunction ? API_FUNCTIONS[selectedFunction as keyof typeof API_FUNCTIONS] : null
-  const endpoint = currentFunction && selectedHandle
-    ? currentFunction.endpoint(selectedHandle).replace(':id', paramValues.productId || ':id')
+  const endpoint = currentFunction && activeHandle
+    ? currentFunction.endpoint(activeHandle).replace(':id', paramValues.productId || ':id')
     : ''
 
   return (
@@ -247,11 +325,11 @@ function AdminAPITest() {
                 選擇商店
               </label>
               <select
-                value={selectedHandle || ''}
+                value={activeHandle || ''}
                 onChange={(e) => {
                   handleStoreChange(e.target.value || null)
                 }}
-                disabled={!!lockedHandle}
+                disabled={!!lockedConnectionItemId}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">請選擇商店</option>
@@ -261,9 +339,9 @@ function AdminAPITest() {
                   </option>
                 ))}
               </select>
-              {lockedHandle && (
+              {lockedConnectionItemId && (
                 <p className="mt-2 text-xs text-yellow-600">
-                  ⚠️ {lockedHandle} 正在操作中，無法切換商店
+                  ⚠️ {lockedConnectionItemId} 正在操作中，無法切換商店
                 </p>
               )}
             </div>
@@ -310,7 +388,7 @@ function AdminAPITest() {
 
           {/* Right Panel - Request & Response */}
           <div className="lg:col-span-2 space-y-4">
-            {!selectedHandle ? (
+            {!activeHandle ? (
               <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
                 <p className="text-sm text-yellow-800">請先選擇商店</p>
               </div>
@@ -417,7 +495,7 @@ function AdminAPITest() {
                     {/* 送出測試按鈕 */}
                     <button
                       onClick={handleSubmit}
-                      disabled={!selectedHandle || adminAPI.isLoading || (currentFunction.requiresParam && !paramValues[currentFunction.requiresParam.name])}
+                      disabled={!activeHandle || adminAPI.isLoading || (currentFunction.requiresParam && !paramValues[currentFunction.requiresParam.name])}
                       className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {adminAPI.isLoading ? '執行中...' : '送出測試'}

@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client'
-import { 
+import {
   generateSignature, 
   verifySignature, 
   verifyGetSignature, 
@@ -8,8 +8,9 @@ import {
   verifyWebhookSignature as verifyWebhookSignatureUtil
 } from '../utils/signature'
 import { getRedisClient } from '../utils/redis'
-import { 
-  ShoplineAuthParams, 
+import { filterStoresByUser } from '../utils/query-filter'
+import {
+  ShoplineAuthParams,
   ShoplineTokenResponse,
   StoreInfoResponse,
   ProductListParams,
@@ -407,11 +408,16 @@ export class ShoplineService {
   /**
    * 取得所有已授權的商店
    */
-  async getAllStores() {
+  async getAllStores(userId: string) {
     return prisma.store.findMany({
-      where: { isActive: true },
+      where: {
+        ...filterStoresByUser(userId),
+        isActive: true
+      },
+      orderBy: { createdAt: 'desc' },
       select: {
         id: true,
+        userId: true,
         shoplineId: true,
         handle: true,
         name: true,

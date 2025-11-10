@@ -21,9 +21,9 @@
 | Refactor | 狀態 | 進度 | 對應 Roadmap | 相關 Run |
 |----------|------|------|--------------|----------|
 | [Epic 1: Bug 修復與架構優化](./epics/epic-1-bug-fix-and-optimization.md) | ✅ completed | 100% | Phase 0 | Run 2 |
-| [Refactor 1: 狀態管理階段 1 基礎架構（Phase 1 準備）](./refactors/refactor-1-state-management-phase1.md) | 🔄 in-progress | 75% | Phase 1 準備 | run-2025-11-05-01 |
+| [Refactor 1: 狀態管理階段 1 基礎架構（Phase 1 準備）](./refactors/refactor-1-state-management-phase1.md) | ✅ completed | 100% | Phase 1 準備 | run-2025-11-05-01, run-2025-11-10-01 |
 | [Refactor 2: 狀態管理階段 2 Redux 遷移（Phase 3.2 觸發）](./refactors/refactor-2-redux-migration.md) | ⏳ planned | 0% | Phase 3.2 準備 | - |
-| [Refactor 3: Connection 基礎重構（Phase 1.2 前置）](./refactors/refactor-3-connection-foundation.md) | ⏳ planned | 0% | Phase 1.2 前置 | - |
+| [Refactor 3: Connection 基礎重構（Phase 1.2 前置）](./refactors/refactor-3-connection-foundation.md) | ✅ completed | 100% | Phase 1.2 前置 | run-2025-11-10-01 |
 
 ---
 
@@ -31,8 +31,8 @@
 
 | Issue | 類型 | 狀態 | 優先級 | 相關 Run |
 |-------|------|------|--------|----------|
-| [Issue 2025-11-06-001: URL 參數與 Zustand Store 同步機制導致閃跳問題](./issues/issue-2025-11-06-001.md) | 架構設計 | 🔄 open | High | run-2025-11-05-01 |
-| [Issue 2025-11-07-001: OAuth Token 過期時誤觸發 Admin 登出](./issues/issue-2025-11-07-001.md) | Bug | 🔄 open | High | run-2025-11-06-01 |
+| [Issue 2025-11-06-001: URL 參數與 Zustand Store 同步機制導致閃跳問題](./issues/issue-2025-11-06-001.md) | 架構設計 | ✅ resolved | High | run-2025-11-10-01 |
+| [Issue 2025-11-07-001: OAuth Token 過期時誤觸發 Admin 登出](./issues/issue-2025-11-07-001.md) | Bug | ✅ resolved | High | run-2025-11-10-01 |
 
 ---
 
@@ -100,7 +100,7 @@
 | Story | 類型 | 所屬 | 狀態 | 完成 Run |
 |-------|------|------|------|----------|
 | [Story R1.0: Zustand 階段 1 核心實作](./stories/story-r1-0-zustand-implementation.md) | Refactor | Refactor 1 | ✅ completed | run-2025-11-05-01 |
-| Story R1.1: 多平台狀態管理擴展（Phase 2 支援） | Refactor | Refactor 1 | ⏳ planned | - |
+| [Story R1.1: 多平台狀態管理擴展（Phase 2 支援）](./stories/story-r1-1-multi-platform-state.md) | Refactor | Refactor 1 | ✅ ready-for-dev | run-2025-11-10-01 |
 | Story R1.2: 多裝置 Session 狀態管理（Phase 2 支援） | Refactor | Refactor 1 | ⏳ planned | - |
 | Story R1.3: 資料流狀態管理擴展（Phase 3.1 支援） | Refactor | Refactor 1 | ⏳ planned | - |
 | Story R1.4: 資料流執行狀態 UI（Phase 3.1 支援） | Refactor | Refactor 1 | ⏳ planned | - |
@@ -118,9 +118,9 @@
 
 | Story | 類型 | 所屬 | 狀態 | 完成 Run |
 |-------|------|------|------|----------|
-| [Story R3.0: Connection 資料模型與 Migration](./stories/story-r3-0-connection-data-model.md) | Refactor | Refactor 3 | ⏳ planned | - |
-| [Story R3.1: Connection 狀態同步與 URL 單一來源](./stories/story-r3-1-connection-state-sync.md) | Refactor | Refactor 3 | ⏳ planned | - |
-| [Story R3.2: Token Lifecycle 與重新授權流程](./stories/story-r3-2-token-lifecycle.md) | Refactor | Refactor 3 | ⏳ planned | - |
+| [Story R3.0: Connection 資料模型與 Migration](./stories/story-r3-0-connection-data-model.md) | Refactor | Refactor 3 | ✅ ready-for-dev | run-2025-11-10-01 |
+| [Story R3.1: Connection 狀態同步與 URL 單一來源](./stories/story-r3-1-connection-state-sync.md) | Refactor | Refactor 3 | ✅ ready-for-dev | run-2025-11-10-01 |
+| [Story R3.2: Token Lifecycle 與重新授權流程](./stories/story-r3-2-token-lifecycle.md) | Refactor | Refactor 3 | ✅ ready-for-dev | run-2025-11-10-01 |
 
 ---
 

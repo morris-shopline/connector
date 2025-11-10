@@ -6,6 +6,60 @@
 
 ## Run 列表
 
+### ✅ Run 2025-11-10-01: Connection 基礎重構（Phase 1.2 前置）
+
+**Run ID**: run-2025-11-10-01  
+**類型**: Refactor + Feature Integration  
+**狀態**: ✅ closed  
+**開始時間**: 2025-11-10  
+**完成時間**: 2025-11-10
+
+**Stories**:
+- [Story R1.1: 多平台狀態管理擴展](../backlog/stories/story-r1-1-multi-platform-state.md) ✅ completed
+- [Story R3.0: Connection 資料模型與 Migration](../backlog/stories/story-r3-0-connection-data-model.md) ✅ completed
+- [Story R3.1: Connection 狀態同步](../backlog/stories/story-r3-1-connection-state-sync.md) ✅ completed
+- [Story R3.2: Token Lifecycle 與重新授權流程](../backlog/stories/story-r3-2-token-lifecycle.md) ✅ completed
+
+**完成內容**:
+- ✅ R1.1: Connection 狀態管理基礎（Zustand、Router Query、localStorage）
+  - Zustand Store 更新為 Connection 欄位（selectedPlatform, selectedConnectionId, selectedConnectionItemId）
+  - 登入/登出流程整合完成，SWR 快取清除機制實作
+  - State 分層策略正確實作（Zustand 是唯一 Source of Truth）
+- ✅ R3.0: Connection 資料模型實作
+  - Prisma schema 更新（integration_accounts, connection_items）
+  - Migration script 建立並執行成功
+  - ConnectionRepository 建立完成
+  - `/api/connections` API 端點建立完成
+- ✅ R3.1: Connection 狀態同步完成
+  - URL → Zustand 初始化實作（在 `_app.tsx` 層級）
+  - 跨頁面切換與 Browser Back/Forward 正常運作
+  - State 分層策略正確實作
+- ✅ R3.2: Token lifecycle 標準化
+  - 前端錯誤處理機制實作（根據錯誤碼區分 TOKEN_EXPIRED 和 SESSION_EXPIRED）
+  - Token 過期提示 UI（Modal）實作
+  - 重新授權流程實作完成
+
+**測試結果**:
+- ✅ Agent 功能測試：所有 Story 通過
+- ✅ User Test：所有功能測試通過（2025-11-10）
+  - Connection 狀態管理正常
+  - 登入/登出流程正確
+  - SWR 快取清除機制正常運作
+  - Token 過期處理正常
+  - 重新授權流程正常運作
+
+**修復項目**:
+- ✅ 登出後登入新帳號仍能看到舊資料 → 已修復（清除 SWR 快取）
+- ✅ 登入時清除所有舊的快取和狀態 → 已實作
+
+**相關 Issue**:
+- ✅ Issue 2025-11-06-001: URL 參數與 Zustand Store 同步機制導致閃跳問題 → resolved
+- ✅ Issue 2025-11-07-001: OAuth Token 過期時誤觸發 Admin 登出 → resolved
+
+**推上線狀態**: ✅ 準備推上線
+
+---
+
 ### ✅ Run 2025-11-07-01: Story 3.x 認證 / 授權 QA Regression
 
 **Run ID**: run-2025-11-07-01  
@@ -23,16 +77,16 @@
 
 **測試結果**:
 - ✅ Story 3.1 / 3.2 實機 API / Session 測試完成
-- ✅ Story 3.3 多租戶資料隔離實測完成，OAuth 授權流程維持人工測試待補
-- 🔍 Story 3.4 / 3.5 因需完整前端操作與 Shopline 平台授權，改以逐項 code review 驗證
+- ✅ Story 3.3 多租戶資料隔離實測完成；2025-11-10 使用者指示將 OAuth 新增商店綁定視為結案，待未來 Run 覆測
+- 🔍 Story 3.4 / 3.5 因需完整前端操作與 Shopline 平台授權，改以逐項 code review 驗證，2025-11-10 使用者簽核後暫視為完成
 
 **折衷方式**:
 - 前端 UI 與 OAuth 授權流程無法由 Agent 實機操作，改由 code review 驗證邏輯一致性
 - 風險與說明記錄於 `docs/context/current-run.md`
 
 **已知風險 / 待驗收**:
-- Story 3.4 / 3.5 仍需 Human User Test 覆跑完整流程
-- Story 3.3 OAuth 新增商店綁定僅於 code review 確認未實際覆測
+- Story 3.4 / 3.5 若需實機流程仍需 Human User Test，已於 2025-11-10 由使用者簽核暫結
+- Story 3.3 OAuth 新增商店綁定待未來 Run 覆測，2025-11-10 由使用者簽核視為完成
 
 **推上線狀態**: ⏳ 待 User Test 確認
 

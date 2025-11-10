@@ -1,24 +1,36 @@
 import { StoreInfo } from '@/types'
 import { format } from 'date-fns'
 import { zhTW } from 'date-fns/locale/index.js'
-import Link from 'next/link'
-import { useStoreStore } from '../stores/useStoreStore'
 import { useRouter } from 'next/router'
+import { type ConnectionParams } from '../hooks/useConnection'
 
 interface StoreCardProps {
   store: StoreInfo
+  onSelect?: (params: ConnectionParams) => Promise<void> | void
 }
 
-export function StoreCard({ store }: StoreCardProps) {
+export function StoreCard({ store, onSelect }: StoreCardProps) {
   const handle = store.handle || store.shoplineId
-  const { setSelectedHandle } = useStoreStore()
   const router = useRouter()
   
-  const handleClick = () => {
-    // 更新 Zustand Store
-    setSelectedHandle(handle)
-    // 導航到 admin-api-test 頁面
-    router.push(`/admin-api-test?handle=${encodeURIComponent(handle)}`)
+  const handleClick = async () => {
+    const platform = (store as any).platform ?? 'shopline'
+    const connectionId = (store as any).connectionId ?? store.shoplineId ?? store.id ?? null
+    const connectionItemId = store.id ?? store.shoplineId ?? null
+    const params: ConnectionParams = {
+      platform,
+      connectionId,
+      connectionItemId,
+    }
+
+    // 現階段簡化：只更新 Zustand，不更新 URL
+    // 1. 先更新 Zustand（Source of Truth）
+    if (onSelect) {
+      onSelect(params)
+    }
+
+    // 2. 然後導航到新頁面（不帶 query parameters，因為現階段不會有 URL 分享上下文的情境）
+    router.push('/admin-api-test')
   }
   
   return (

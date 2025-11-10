@@ -1,23 +1,67 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { useStores } from '../hooks/useStores'
 import { useWebhookEvents } from '../hooks/useWebhookEvents'
 import { useHealthCheck } from '../hooks/useHealthCheck'
-import { useStoreStore } from '../stores/useStoreStore'
 import { useAuthStore } from '../stores/useAuthStore'
 import { StoreCard } from '../components/StoreCard'
 import { WebhookEventCard } from '../components/WebhookEventCard'
 import { Header } from '../components/Header'
 import { ProtectedRoute } from '../components/ProtectedRoute'
+import { useConnection, type ConnectionParams } from '../hooks/useConnection'
+import type { StoreInfo } from '@/types'
+
+type StoreLike = StoreInfo & {
+  platform?: string | null
+  connectionId?: string | null
+  connectionItemId?: string | null
+}
 
 function Home() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<'stores' | 'events'>('stores')
-  const { selectedHandle, setSelectedHandle } = useStoreStore()
   const { user, isAuthenticated } = useAuthStore()
-  const [storeHandle, setStoreHandle] = useState<string>(selectedHandle || 'paykepoc') // 預設測試用的 handle
+  const [storeHandle, setStoreHandle] = useState<string>('paykepoc')
   const [showAuthDialog, setShowAuthDialog] = useState<boolean>(false)
   const { stores, isLoading: storesLoading, isError: storesError, mutate: refetchStores } = useStores()
+  const { currentConnection, applyConnection } = useConnection()
+
+  const defaultConnection = useMemo<ConnectionParams | null>(() => {
+    if (!stores.length) {
+      return null
+    }
+
+    const primary = stores[0] as StoreLike
+    if (!primary) {
+      return null
+    }
+
+    const platform = primary.platform ?? 'shopline'
+    const connectionId = primary.connectionId ?? primary.shoplineId ?? primary.id ?? null
+    const connectionItemId = primary.id ?? primary.shoplineId ?? null
+
+    if (!connectionItemId) {
+      return null
+    }
+
+    return {
+      platform,
+      connectionId,
+      connectionItemId,
+    }
+  }, [stores])
+
+  // ⚠️ 移除自動設置 Connection 的邏輯（違反 State 分層原則）
+  // 如果 URL 沒有 Connection 參數，應該顯示「請選擇商店」，不自動設置
+  // useEffect(() => {
+  //   if (!defaultConnection) {
+  //     return
+  //   }
+  //   if (currentConnection.connectionItemId) {
+  //     return
+  //   }
+  //   applyConnection(defaultConnection)
+  // }, [applyConnection, currentConnection.connectionItemId, defaultConnection])
   
   // 除錯資訊：監控 stores 變化
   useEffect(() => {
@@ -262,7 +306,7 @@ function Home() {
                       onChange={(e) => {
                         const newHandle = e.target.value
                         setStoreHandle(newHandle)
-                        setSelectedHandle(newHandle)
+                        // 移除 setSelectedHandle：輸入時不應立即更新 Connection 狀態
                       }}
                       placeholder="例如: paykepoc"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -327,7 +371,7 @@ function Home() {
             {!storesLoading && !storesError && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {stores.map((store) => (
-                  <StoreCard key={store.id} store={store} />
+                  <StoreCard key={store.id} store={store} onSelect={applyConnection} />
                 ))}
                 {/* 新增商店卡片 */}
                 <div

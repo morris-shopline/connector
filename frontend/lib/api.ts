@@ -60,14 +60,70 @@ api.interceptors.response.use(
     
     // 處理 401 錯誤（未授權）
     if (error.response?.status === 401) {
-      localStorage.removeItem('auth_token')
-      // 清除 Zustand Store 中的認證狀態
-      if (typeof window !== 'undefined') {
-        const { useAuthStore } = require('../stores/useAuthStore')
-        useAuthStore.getState().logout()
-        // 只在非登入/註冊頁面時重導向
-        if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
-          window.location.href = '/login'
+      const requestUrl: string = error.config?.url || ''
+      const isLogoutRequest = requestUrl.includes('/api/auth/logout')
+      const errorData = error.response?.data || {}
+      const errorCode = errorData.code || errorData.error
+
+      // 檢查是否為 Token 相關錯誤（TOKEN_EXPIRED, TOKEN_REVOKED, TOKEN_SCOPE_MISMATCH）
+      const tokenErrorCodes = ['TOKEN_EXPIRED', 'TOKEN_REVOKED', 'TOKEN_SCOPE_MISMATCH']
+      const isTokenError = tokenErrorCodes.includes(errorCode)
+
+      if (isTokenError) {
+        // Token 錯誤：不登出，顯示提示讓用戶重新授權
+        if (typeof window !== 'undefined') {
+          const { useTokenErrorStore } = require('../stores/useTokenErrorStore')
+          const { setTokenError } = useTokenErrorStore.getState()
+          
+          // 嘗試從 URL 或錯誤訊息中提取 handle
+          let handle: string | null = null
+          const urlMatch = requestUrl.match(/\/api\/stores\/([^\/]+)/)
+          if (urlMatch) {
+            handle = urlMatch[1]
+          }
+          
+          setTokenError({
+            code: errorCode as 'TOKEN_EXPIRED' | 'TOKEN_REVOKED' | 'TOKEN_SCOPE_MISMATCH',
+            connectionId: errorData.connectionId || null,
+            handle,
+            message: errorData.message || errorData.error || 'Token 已過期，請重新授權',
+          })
+        }
+      } else if (errorCode === 'SESSION_EXPIRED') {
+        // Session 錯誤：觸發登出流程
+        if (!isLogoutRequest && typeof window !== 'undefined') {
+          localStorage.removeItem('auth_token')
+          localStorage.removeItem('auth_session_id')
+
+          const { useAuthStore } = require('../stores/useAuthStore')
+          const { setUser, setToken, setSessionId } = useAuthStore.getState()
+
+          setToken(null)
+          setSessionId(null)
+          setUser(null)
+
+          // 只在非登入/註冊頁面時重導向
+          if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
+            window.location.href = '/login'
+          }
+        }
+      } else if (!isLogoutRequest) {
+        // 其他 401 錯誤：預設行為（登出）
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('auth_token')
+          localStorage.removeItem('auth_session_id')
+
+          const { useAuthStore } = require('../stores/useAuthStore')
+          const { setUser, setToken, setSessionId } = useAuthStore.getState()
+
+          setToken(null)
+          setSessionId(null)
+          setUser(null)
+
+          // 只在非登入/註冊頁面時重導向
+          if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
+            window.location.href = '/login'
+          }
         }
       }
     }
@@ -77,7 +133,18 @@ api.interceptors.response.use(
 )
 
 export const apiClient = {
-  // 取得所有商店
+  // R3.0: 取得所有 Connection 及底下項目
+  async getConnections(): Promise<ApiResponse<any[]>> {
+    try {
+      const response = await api.get('/api/connections')
+      return response.data
+    } catch (error: any) {
+      console.error('Get connections error:', error)
+      throw error
+    }
+  },
+
+  // 取得所有商店（向後相容）
   async getStores(): Promise<ApiResponse<StoreInfo[]>> {
     console.log('🔍 [DEBUG] getStores() 開始調用')
     console.log('🔍 [DEBUG] Token:', localStorage.getItem('auth_token') ? '存在' : '不存在')

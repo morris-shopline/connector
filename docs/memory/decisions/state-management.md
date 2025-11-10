@@ -21,6 +21,79 @@
 - **Redis**: Token 快取（加速查詢）+ Session 管理（使用者認證）
 - **SWR**: 資料獲取（保持現狀）
 
+### State 分層原則（2025-11-10 補充，2025-11-10 修正）
+
+**核心原則：只有一個 Source of Truth**
+
+| 層 | 承載內容 | 來源 | 同步方向 | 用途 |
+|---|---------|------|---------|------|
+| **URL** | ~~可分享的上下文（Connection 參數、篩選條件等）~~ **現階段：僅用於初始化** | 外部來源（可 deep link） | **單向：URL → Zustand（只做一次初始化）** | ~~可分享、可還原的狀態~~ **現階段：僅初始化** |
+| **Zustand** | UI state（當前選取、表單暫態、界面交互） | **唯一 Source of Truth** | - | 所有 UI 狀態的來源 |
+| **localStorage** | 快取（刷新頁面時恢復） | Zustand | Zustand → localStorage | 持久化快取 |
+| **DB / Domain State** | 真實系統狀態（jobs, event log, sync result） | 後端 | - | 後端資料 |
+
+**關鍵規則（現階段簡化版）**：
+
+1. **Zustand 是唯一的 Source of Truth**
+   - 所有 UI 狀態都在 Zustand 中
+   - URL 只用來「初始化」Zustand（如果 URL 有參數）
+   - **禁止**：Zustand 回寫 URL（正常使用 Zustand 管理 state 的狀況都不會這樣做）
+
+2. **URL → Zustand：只做一次初始化**
+   - 頁面載入時，如果 URL 有 Connection 參數，從 URL 讀取並初始化 Zustand Store（只做一次）
+   - 如果 URL 沒有參數，不從 URL 初始化
+   - **禁止**：在初始化過程中更新 URL（會造成循環）
+
+3. **用戶操作時：只更新 Zustand**
+   - 用戶點擊商店 → 更新 Zustand Store
+   - **不更新 URL**（現階段不會有 URL 分享上下文的情境）
+   - **禁止**：監聽 Zustand 變化自動更新 URL（會造成循環）
+
+4. **避免 Dual Source of Truth Anti-pattern**
+   - ❌ **錯誤**：URL 和 Zustand 互相同步
+   - ✅ **正確**：Zustand 是唯一的 Source of Truth，URL 只用於初始化（如果有的話）
+
+**未來改進（動態路由重構）**：
+- 當需要 URL 分享上下文功能時，改用動態路由處理核心資源
+- 見 `docs/memory/decisions/routing-strategy.md`
+
+**實作範例（現階段簡化版）**：
+
+```typescript
+// ✅ 正確：URL → Zustand（只做一次初始化）
+useEffect(() => {
+  if (!router.isReady) return
+  
+  const params = parseConnectionQuery(router.query)
+  if (params.platform || params.connectionId || params.connectionItemId) {
+    setSelectedConnection(params) // 只更新 Zustand，不更新 URL
+  }
+}, [router.isReady]) // 只依賴 router.isReady
+
+// ✅ 正確：用戶操作 → 只更新 Zustand（不更新 URL）
+const applyConnection = (params) => {
+  setSelectedConnection(params) // 只更新 Zustand，不更新 URL
+}
+
+// ❌ 錯誤：Zustand → URL 自動同步（會造成循環）
+useEffect(() => {
+  if (selectedConnection && selectedConnection !== router.query.connectionId) {
+    router.replace({ query: { connectionId: selectedConnection } })
+  }
+}, [selectedConnection, router.query.connectionId])
+
+// ❌ 錯誤：用戶操作時更新 URL（現階段不需要）
+const applyConnection = async (params) => {
+  setSelectedConnection(params)
+  await router.push({ query: buildConnectionQuery(params) }) // ❌ 現階段不需要
+}
+```
+
+**相關文件**：
+- 詳細說明：`docs/archive/discussions/state-layering-correct-approach-2025-11-10.md`
+- Connection 狀態同步：`docs/memory/decisions/connection-state-sync.md`
+- 路由策略決策：`docs/memory/decisions/routing-strategy.md`（動態路由重構）
+
 **Store 結構**：
 - `frontend/stores/useStoreStore.ts` - 商店選擇狀態管理（Refactor 1 成果）
 - `frontend/stores/useAuthStore.ts` - 認證狀態管理（Story 3.4 實作）
@@ -71,5 +144,36 @@
 
 ---
 
-**最後更新**: 2025-11-04
+## Zustand 標準實踐（2025-11-10 補充）
+
+**重要**：所有 Zustand 使用必須遵循標準做法，避免無限循環和性能問題。
+
+### 核心原則
+
+1. **直接訂閱單個值**（不是返回對象）
+   ```typescript
+   // ✅ 正確
+   const platform = useStoreStore((state) => state.selectedPlatform)
+   
+   // ❌ 錯誤（即使使用 shallow）
+   const { platform } = useStoreStore((state) => ({ platform: state.selectedPlatform }), shallow)
+   ```
+
+2. **Actions 直接從 store 獲取**（它們是穩定的）
+   ```typescript
+   // ✅ 正確
+   const setSelectedConnection = useStoreStore((state) => state.setSelectedConnection)
+   ```
+
+3. **Hook 返回對象使用 useMemo 包裝**
+   ```typescript
+   // ✅ 正確
+   return useMemo(() => ({ currentConnection, applyConnection }), [currentConnection, applyConnection])
+   ```
+
+詳細請參考：`docs/memory/decisions/zustand-standard-practices.md`
+
+---
+
+**最後更新**: 2025-11-10（補充 Zustand 標準實踐）
 

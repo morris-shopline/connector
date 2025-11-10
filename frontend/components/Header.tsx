@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
 import { useAuthStore } from '../stores/useAuthStore'
+import { useConnection } from '../hooks/useConnection'
+import { useSWRConfig } from 'swr'
 
 type NavItem = {
   label: string
@@ -14,6 +16,8 @@ export function Header() {
   const currentPath = router.pathname
   const [currentHash, setCurrentHash] = useState('')
   const { user, isAuthenticated, logout } = useAuthStore()
+  const { resetConnection } = useConnection()
+  const { mutate } = useSWRConfig()
 
   // 監聽 hash 變化
   useEffect(() => {
@@ -73,7 +77,21 @@ export function Header() {
                 </span>
                 <button
                   onClick={async () => {
+                    // 1. 清除所有 SWR 快取（避免顯示舊帳號的資料）
+                    mutate(() => true, undefined, { revalidate: false })
+                    
+                    // 2. 清除 Connection 狀態（R1.1）
+                    resetConnection()
+                    
+                    // 3. 清除 URL query 參數
+                    if (router.query.platform || router.query.connectionId || router.query.connectionItemId) {
+                      router.replace('/', undefined, { shallow: true })
+                    }
+                    
+                    // 4. 執行登出
                     await logout()
+                    
+                    // 5. 導向登入頁
                     router.push('/login')
                   }}
                   className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
@@ -95,9 +113,10 @@ export function Header() {
               // 處理 hash 路由的特殊情況
               if (item.href === '/#events') {
                 return (
-                  <a
+                  <Link
                     key={item.href}
-                    href="/#events"
+                    href={{ pathname: '/', hash: 'events' }}
+                    scroll={false}
                     onClick={(e) => {
                       e.preventDefault()
                       if (currentPath === '/') {
@@ -113,24 +132,23 @@ export function Header() {
                     }`}
                   >
                     {item.label}
-                  </a>
+                  </Link>
                 )
               }
               // 處理「商店列表」連結，當有 hash 時需要清除
               if (item.href === '/' && currentPath === '/' && currentHash) {
                 return (
-                  <a
+                  <Link
                     key={item.href}
                     href="/"
+                    scroll={false}
                     onClick={(e) => {
                       e.preventDefault()
-                      // 清除 hash，這會自動觸發 hashchange 事件
                       if (window.history.replaceState) {
                         window.history.replaceState(null, '', '/')
                       } else {
                         window.location.hash = ''
                       }
-                      // 手動觸發 hashchange 以確保狀態同步
                       setCurrentHash('')
                       window.dispatchEvent(new Event('hashchange'))
                     }}
@@ -141,7 +159,7 @@ export function Header() {
                     }`}
                   >
                     {item.label}
-                  </a>
+                  </Link>
                 )
               }
               return (

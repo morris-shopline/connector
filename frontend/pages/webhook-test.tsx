@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useCallback } from 'react'
 import { useStores } from '../hooks/useStores'
 import { useWebhookSubscriptions } from '../hooks/useWebhookSubscriptions'
 import { useWebhookEvents } from '../hooks/useWebhookEvents'
@@ -11,25 +11,92 @@ import { SubscriptionStats } from '../components/SubscriptionStats'
 import { SubscriptionForm } from '../components/SubscriptionForm'
 import { WebhookEventCard } from '../components/WebhookEventCard'
 import { ProtectedRoute } from '../components/ProtectedRoute'
+import { useConnection, type ConnectionParams } from '../hooks/useConnection'
+import type { StoreInfo } from '@/types'
+
+type StoreLike = StoreInfo & {
+  platform?: string | null
+  connectionId?: string | null
+  connectionItemId?: string | null
+}
 
 function WebhookTest() {
-  const { selectedHandle, setSelectedHandle, lockedHandle } = useStoreStore()
+  const lockedConnectionItemId = useStoreStore((state) => state.lockedConnectionItemId)
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null)
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null)
   const [showSubscriptionForm, setShowSubscriptionForm] = useState(false)
   const [eventFilter, setEventFilter] = useState<'all' | 'processed' | 'pending'>('all')
 
   const { stores } = useStores()
-  
-  // 初始化時如果沒有選中商店，使用第一個商店作為預設值
-  useEffect(() => {
-    if (!selectedHandle && stores.length > 0) {
-      setSelectedHandle(stores[0].handle || stores[0].shoplineId || null)
+  const mapStoreToConnection = useCallback((store: StoreLike): ConnectionParams => {
+    const platform = store.platform ?? 'shopline'
+    const connectionId = store.connectionId ?? store.shoplineId ?? store.id ?? null
+    const connectionItem = store.connectionItemId ?? store.id ?? store.shoplineId ?? null
+
+    return {
+      platform,
+      connectionId,
+      connectionItemId: connectionItem,
     }
-  }, [stores.length]) // 只在 stores 載入時執行一次
-  
-  // 只使用 selectedHandle，避免狀態不一致導致多次請求
-  const { subscriptions, isLoading: subsLoading, isTokenExpired, tokenExpiredMessage, mutate: mutateSubs } = useWebhookSubscriptions(selectedHandle)
+  }, [])
+
+  const { currentConnection, applyConnection } = useConnection()
+
+  const defaultConnection = useMemo(() => {
+    if (!stores.length) {
+      return null
+    }
+    return mapStoreToConnection(stores[0])
+  }, [stores, mapStoreToConnection])
+
+  // ⚠️ 移除自動設置 Connection 的邏輯（違反 State 分層原則）
+  // 如果 URL 沒有 Connection 參數，應該顯示「請選擇商店」，不自動設置
+  // useEffect(() => {
+  //   if (!defaultConnection) {
+  //     return
+  //   }
+  //   if (currentConnection.connectionItemId) {
+  //     return
+  //   }
+  //   applyConnection(defaultConnection)
+  // }, [applyConnection, currentConnection.connectionItemId, defaultConnection])
+
+  const activeStore = useMemo(() => {
+    return (
+      stores.find((store) => {
+        if (!store) {
+          return false
+        }
+        const params = mapStoreToConnection(store)
+        if (currentConnection.connectionItemId && params.connectionItemId === currentConnection.connectionItemId) {
+          return true
+        }
+        if (currentConnection.connectionId && params.connectionId === currentConnection.connectionId) {
+          return true
+        }
+        return false
+      }) || null
+    )
+  }, [currentConnection.connectionId, currentConnection.connectionItemId, stores, mapStoreToConnection])
+
+  const activeHandle = useMemo(
+    () =>
+    activeStore?.handle ||
+    activeStore?.shoplineId ||
+    currentConnection.connectionItemId ||
+    currentConnection.connectionId ||
+    null
+    ,
+    [activeStore, currentConnection.connectionId, currentConnection.connectionItemId]
+  )
+
+  const {
+    subscriptions,
+    isLoading: subsLoading,
+    isTokenExpired,
+    tokenExpiredMessage,
+    mutate: mutateSubs,
+  } = useWebhookSubscriptions(activeHandle)
   const { events, isLoading: eventsLoading } = useWebhookEvents()
   const { subscribe, isLoading: isSubscribing } = useSubscribeWebhook()
   const { unsubscribe, isLoading: isUnsubscribing } = useUnsubscribeWebhook()
@@ -80,7 +147,12 @@ function WebhookTest() {
   }
 
   const handleUnsubscribe = async (webhookId: string) => {
-    const result = await unsubscribe(webhookId, selectedHandle)
+    if (!activeHandle) {
+      alert('請先選擇商店')
+      return
+    }
+
+    const result = await unsubscribe(webhookId, activeHandle)
     if (result.success) {
       mutateSubs()
       // 如果刪除的是當前選中的訂閱，清空選中狀態
@@ -108,12 +180,12 @@ function WebhookTest() {
       console.error('❌ 錯誤：請設定 NEXT_PUBLIC_BACKEND_URL 環境變數')
       return
     }
-    if (!selectedHandle) {
+    if (!activeHandle) {
       alert('請先選擇商店')
       return
     }
     await handleSubscribe({
-      handle: selectedHandle,
+      handle: activeHandle,
       topic: 'products/update',
       webhookUrl: `${backendUrl.replace(/\/+$/, '')}/webhook/shopline`,
       apiVersion: 'v20250601'
@@ -134,19 +206,35 @@ function WebhookTest() {
               商店選擇
             </label>
             <select
-              value={selectedHandle || ''}
-              onChange={(e) => {
+              value={activeHandle || ''}
+              onChange={async (e) => {
                 const newHandle = e.target.value
-                // 檢查是否有鎖定的 handle
-                if (lockedHandle && newHandle !== lockedHandle) {
-                  alert(`無法切換商店：${lockedHandle} 正在操作中，請等待操作完成`)
+                const targetStore = stores.find((store) => {
+                  if (!store) return false
+                  return (
+                    store.handle === newHandle ||
+                    store.shoplineId === newHandle ||
+                    store.id === newHandle
+                  )
+                })
+                if (!targetStore) {
                   return
                 }
-                // 直接更新 Zustand Store
-                setSelectedHandle(newHandle || null)
+
+                const params = mapStoreToConnection(targetStore)
+                if (
+                  lockedConnectionItemId &&
+                  params.connectionItemId &&
+                  lockedConnectionItemId !== params.connectionItemId
+                ) {
+                  alert(`無法切換商店：${lockedConnectionItemId} 正在操作中，請等待操作完成`)
+                  return
+                }
+
+                await applyConnection(params)
                 setSelectedTopic(null) // 切換商店時清空選中訂閱
               }}
-              disabled={!!lockedHandle}
+              disabled={!!lockedConnectionItemId}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {stores.map(store => (
@@ -155,9 +243,9 @@ function WebhookTest() {
                 </option>
               ))}
             </select>
-            {lockedHandle && (
+            {lockedConnectionItemId && (
               <p className="mt-2 text-xs text-yellow-600">
-                ⚠️ {lockedHandle} 正在操作中，無法切換商店
+                ⚠️ {lockedConnectionItemId} 正在操作中，無法切換商店
               </p>
             )}
           </div>
@@ -308,7 +396,7 @@ function WebhookTest() {
         isOpen={showSubscriptionForm}
         onClose={() => setShowSubscriptionForm(false)}
         onSubmit={handleSubscribe}
-        defaultHandle={selectedHandle || ''}
+        defaultHandle={activeHandle || ''}
       />
     </div>
   )

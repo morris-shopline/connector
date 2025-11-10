@@ -450,7 +450,7 @@ export async function verifyStoreOwnership(storeId: string, userId: string): Pro
 | Webhook 事件隔離 | ✅ | User1/User2 各自僅看到 `qa-user{n}-event-001` |
 | `verifyStoreOwnership` | ✅ | 他人商店返回 403 |
 | `ShoplineService.getAllStores` | ✅ | 修正後依 `userId` 過濾（user1/user2 測試） |
-| 新商店綁定使用者 | ⚠️ | OAuth 無法快速驗證，未覆測 |
+| 新商店綁定使用者 | ✅ | 2025-11-10 使用者指示視為完成（仍待實機 OAuth 覆測） |
 
 ---
 

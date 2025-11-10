@@ -36,8 +36,10 @@
 - **測試結果**: ✅ 測試 1, 2, 3 都通過（User Test 完成）
 - **推上線狀態**: ✅ 準備推上線
 
-### ⏳ Story R1.1: 多平台狀態管理擴展（Phase 2 支援）
-- **狀態**: planned
+### ✅ Story R1.1: 多平台狀態管理擴展（Phase 2 支援）
+- **文件**: [story-r1-1-multi-platform-state.md](../stories/story-r1-1-multi-platform-state.md)
+- **狀態**: ready-for-dev
+- **當前 Run**: run-2025-11-10-01（Phase A）
 - **描述**: 擴展 Zustand Store，支援多平台選擇與配置管理
 - **技術需求**:
   - 平台選擇狀態管理（selectedPlatform）
@@ -82,5 +84,5 @@
 
 ---
 
-**最後更新**: 2025-11-05
+**最後更新**: 2025-11-10
 

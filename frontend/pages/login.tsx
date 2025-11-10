@@ -2,10 +2,14 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Link from 'next/link'
 import { useAuthStore } from '../stores/useAuthStore'
+import { useSWRConfig } from 'swr'
+import { useConnection } from '../hooks/useConnection'
 
 export default function Login() {
   const router = useRouter()
   const { login, isAuthenticated } = useAuthStore()
+  const { resetConnection } = useConnection()
+  const { mutate } = useSWRConfig()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -24,6 +28,10 @@ export default function Login() {
     setIsLoading(true)
 
     try {
+      // 登入前清除所有舊的快取和狀態（確保不會顯示舊帳號的資料）
+      mutate(() => true, undefined, { revalidate: false })
+      resetConnection()
+      
       await login(email, password)
       router.push('/')
     } catch (err: any) {

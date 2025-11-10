@@ -13,59 +13,107 @@ datasource db {
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
-  password  String   // bcrypt 加密後的密碼
-  name      String?  // 使用者名稱（可選）
+  password  String // bcrypt 加密後的密碼
+  name      String? // 使用者名稱（可選）
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // 關聯（未來擴展）
-  stores    Store[]  // 一個使用者可以管理多個商店（Phase 1.2）
+  // 關聯
+  stores              Store[] // 舊表（deprecated，R3.0 migration 後保留）
+  integrationAccounts IntegrationAccount[] // Connection（R3.0 新增）
 
   @@map("users")
 }
 
 model Store {
-  id          String   @id @default(cuid())
-  userId      String   // 關聯到使用者（必填）
-  shoplineId  String   @unique
-  handle      String?  // Shopline 商店 handle (例如: paykepoc)
+  id          String    @id @default(cuid())
+  userId      String // 關聯到使用者（必填）
+  shoplineId  String    @unique
+  handle      String? // Shopline 商店 handle (例如: paykepoc)
   name        String?
   domain      String?
   accessToken String
   expiresAt   DateTime? // Token 到期時間
-  scope       String   // 儲存為逗號分隔的字串
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  scope       String // 儲存為逗號分隔的字串
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   // 關聯
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   webhookEvents WebhookEvent[]
 
-  @@map("stores")
   @@index([userId]) // 為 userId 建立索引
+  @@map("stores")
 }
 
 model WebhookEvent {
-  id          String   @id @default(cuid())
-  userId      String   // 關聯到使用者（透過 Store 關聯，但直接儲存以提升查詢效能）
-  storeId     String
-  webhookId   String   @unique // X-Shopline-Webhook-Id，用於去重
-  topic       String   // X-Shopline-Topic，例如：orders/update
-  eventType   String   // 與 topic 相同，保留作為兼容欄位
-  shopDomain  String?  // X-Shopline-Shop-Domain
-  shoplineId  String?  // X-Shopline-Shop-Id（商店 ID）
-  merchantId  String?  // X-Shopline-Merchant-Id
-  apiVersion  String?  // X-Shopline-API-Version
-  payload     String   // 儲存為 JSON 字串
-  processed   Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  id               String   @id @default(cuid())
+  userId           String // 關聯到使用者（透過 Store 關聯，但直接儲存以提升查詢效能）
+  storeId          String // 舊表關聯（deprecated，R3.0 migration 後保留但逐步遷移）
+  connectionItemId String? // Connection Item 關聯（R3.0 新增）
+  webhookId        String   @unique // X-Shopline-Webhook-Id，用於去重
+  topic            String // X-Shopline-Topic，例如：orders/update
+  eventType        String // 與 topic 相同，保留作為兼容欄位
+  shopDomain       String? // X-Shopline-Shop-Domain
+  shoplineId       String? // X-Shopline-Shop-Id（商店 ID）
+  merchantId       String? // X-Shopline-Merchant-Id
+  apiVersion       String? // X-Shopline-API-Version
+  payload          String // 儲存為 JSON 字串
+  processed        Boolean  @default(false)
+  createdAt        DateTime @default(now())
 
-  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  store          Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  connectionItem ConnectionItem? @relation("WebhookEventConnectionItem", fields: [connectionItemId], references: [id], onDelete: Cascade)
 
-  @@map("webhook_events")
   @@index([webhookId])
   @@index([storeId, createdAt])
   @@index([userId, createdAt]) // 為 userId 建立索引
+  @@index([connectionItemId, createdAt]) // R3.0 新增索引
+  @@map("webhook_events")
+}
+
+// R3.0: Connection 資料模型
+model IntegrationAccount {
+  id                String   @id @default(cuid())
+  userId            String // 擁有此連線的 Admin
+  platform          String // 平台識別（shopline、next_engine 等）
+  externalAccountId String // 平台層帳戶 ID（Shopline handle、NextEngine uid 等）
+  displayName       String? // 顯示名稱（可用 handle 或平台原生命名）
+  authPayload       Json // JSON，儲存 access token、refresh token、scope、expiresAt 等授權資訊
+  status            String   @default("active") // active / revoked / error
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // 關聯
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connectionItems ConnectionItem[]
+
+  @@unique([userId, platform, externalAccountId]) // 使用者 + 平台 + 帳戶 ID 唯一性
+  @@index([userId])
+  @@index([platform, externalAccountId]) // 平台 + 帳戶 ID 查詢優化
+  @@index([userId, platform]) // 使用者 + 平台查詢優化
+  @@map("integration_accounts")
+}
+
+model ConnectionItem {
+  id                   String   @id @default(cuid())
+  integrationAccountId String // 關聯到 Connection
+  platform             String // 冗餘欄位，便於查詢
+  externalResourceId   String // 平台資源 ID（Shopline store_id、NextEngine shop_id ...）
+  displayName          String? // 顯示名稱
+  metadata             Json? // 平台特定欄位（domain、scope 等）
+  status               String   @default("active") // active / disabled
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  // 關聯
+  integrationAccount IntegrationAccount @relation(fields: [integrationAccountId], references: [id], onDelete: Cascade)
+  webhookEvents      WebhookEvent[]     @relation("WebhookEventConnectionItem")
+
+  @@index([integrationAccountId])
+  @@index([platform, externalResourceId]) // 平台 + 資源 ID 查詢優化
+  @@index([integrationAccountId, status]) // Connection + 狀態查詢
+  @@map("connection_items")
 }

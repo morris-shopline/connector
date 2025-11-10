@@ -7,6 +7,7 @@ import { createSession, deleteSession } from '../utils/session'
 import { authMiddleware } from '../middleware/auth'
 import { z } from 'zod'
 import { PrismaClient } from '@prisma/client'
+import { ShoplineAuthParams } from '../types'
 
 const shoplineService = new ShoplineService()
 const prisma = new PrismaClient()
@@ -156,6 +157,12 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
       }
 
       const params = parseResult.data
+      const verifyParams: ShoplineAuthParams = {
+        appkey: params.appkey,
+        handle: params.handle,
+        timestamp: params.timestamp,
+        sign: params.sign
+      }
       fastify.log.info({ msg: '✅ 參數解析成功:', params: JSON.stringify(params, null, 2) })
       
       // 驗證安裝請求
@@ -170,7 +177,7 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         }
       })
       
-      const isValid = await shoplineService.verifyInstallRequest(params)
+      const isValid = await shoplineService.verifyInstallRequest(verifyParams)
       if (!isValid) {
         fastify.log.error('❌ 簽名驗證失敗')
         return reply.status(401).send({
@@ -243,8 +250,10 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
   // 處理 OAuth 回調
   fastify.get('/api/auth/shopline/callback', async (request, reply) => {
     try {
-      fastify.log.info('收到授權回調:', JSON.stringify(request.query, null, 2))
-      fastify.log.info('State 參數:', request.query.state)
+      const rawQuery = request.query as Record<string, unknown>
+      fastify.log.info('收到授權回調:', JSON.stringify(rawQuery, null, 2))
+      const rawState = typeof rawQuery.state === 'string' ? rawQuery.state : undefined
+      fastify.log.info('State 參數:', rawState)
       
       const parseResult = callbackSchema.safeParse(request.query)
       if (!parseResult.success) {
@@ -257,9 +266,15 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
       }
 
       const params = parseResult.data
+      const verifyCallbackParams: ShoplineAuthParams = {
+        appkey: params.appkey,
+        handle: params.handle,
+        timestamp: params.timestamp,
+        sign: params.sign
+      }
       
       // 驗證簽名
-      const isValidSignature = await shoplineService.verifyInstallRequest(params)
+      const isValidSignature = await shoplineService.verifyInstallRequest(verifyCallbackParams)
       if (!isValidSignature) {
         fastify.log.error('回調簽名驗證失敗')
         return reply.status(401).send({
@@ -280,14 +295,14 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         let userId: string | undefined = undefined
         let sessionId: string | null = null  // 用於重導向時傳遞給前端
         const state = params.state
+        const { getRedisClient } = await import('../utils/redis')
+        const redis = getRedisClient()
         
         fastify.log.info('=== OAuth 回調處理 ===')
         fastify.log.info('State 參數:', state ? state.substring(0, 50) + '...' : '無')
         
         if (state) {
           // 方法 1: 嘗試從 Redis 取得 userId（最可靠）
-          const { getRedisClient } = await import('../utils/redis')
-          const redis = getRedisClient()
           if (redis) {
             const redisKey = `oauth:state:${state}`
             console.log('🔍 [DEBUG] 嘗試從 Redis 取得 userId，key:', redisKey)
@@ -347,8 +362,6 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
           fastify.log.warn('❌ 沒有 state 參數，嘗試從其他方式取得使用者...')
           
           // 方法 1: 嘗試從 Redis 使用 handle 查找（備用方式）
-          const { getRedisClient } = await import('../utils/redis')
-          const redis = getRedisClient()
           if (redis) {
             console.log('🔍 [DEBUG] 嘗試從 Redis 使用 handle 查找 userId')
             // 嘗試查找所有可能的 handle + userId 組合
@@ -362,6 +375,7 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
               userId = cachedUserId
               console.log('✅ [DEBUG] 從 Redis (by handle) 取得使用者 ID:', userId)
               fastify.log.info('✅ 從 Redis (by handle) 取得使用者 ID:', userId)
+              await redis.del(handleKey)
             } else {
               console.warn('⚠️  [DEBUG] Redis 中沒有找到 userId (by handle), key:', handleKey)
             }
@@ -407,6 +421,18 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
             console.warn('⚠️  [DEBUG] 無法取得使用者 ID，將使用系統使用者')
             console.warn('⚠️  [DEBUG] 前端需要從 localStorage 恢復認證狀態')
             fastify.log.warn('⚠️  無法取得使用者 ID，將使用系統使用者')
+          }
+        }
+
+        // 如果透過 state 仍無法取得 userId，使用 handle 作為備援
+        if (!userId && redis) {
+          const fallbackHandleKey = `oauth:handle:${params.handle}`
+          const handleUserId = await redis.get(fallbackHandleKey)
+          if (handleUserId) {
+            userId = handleUserId
+            await redis.del(fallbackHandleKey)
+            fastify.log.info('✅ 使用 handle 備援取得使用者 ID:', userId)
+            console.log('✅ [DEBUG] 使用 handle 備援取得使用者 ID:', userId)
           }
         }
         

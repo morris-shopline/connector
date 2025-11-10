@@ -3,43 +3,52 @@ import { apiClient } from '../lib/api'
 import { ProductListParams, CreateProductInput, OrderListParams, CreateOrderInput } from '../types'
 import { useStoreStore } from '../stores/useStoreStore'
 
-export function useAdminAPI(handle: string | null) {
+type AdminApiContext = {
+  handle: string | null
+  connectionItemId: string | null
+}
+
+export function useAdminAPI({ handle, connectionItemId }: AdminApiContext) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
   
-  // 使用 Zustand Store 的 lock/unlock 功能
-  const { lockHandle, unlockHandle } = useStoreStore()
-  
-  // 獲取當前有效的 handle（優先使用鎖定的 handle）
-  const getCurrentHandle = (): string => {
-    const { lockedHandle, selectedHandle } = useStoreStore.getState()
-    if (lockedHandle) {
-      return lockedHandle
-    }
-    if (!handle && !selectedHandle) {
+  // ✅ 標準做法：直接訂閱 Actions（它們是穩定的）
+  const lockConnectionItem = useStoreStore((state) => state.lockConnectionItem)
+  const unlockConnectionItem = useStoreStore((state) => state.unlockConnectionItem)
+
+  const resolveContext = () => {
+    const state = useStoreStore.getState()
+    const resolvedHandle = handle ?? null
+    const resolvedConnectionItemId =
+      state.lockedConnectionItemId ?? connectionItemId ?? state.selectedConnectionItemId
+
+    if (!resolvedHandle) {
       throw new Error('Handle is required')
     }
-    return handle || selectedHandle || ''
-  }
-  
-  // 鎖定 handle（操作開始時）
-  const lockHandleForOperation = (): string => {
-    const currentHandle = handle || useStoreStore.getState().selectedHandle
-    if (!currentHandle) {
-      throw new Error('Handle is required')
+
+    if (!resolvedConnectionItemId) {
+      throw new Error('Connection item id is required')
     }
-    lockHandle(currentHandle)
-    return currentHandle
+
+    return {
+      resolvedHandle,
+      resolvedConnectionItemId,
+    }
   }
-  
-  // 解鎖 handle（操作完成時）
-  const unlockHandleForOperation = () => {
-    unlockHandle()
+
+  const lockConnectionForOperation = (): { handle: string } => {
+    const { resolvedHandle, resolvedConnectionItemId } = resolveContext()
+    lockConnectionItem(resolvedConnectionItemId)
+    return { handle: resolvedHandle }
+  }
+
+  const unlockConnectionForOperation = () => {
+    unlockConnectionItem()
   }
 
   const getStoreInfo = async () => {
-    // 鎖定 handle，確保整個操作使用同一個 handle
-    const currentHandle = lockHandleForOperation()
+    // 鎖定 connection item，確保整個操作使用同一個來源
+    const { handle: currentHandle } = lockConnectionForOperation()
     
     setIsLoading(true)
     setError(null)
@@ -54,12 +63,12 @@ export function useAdminAPI(handle: string | null) {
       throw error
     } finally {
       setIsLoading(false)
-      unlockHandleForOperation()
+      unlockConnectionForOperation()
     }
   }
 
   const getProducts = async (params?: ProductListParams) => {
-    const currentHandle = lockHandleForOperation()
+    const { handle: currentHandle } = lockConnectionForOperation()
     
     setIsLoading(true)
     setError(null)
@@ -74,12 +83,12 @@ export function useAdminAPI(handle: string | null) {
       throw error
     } finally {
       setIsLoading(false)
-      unlockHandleForOperation()
+      unlockConnectionForOperation()
     }
   }
 
   const getProduct = async (productId: string) => {
-    const currentHandle = lockHandleForOperation()
+    const { handle: currentHandle } = lockConnectionForOperation()
     
     setIsLoading(true)
     setError(null)
@@ -94,12 +103,12 @@ export function useAdminAPI(handle: string | null) {
       throw error
     } finally {
       setIsLoading(false)
-      unlockHandleForOperation()
+      unlockConnectionForOperation()
     }
   }
 
   const createProduct = async (productData?: CreateProductInput) => {
-    const currentHandle = lockHandleForOperation()
+    const { handle: currentHandle } = lockConnectionForOperation()
     
     setIsLoading(true)
     setError(null)
@@ -114,12 +123,12 @@ export function useAdminAPI(handle: string | null) {
       throw error
     } finally {
       setIsLoading(false)
-      unlockHandleForOperation()
+      unlockConnectionForOperation()
     }
   }
 
   const getOrders = async (params?: OrderListParams) => {
-    const currentHandle = lockHandleForOperation()
+    const { handle: currentHandle } = lockConnectionForOperation()
     
     setIsLoading(true)
     setError(null)
@@ -134,13 +143,13 @@ export function useAdminAPI(handle: string | null) {
       throw error
     } finally {
       setIsLoading(false)
-      unlockHandleForOperation()
+      unlockConnectionForOperation()
     }
   }
 
   const createOrder = async (orderData?: CreateOrderInput) => {
     // 多步驟操作：鎖定 handle，確保整個流程使用同一個 handle
-    const currentHandle = lockHandleForOperation()
+    const { handle: currentHandle } = lockConnectionForOperation()
     
     setIsLoading(true)
     setError(null)
@@ -156,12 +165,12 @@ export function useAdminAPI(handle: string | null) {
       throw error
     } finally {
       setIsLoading(false)
-      unlockHandleForOperation()
+      unlockConnectionForOperation()
     }
   }
 
   const getLocations = async () => {
-    const currentHandle = lockHandleForOperation()
+    const { handle: currentHandle } = lockConnectionForOperation()
     
     setIsLoading(true)
     setError(null)
@@ -176,7 +185,7 @@ export function useAdminAPI(handle: string | null) {
       throw error
     } finally {
       setIsLoading(false)
-      unlockHandleForOperation()
+      unlockConnectionForOperation()
     }
   }
 

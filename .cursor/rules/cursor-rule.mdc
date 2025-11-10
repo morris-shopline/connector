@@ -27,3 +27,21 @@ alwaysApply: true
 ---
 
 **詳細規則請參考**：`docs/00-AGENT-ONBOARDING.md`
+
+
+# === FRONTEND VALIDATION RULE ===
+
+# When modifying frontend logic (React components, Zustand state, routing, hooks, UI behavior):
+# The agent MUST NOT consider HTTP 200 / build success as a valid success indicator.
+
+# The agent MUST validate by checking:
+# 1. That the page successfully mounts without hydration errors.
+# 2. That UI elements that depend on state are rendered correctly after initialization.
+# 3. That user-triggered interactions (click → state change → UI update) work as expected.
+
+# The agent MUST confirm these by:
+# - Inspecting rendered DOM output or UI logs from browser console,
+# - Or by explicitly reasoning through the React render cycle and state transitions.
+
+# The agent MUST report UI validation results before saying "OK" or completing a PR.
+# Simply saying "Status: 200" or "build passed" is NOT acceptable confirmation.

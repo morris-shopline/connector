@@ -136,8 +136,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch (error) {
       console.error('Logout error:', error)
     } finally {
+      // 清除認證相關的 localStorage
       localStorage.removeItem('auth_token')
       localStorage.removeItem('auth_session_id')
+      
+      // Connection 狀態清除會在 Header 組件中透過 resetConnection 處理
+      
       set({ user: null, isAuthenticated: false, token: null, sessionId: null })
     }
   },

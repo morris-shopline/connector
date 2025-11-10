@@ -2,10 +2,37 @@ import { FastifyInstance } from 'fastify'
 import { ShoplineService } from '../services/shopline'
 import { authMiddleware } from '../middleware/auth'
 import { filterStoresByUser, verifyStoreOwnership, verifyStoreHandleOwnership } from '../utils/query-filter'
+import { connectionRepository } from '../repositories/connectionRepository'
 
 const shoplineService = new ShoplineService()
 
 export async function apiRoutes(fastify: FastifyInstance, options: any) {
+  // R3.0: 取得所有 Connection 及底下項目（需要登入）
+  fastify.get('/api/connections', { preHandler: [authMiddleware] }, async (request, reply) => {
+    try {
+      if (!request.user) {
+        return reply.status(401).send({
+          success: false,
+          error: 'Authentication required'
+        })
+      }
+
+      const userId = request.user.id
+      const connections = await connectionRepository.findConnectionsByUser(userId)
+
+      return reply.send({
+        success: true,
+        data: connections
+      })
+    } catch (error) {
+      fastify.log.error('Get connections error:', error)
+      return reply.status(500).send({
+        success: false,
+        error: 'Internal server error'
+      })
+    }
+  })
+
   // 取得所有已授權的商店（需要登入）
   fastify.get('/api/stores', { preHandler: [authMiddleware] }, async (request, reply) => {
     try {

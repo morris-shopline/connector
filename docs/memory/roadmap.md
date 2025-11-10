@@ -4,7 +4,7 @@
 > 任何技術選型、架構設計、實作方案都應該參考此 Roadmap 進行評估。
 
 **建立日期**: 2025-11-04  
-**最後更新**: 2025-11-05  
+**最後更新**: 2025-11-10  
 **狀態**: 📝 規劃中（快速迭代）
 
 ---
@@ -88,69 +88,93 @@
 
 #### 1.1 導入 Admin 管理系統
 - **目標**: 建立多租戶基礎架構
-- **狀態**: ⏳ 待開發
+- **狀態**: ✅ 已完成（run-2025-11-06-01）
 - **功能**:
-  - ⏳ 需要登入才能使用與檢視
-  - ⏳ 不同 Admin 可以看到不同資料
-  - ⏳ 權限管理與資料隔離
-- **技術需求**:
-  - 使用者認證系統（JWT/Session）
-  - 權限驗證機制
-  - 資料隔離（多租戶資料庫設計）
+  - ✅ 登入後才能使用介面並檢視資料
+  - ✅ 不同 Admin 看到各自資料
+  - ✅ 基礎權限檢查與資料隔離
+- **技術成果**:
+  - Story 3.1 ~ 3.5 完成（後端認證、權限驗證、多租戶隔離、Admin 介面、OAuth 串接）
+  - 測試策略：核心 API 實機測試完備，前端與 OAuth 實機流程 2025-11-10 由使用者簽核結案，需時再排 Human run 覆測
 
 #### 1.2 多商店管理
-- **目標**: 支援單一 Admin 管理多個商店
-- **狀態**: ⏳ 待開發
-- **功能**:
-  - ⏳ Admin 可以管理同一個平台（Shopline）多個店家
-  - ⏳ 商店選擇與切換
-  - ⏳ 商店級別的權限管理
-- **技術需求**:
-  - 商店選擇狀態管理
-  - 多商店狀態切換
-  - 商店級別的資料隔離
+- **目標**: 支援單一 Admin 管理多個商店與跨平台 Connection
+- **狀態**: 🔄 規劃中（Run A 籌備中）
+- **近期里程碑**:
+  - 🧱 **Run A（Connection baseline）**：完成 Connection 資料模型與狀態同步基礎，預計涵蓋 Story 4.1、4.2、4.5，並同步執行 Refactor 3 `R3.0`、`R3.1`、`R3.2`
+  - 🔄 **Run B**：銜接到 1.3 多平台 MVP（Next Engine），延續 Run A 架構成果
+- **MVP 功能**:
+  - 🎯 Admin 可以管理同平台多個 Connection（Shopline 多商店）
+  - 🎯 Connection / Connection Item 選擇與切換（URL 單一真實來源）
+  - 🎯 Connection 層級權限與狀態顯示（Active / Expired / Error）
+- **技術前提**:
+  - 遵循 `docs/memory/decisions/connection-data-model.md` 的 schema 調整
+  - 實作 `docs/memory/decisions/connection-state-sync.md` 所述的 URL → Router → Store 單向同步策略
+  - 導入 `docs/memory/decisions/token-lifecycle-handling.md` 規範的錯誤碼與重新授權 UX
 
-#### 1.3 多 API 類型支援
-- **目標**: 統一管理不同類型的 API
-- **狀態**: 🔄 部分完成
-- **功能**:
-  - ✅ Admin API（已完成）
-  - ✅ Webhook（已完成）
-  - ⏳ GraphQL（待開發）
-  - ⏳ 其他 API（待開發）
-- **技術需求**:
-  - API 類型管理
-  - 不同 API 的 Token/配置管理
-  - 統一的 API 呼叫介面
+#### 1.3 多平台 MVP（Next Engine PoC）
+- **目標**: 在 Phase 1 結尾導入第二個平台（Next Engine）作為多平台打底，驗證 Connection 架構可支援跨平台
+- **狀態**: ⏳ planned（Run B 預計執行）
+- **MVP 範圍**:
+  - 🚀 建立 Next Engine OAuth Flow（Authorize / Callback / Token Refresh）
+  - 🚀 實作最小封裝的 API（店鋪/訂單資訊查詢）與錯誤處理
+  - 🚀 將 Next Engine 納入 Connection / Connection Item 模型與前端 Connection 選取流程
+  - 🚀 提供重新授權與錯誤碼對應（沿用 Run A 的 Token Lifecycle 規範）
+- **技術前提**:
+  - Run A（Connection baseline）完成資料模型、狀態同步、Token Lifecycle Refactor
+  - 平台設定（`platform_apps`）可註冊 Next Engine 憑證
+  - Adapter / Service Factory 介面明確定義
+- **驗收指標**:
+  - 新增/查看 Next Engine Connection 與對應 Items
+  - 同一使用者可並行管理 Shopline + Next Engine 連線
+  - OAuth 錯誤提示與重新授權流程可正常操作
+
+#### Phase 1 Refactor / 決策對照
+- `docs/memory/decisions/connection-data-model.md` → 對應 Refactor 3 `R3.0`，先行調整 schema 與 migration
+- `docs/memory/decisions/connection-state-sync.md` → 對應 Refactor 3 `R3.1`，統一 Connection 選取同步策略
+- `docs/memory/decisions/token-lifecycle-handling.md` → 對應 Refactor 3 `R3.2` 及 Story 4.5，調整錯誤碼與重新授權流程
+- Run A 完成後，Epic 4 主線 Story 才能進入實作；若 Refactor 延遲，需先排除在 Run 內容外
 
 ---
 
-### Phase 2: 多平台整合
+### Phase 2: 多平台擴展與全域體驗
 
-#### 2.1 多平台授權
-- **目標**: 支援多個平台的授權與整合
-- **平台規劃**:
-  - **下一步**: Shopline 2.0、NE
-  - **未來**: GA4、LINE、Shopify、Meta Ads、Google Ads、TikTok...
+#### 2.1 多 API 類型支援
+- **目標**: 統一管理不同 API 類型（REST / GraphQL / Webhook / Batch Job），讓平台擴展可共用呼叫介面
+- **狀態**: 🔄 部分完成（REST / Webhook 既有，GraphQL 與 Batch 待開發）
 - **功能**:
-  - 不同平台的 Auth Flow 管理
-  - 不同平台的 API/Webhook 規格管理
-  - 平台配置與 Token 管理
+  - ✅ Admin REST API（已完成）
+  - ✅ Webhook 事件接收與儲存（已完成）
+  - ⏳ GraphQL / Bulk API 支援
+  - ⏳ API 類型切換與對應 UI/CLI
 - **技術需求**:
-  - 統一的 OAuth 流程抽象
-  - 平台模組化設計（可插拔架構）
-  - 平台配置管理系統
+  - API 類型能力矩陣與共用抽象層
+  - Token / Scope / Permission 對應表
+  - Error & Retry 策略（同步 API / 非同步 Job）
 
 #### 2.2 多裝置登入
-- **目標**: 支援多裝置同時登入使用
+- **目標**: 支援多裝置同時登入與狀態同步
 - **功能**:
-  - 支援多裝置同時登入
-  - 裝置管理（登出、權限管理）
-  - 跨裝置狀態同步
+  - 支援多裝置 Session 並行、強制登出、裝置列表管理
+  - 跨裝置共享 Connection / 運維狀態
+  - 裝置級別通知與 MFA（可選）
 - **技術需求**:
-  - Session 管理（Redis 必要）
-  - 多裝置狀態同步
-  - Token 刷新與失效管理
+  - Session 管理（Redis Cluster）、裝置識別、Token 刷新流程
+  - 事件通知（WebSocket / SSE / Push）與裝置同步
+  - 安全防護（IP 白名單、登入告警、MFA 擴充點）
+
+#### 2.3 多平台架構補齊
+- **目標**: 在 Next Engine MVP 基礎上，整合 2.1 / 2.2 的成果，擴展為可插拔多平台架構，落實跨平台共用的授權、Webhook、API、資料模型
+- **狀態**: ⏳ planned
+- **範圍**:
+  - 📦 導入第二批平台（Shopline 2.0 / Shopify / LINE 等）所需的共用 Adapter 介面與 Lifecycle
+  - 📦 建立平台組態中心（`platform_apps` 擴充、Secrets 管理、環境差異設定）
+  - 📦 定義跨平台 Webhook / API 規格抽象（Topic Mapping、Payload Normalizer），納入多 API 能力矩陣
+  - 📦 完備 retry / rate-limit / healthcheck 機制，結合多裝置事件同步與平台監控指標
+- **技術需求**:
+  - 平台模組化設計（Factory + Adapter + Capability Flags）
+  - OAuth / Token lifecycle 模組化與加密憑證管理（含多裝置 Session 與重新授權流程）
+  - 平台層級的資料驗證與錯誤碼標準化，回饋到 API 抽象與裝置體驗
 
 ---
 
@@ -300,6 +324,7 @@
 | 日期 | 更新內容 | 更新者 |
 |------|---------|--------|
 | 2025-11-04 | 建立 Roadmap 文件 | System |
+| 2025-11-10 | 更新 Phase 1 進度、納入 Connection 架構決策與 Refactor 對應 | Agent |
 
 ---
 

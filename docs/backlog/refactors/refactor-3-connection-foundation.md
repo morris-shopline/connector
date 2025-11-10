@@ -20,28 +20,36 @@
 - `docs/memory/decisions/connection-data-model.md`
 - `docs/memory/decisions/connection-state-sync.md`
 - `docs/memory/decisions/token-lifecycle-handling.md`
+- `docs/memory/decisions/routing-strategy.md`（動態路由重構）
 
 ---
 
 ## Stories
 
-### ⏳ Story R3.0: Connection 資料模型與 Migration
-- **狀態**: planned
+### ✅ Story R3.0: Connection 資料模型與 Migration
+- **狀態**: ready-for-dev
 - **描述**: 實作 `integration_accounts`、`connection_items`、`platform_apps`（可選）等資料表，完成資料遷移與 Repository 調整
 - **文件**: `docs/backlog/stories/story-r3-0-connection-data-model.md`
 - **相關 Issue**: 無（新重構）
 
-### ⏳ Story R3.1: Connection 狀態同步與 URL 單一來源
-- **狀態**: planned
+### ✅ Story R3.1: Connection 狀態同步與 URL 單一來源
+- **狀態**: ready-for-dev
 - **描述**: 導入 Router 事件驅動的 Connection 選取策略，整合 Refactor 1 未完成的狀態清理任務
 - **文件**: `docs/backlog/stories/story-r3-1-connection-state-sync.md`
 - **相關 Issue**: `issue-2025-11-06-001`
 
-### ⏳ Story R3.2: Token Lifecycle 與重新授權流程
-- **狀態**: planned
+### ✅ Story R3.2: Token Lifecycle 與重新授權流程
+- **狀態**: ready-for-dev
 - **描述**: 標準化 token/Session 錯誤碼，建立前端提醒與重新授權流程，修復誤登出問題
 - **文件**: `docs/backlog/stories/story-r3-2-token-lifecycle.md`
 - **相關 Issue**: `issue-2025-11-07-001`
+
+### ⏳ Story R3.3: 動態路由重構（URL 分享上下文）
+- **狀態**: planned
+- **描述**: 改用動態路由處理核心資源（Connection），實現可分享的 URL。Query Parameters 只用於非核心狀態（篩選、排序、分頁等）
+- **文件**: `docs/backlog/stories/story-r3-3-dynamic-routing.md`（待建立）
+- **相關決策**: `docs/memory/decisions/routing-strategy.md`
+- **前置條件**: Story R3.0-R3.2 完成，需要 URL 分享上下文功能時
 
 ---
 
@@ -60,6 +68,6 @@
 
 ---
 
-**最後更新**: 2025-11-07
+**最後更新**: 2025-11-10
 
 
