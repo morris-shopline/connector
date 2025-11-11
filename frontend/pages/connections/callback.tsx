@@ -54,8 +54,8 @@ function CallbackPage() {
                 message: `Connection "${displayName}" 已成功重新授權`,
               })
             }
-          } else if (connectionId && connections) {
-            // 新增 Connection 流程 - 有 connectionId
+          } else if (connectionId) {
+            // 新增 Connection 流程 - 優先使用 connectionId（最可靠）
             const newConnection = (connections as any[]).find((c) => c.id === connectionId)
             if (newConnection) {
               setSelectedConnection(newConnection.id)
@@ -67,25 +67,50 @@ function CallbackPage() {
                 connectionName: displayName,
                 message: `Connection "${displayName}" 已成功建立`,
               })
+            } else {
+              // 如果找不到，可能是列表還沒刷新，等待一下再試
+              console.warn(`Connection ${connectionId} 尚未出現在列表中，等待刷新...`)
+              setTimeout(async () => {
+                const refreshedConnections = await refetchConnections()
+                const foundConnection = (refreshedConnections as any[]).find((c) => c.id === connectionId)
+                if (foundConnection) {
+                  setSelectedConnection(foundConnection.id)
+                  const displayName = foundConnection.displayName || foundConnection.externalAccountId || '未命名'
+                  toast.success(`已成功建立 Connection: ${displayName}`)
+                  activityLog.add({
+                    type: 'connection.created',
+                    connectionId: foundConnection.id,
+                    connectionName: displayName,
+                    message: `Connection "${displayName}" 已成功建立`,
+                  })
+                } else {
+                  console.error(`無法找到 Connection ${connectionId}`)
+                  toast.error('Connection 建立成功，但無法在列表中顯示')
+                }
+              }, 1000)
             }
           } else if (handle) {
-            // 新增 Connection 流程 - 使用 handle 查找
-            if (connections) {
-              const newConnection = (connections as any[]).find(
-                (c) => c.externalAccountId === handle || c.displayName === handle
-              )
-              if (newConnection) {
-                setSelectedConnection(newConnection.id)
-                const displayName = newConnection.displayName || newConnection.externalAccountId || '未命名'
-                toast.success(`已成功建立 Connection: ${displayName}`)
-                activityLog.add({
-                  type: 'connection.created',
-                  connectionId: newConnection.id,
-                  connectionName: displayName,
-                  message: `Connection "${displayName}" 已成功建立`,
-                })
-              }
+            // 新增 Connection 流程 - 備用：使用 handle 查找
+            const newConnection = (connections as any[]).find(
+              (c) => c.externalAccountId === handle || c.displayName === handle
+            )
+            if (newConnection) {
+              setSelectedConnection(newConnection.id)
+              const displayName = newConnection.displayName || newConnection.externalAccountId || '未命名'
+              toast.success(`已成功建立 Connection: ${displayName}`)
+              activityLog.add({
+                type: 'connection.created',
+                connectionId: newConnection.id,
+                connectionName: displayName,
+                message: `Connection "${displayName}" 已成功建立`,
+              })
+            } else {
+              console.warn(`無法找到 handle 為 ${handle} 的 Connection`)
+              toast.warning('Connection 可能已建立，但無法在列表中顯示')
             }
+          } else {
+            // 沒有 connectionId 也沒有 handle，顯示一般成功訊息
+            toast.success('授權成功')
           }
         } catch (error: any) {
           console.error('刷新 Connection 列表錯誤:', error)
