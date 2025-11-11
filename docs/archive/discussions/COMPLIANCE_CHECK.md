@@ -37,6 +37,13 @@ https://{handle}.myshopline.com/admin/oauth-web/#/oauth/authorize?appKey={appkey
 - ✅ 自動過濾 `sign` 參數並按字母順序排序
 - ✅ 返回 HTML 頁面並自動重導向
 
+**🚨 關鍵實作細節**：
+- 簽名驗證必須直接傳遞整個 `params` 或 `req.query`
+- `verifyInstallRequest` 會自動遍歷所有參數進行簽名驗證
+- **禁止**只傳遞部分參數（會導致簽名驗證失敗）
+
+**參考實作**：見 `docs/reference/guides/SHOPLINE_OAUTH_IMPLEMENTATION.md`
+
 ### 4. Token 交換 (步驟 4)
 - ✅ 使用正確的端點：`POST https://{handle}.myshopline.com/admin/oauth/token/create`
 - ✅ 正確的 Headers：`Content-Type`, `appkey`, `timestamp`, `sign`

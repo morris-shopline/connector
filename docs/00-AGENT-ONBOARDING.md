@@ -92,6 +92,7 @@ docs/backlog/index.md
 | 了解運作原則 | `docs/memory/principles.md` |
 | **🚨 Run 管理規範（必讀）** | `docs/reference/guides/RUN_MANAGEMENT.md` |
 | **📝 Backlog Inbox 使用指南** | `docs/backlog/inbox/README.md` |
+| **🚨 Shopline OAuth 實作（必讀）** | `docs/reference/guides/SHOPLINE_OAUTH_IMPLEMENTATION.md` |
 
 ---
 

@@ -48,6 +48,7 @@ UI/UX 設計規格，前端開發的設計參考。
 
 **包含**：
 - `PRODUCTION_ENVIRONMENT.md` - 正式環境資訊（正式站 URL、測試商店資訊）⭐
+- `SHOPLINE_OAUTH_IMPLEMENTATION.md` - Shopline OAuth 實作指南（關鍵實作細節、sample code）🚨 **Agent 必讀**
 - `testing-guide.md` - Shopline OAuth 實測資訊與測試流程
 - `DEPLOYMENT_GUIDE.md` - 部署指南
 - `ENV_SETUP_GUIDE.md` - 環境設定指南

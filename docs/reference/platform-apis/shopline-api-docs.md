@@ -67,6 +67,37 @@ sign: {sign}
 2. 與接收到的簽名進行比較
 3. 使用 `crypto.timingSafeEqual()` 防止時序攻擊
 
+### 🚨 關鍵實作細節
+
+**重要原則**：簽名驗證必須包含所有參數（除了 `sign` 本身）
+
+**OAuth Callback 參數**：
+- 必要參數：`appkey`, `code`, `handle`, `timestamp`, `sign`
+- 可選參數（但必須包含在簽名驗證中）：`lang`, `customField`, `state`
+
+**正確實作**：
+```typescript
+// ✅ 正確：直接傳遞整個 query 參數
+const isValidSignature = verifyGetSignature(req.query, sign, appSecret)
+
+// ✅ 正確：直接傳遞整個 params
+const isValidSignature = await shoplineService.verifyInstallRequest(params)
+```
+
+**錯誤實作**：
+```typescript
+// ❌ 錯誤：只傳遞部分參數（會導致簽名驗證失敗）
+const verifyParams = {
+  appkey: params.appkey,
+  handle: params.handle,
+  timestamp: params.timestamp,
+  sign: params.sign
+  // 缺少 code, lang 等參數！
+}
+```
+
+**詳細實作指南**：見 `docs/reference/guides/SHOPLINE_OAUTH_IMPLEMENTATION.md`
+
 ## 3. 訪問範圍 (Access Scope)
 **文件**: https://developer.shopline.com/docs/apps/api-instructions-for-use/access-scope?version=v20260301
 
