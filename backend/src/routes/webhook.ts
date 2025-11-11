@@ -97,6 +97,58 @@ export async function webhookRoutes(fastify: FastifyInstance, options: any) {
       // 8. 非同步處理：儲存 Webhook 事件
       // 由於已回應，後續處理不會影響回應時間
       try {
+        // Story 4.3: 加強安全驗證 - 找到對應的 ConnectionItem
+        const { connectionRepository } = await import('../repositories/connectionRepository')
+        const { PrismaClient } = await import('@prisma/client')
+        const prisma = new PrismaClient()
+        
+        // 根據 shoplineId 找到對應的 ConnectionItem
+        const connectionItem = await prisma.connectionItem.findFirst({
+          where: {
+            platform: 'shopline',
+            externalResourceId: shopId,
+            status: 'active',
+          },
+          include: {
+            integrationAccount: {
+              select: {
+                id: true,
+                userId: true,
+              },
+            },
+          },
+        })
+        
+        // 驗證 ConnectionItem 的 userId 與 store.userId 一致
+        if (connectionItem && connectionItem.integrationAccount.userId !== store.userId) {
+          fastify.log.warn('Webhook security: ConnectionItem userId mismatch', {
+            webhookId,
+            shopId,
+            storeUserId: store.userId,
+            connectionItemUserId: connectionItem.integrationAccount.userId,
+          })
+          // 記錄安全事件，但不阻止處理（因為已經回應 200）
+          try {
+            const { auditLogRepository } = await import('../repositories/auditLogRepository')
+            await auditLogRepository.createAuditLog({
+              userId: store.userId,
+              connectionId: connectionItem.integrationAccount.id,
+              connectionItemId: connectionItem.id,
+              operation: 'webhook.security_mismatch',
+              result: 'error',
+              errorCode: 'USER_ID_MISMATCH',
+              errorMessage: `Webhook userId mismatch: store.userId=${store.userId}, connectionItem.userId=${connectionItem.integrationAccount.userId}`,
+              metadata: {
+                webhookId,
+                shopId,
+                topic,
+              },
+            })
+          } catch (auditError) {
+            fastify.log.error('Failed to create security audit log:', auditError)
+          }
+        }
+        
         await shoplineService.saveWebhookEvent(
           store.id,
           webhookId,
@@ -105,7 +157,8 @@ export async function webhookRoutes(fastify: FastifyInstance, options: any) {
           shopId,
           merchantId || null,
           apiVersion || null,
-          request.body
+          request.body,
+          connectionItem?.id || null // 傳入 connectionItemId
         )
 
         const processingTime = Date.now() - startTime
@@ -114,8 +167,11 @@ export async function webhookRoutes(fastify: FastifyInstance, options: any) {
           topic,
           shopId,
           storeId: store.id,
+          connectionItemId: connectionItem?.id || null,
           processingTime: `${processingTime}ms`
         })
+        
+        await prisma.$disconnect()
       } catch (saveError) {
         // 記錄儲存錯誤，但不影響回應（因為已回應 200）
         fastify.log.error('Error saving webhook event', {

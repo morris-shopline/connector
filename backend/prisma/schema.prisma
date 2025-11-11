@@ -22,6 +22,7 @@ model User {
   // 關聯
   stores              Store[] // 舊表（deprecated，R3.0 migration 後保留）
   integrationAccounts IntegrationAccount[] // Connection（R3.0 新增）
+  auditLogs           IntegrationAuditLog[]
 
   @@map("users")
 }
@@ -87,8 +88,9 @@ model IntegrationAccount {
   updatedAt         DateTime @updatedAt
 
   // 關聯
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   connectionItems ConnectionItem[]
+  auditLogs       IntegrationAuditLog[]
 
   @@unique([userId, platform, externalAccountId]) // 使用者 + 平台 + 帳戶 ID 唯一性
   @@index([userId])
@@ -109,11 +111,37 @@ model ConnectionItem {
   updatedAt            DateTime @updatedAt
 
   // 關聯
-  integrationAccount IntegrationAccount @relation(fields: [integrationAccountId], references: [id], onDelete: Cascade)
-  webhookEvents      WebhookEvent[]     @relation("WebhookEventConnectionItem")
+  integrationAccount IntegrationAccount    @relation(fields: [integrationAccountId], references: [id], onDelete: Cascade)
+  webhookEvents      WebhookEvent[]        @relation("WebhookEventConnectionItem")
+  auditLogs          IntegrationAuditLog[]
 
   @@index([integrationAccountId])
   @@index([platform, externalResourceId]) // 平台 + 資源 ID 查詢優化
   @@index([integrationAccountId, status]) // Connection + 狀態查詢
   @@map("connection_items")
+}
+
+// R3.0: Connection 審計記錄
+model IntegrationAuditLog {
+  id               String   @id @default(cuid())
+  userId           String // 操作者
+  connectionId     String? // 關聯到 Connection（可選，因為某些操作可能不直接關聯）
+  connectionItemId String? // 關聯到 Connection Item（可選）
+  operation        String // 操作類型：connection.create, connection.reauthorize, connection_item.enable, connection_item.disable, token.error 等
+  result           String   @default("success") // success / error
+  errorCode        String? // 錯誤碼（如果 result 為 error）
+  errorMessage     String? // 錯誤訊息（如果 result 為 error）
+  metadata         Json? // 額外資訊（IP、User-Agent、請求參數等）
+  createdAt        DateTime @default(now())
+
+  // 關聯
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connection     IntegrationAccount? @relation(fields: [connectionId], references: [id], onDelete: SetNull)
+  connectionItem ConnectionItem?     @relation(fields: [connectionItemId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([connectionId, createdAt])
+  @@index([connectionItemId, createdAt])
+  @@index([operation, createdAt])
+  @@map("integration_audit_logs")
 }

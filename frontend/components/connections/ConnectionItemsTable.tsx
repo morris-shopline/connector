@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useConnectionStore } from '../../stores/useConnectionStore'
 import { apiClient } from '../../lib/api'
 import { toast } from '../../hooks/useToast'
-import { activityLog } from '../../hooks/useActivityLog'
 import { ConnectionStatusPill } from './ConnectionStatusPill'
 import { format } from 'date-fns'
 import { zhTW } from 'date-fns/locale/index.js'
@@ -47,15 +46,7 @@ export function ConnectionItemsTable() {
       if (response.success) {
         toast.success(`已成功${action} "${itemName}"`)
         
-        // 記錄到 Activity Dock
-        activityLog.add({
-          type: newStatus === 'disabled' ? 'connection_item.disabled' : 'connection_item.enabled',
-          connectionId: selectedConnection.id,
-          connectionName: selectedConnection.displayName || selectedConnection.externalAccountId || '未命名',
-          connectionItemId: itemId,
-          connectionItemName: itemName,
-          message: `Connection Item "${itemName}" 已${action}`,
-        })
+        // 審計記錄已由後端寫入，Activity Dock 會自動從後端讀取
 
         // 刷新 Connection 列表
         await refetchConnections()

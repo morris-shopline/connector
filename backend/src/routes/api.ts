@@ -1,8 +1,10 @@
 import { FastifyInstance } from 'fastify'
 import { ShoplineService } from '../services/shopline'
 import { authMiddleware } from '../middleware/auth'
+import { requireConnectionOwner } from '../middleware/requireConnectionOwner'
 import { filterStoresByUser, verifyStoreOwnership, verifyStoreHandleOwnership } from '../utils/query-filter'
 import { connectionRepository } from '../repositories/connectionRepository'
+import { auditLogRepository } from '../repositories/auditLogRepository'
 
 const shoplineService = new ShoplineService()
 
@@ -28,17 +30,97 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
       fastify.log.error('Get connections error:', error)
       return reply.status(500).send({
         success: false,
+        code: 'INTERNAL_ERROR',
         error: 'Internal server error'
       })
     }
   })
 
-  // 更新 Connection Item 狀態（需要登入）
-  fastify.patch('/api/connection-items/:id', { preHandler: [authMiddleware] }, async (request, reply) => {
+  // Story 4.3: 取得 Connection 的審計記錄
+  fastify.get('/api/connections/:connectionId/logs', { 
+    preHandler: [authMiddleware, requireConnectionOwner]
+  }, async (request, reply) => {
     try {
       if (!request.user) {
         return reply.status(401).send({
           success: false,
+          code: 'AUTHENTICATION_REQUIRED',
+          error: 'Authentication required'
+        })
+      }
+
+      const connectionId = (request.params as any).connectionId
+      const limit = parseInt((request.query as any).limit || '50', 10)
+
+      const logs = await auditLogRepository.findAuditLogsByConnection(connectionId, limit)
+
+      return reply.send({
+        success: true,
+        data: logs
+      })
+    } catch (error) {
+      fastify.log.error('Get connection logs error:', error)
+      return reply.status(500).send({
+        success: false,
+        code: 'INTERNAL_ERROR',
+        error: 'Internal server error'
+      })
+    }
+  })
+
+  // Story 4.3: 取得所有審計記錄（用於 Activity Dock）
+  fastify.get('/api/audit-logs', { 
+    preHandler: [authMiddleware]
+  }, async (request, reply) => {
+    try {
+      if (!request.user) {
+        return reply.status(401).send({
+          success: false,
+          code: 'AUTHENTICATION_REQUIRED',
+          error: 'Authentication required'
+        })
+      }
+
+      const limit = parseInt((request.query as any).limit || '50', 10)
+      const logs = await auditLogRepository.findRecentAuditLogs(limit)
+
+      return reply.send({
+        success: true,
+        data: logs
+      })
+    } catch (error) {
+      fastify.log.error('Get audit logs error:', error)
+      return reply.status(500).send({
+        success: false,
+        code: 'INTERNAL_ERROR',
+        error: 'Internal server error'
+      })
+    }
+  })
+
+  // 更新 Connection Item 狀態（需要登入 + 擁有權驗證）
+  fastify.patch('/api/connection-items/:id', { 
+    preHandler: [authMiddleware, async (request, reply) => {
+      // 先取得 item 的 connectionId，然後驗證擁有權
+      const itemId = (request.params as any).id
+      const item = await connectionRepository.findConnectionItemById(itemId)
+      if (!item) {
+        return reply.status(404).send({
+          success: false,
+          code: 'CONNECTION_ITEM_NOT_FOUND',
+          error: 'Connection Item not found'
+        })
+      }
+      // 將 connectionId 放入 params，讓 requireConnectionOwner 可以驗證
+      ;(request.params as any).connectionId = item.integrationAccountId
+      return requireConnectionOwner(request as any, reply)
+    }]
+  }, async (request, reply) => {
+    try {
+      if (!request.user) {
+        return reply.status(401).send({
+          success: false,
+          code: 'AUTHENTICATION_REQUIRED',
           error: 'Authentication required'
         })
       }
@@ -50,30 +132,41 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
       if (!status || (status !== 'active' && status !== 'disabled')) {
         return reply.status(400).send({
           success: false,
+          code: 'INVALID_STATUS',
           error: 'Invalid status. Must be "active" or "disabled"'
         })
       }
 
-      // 驗證 Connection Item 屬於該使用者
+      // 取得 Connection Item（已在 middleware 中驗證過擁有權）
       const item = await connectionRepository.findConnectionItemById(itemId)
       if (!item) {
         return reply.status(404).send({
           success: false,
+          code: 'CONNECTION_ITEM_NOT_FOUND',
           error: 'Connection Item not found'
-        })
-      }
-
-      // 檢查 Connection 是否屬於該使用者
-      const connection = await connectionRepository.findConnectionById(item.integrationAccountId)
-      if (!connection || connection.userId !== userId) {
-        return reply.status(403).send({
-          success: false,
-          error: 'Forbidden: You do not have permission to update this Connection Item'
         })
       }
 
       // 更新狀態
       const updatedItem = await connectionRepository.updateConnectionItemStatus(itemId, status)
+
+      // 寫入審計記錄
+      try {
+        await auditLogRepository.createAuditLog({
+          userId,
+          connectionId: item.integrationAccountId,
+          connectionItemId: itemId,
+          operation: status === 'active' ? 'connection_item.enable' : 'connection_item.disable',
+          result: 'success',
+          metadata: {
+            previousStatus: item.status,
+            newStatus: status,
+          },
+        })
+      } catch (auditError) {
+        // 審計記錄失敗不影響主要操作，只記錄錯誤
+        fastify.log.error('Failed to create audit log:', auditError)
+      }
 
       return reply.send({
         success: true,
@@ -81,8 +174,31 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
       })
     } catch (error) {
       fastify.log.error('Update connection item status error:', error)
+      
+      // 寫入錯誤審計記錄
+      try {
+        if (request.user) {
+          const itemId = (request.params as any).id
+          const item = await connectionRepository.findConnectionItemById(itemId)
+          if (item) {
+            await auditLogRepository.createAuditLog({
+              userId: request.user.id,
+              connectionId: item.integrationAccountId,
+              connectionItemId: itemId,
+              operation: 'connection_item.update',
+              result: 'error',
+              errorCode: 'INTERNAL_ERROR',
+              errorMessage: error instanceof Error ? error.message : 'Unknown error',
+            })
+          }
+        }
+      } catch (auditError) {
+        fastify.log.error('Failed to create error audit log:', auditError)
+      }
+      
       return reply.status(500).send({
         success: false,
+        code: 'INTERNAL_ERROR',
         error: 'Internal server error'
       })
     }

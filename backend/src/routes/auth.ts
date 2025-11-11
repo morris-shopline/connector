@@ -551,6 +551,26 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         
         fastify.log.info(`✅ ConnectionItem 已建立/更新: ${connectionItem.id} (${shop_id})`)
         
+        // 寫入審計記錄（新增或重新授權）
+        try {
+          const { auditLogRepository } = await import('../repositories/auditLogRepository')
+          const isNewConnection = !existingItem // 如果沒有現有 item，視為新 Connection
+          await auditLogRepository.createAuditLog({
+            userId: finalUserId,
+            connectionId: connection.id,
+            operation: isNewConnection ? 'connection.create' : 'connection.reauthorize',
+            result: 'success',
+            metadata: {
+              handle: params.handle,
+              platform: 'shopline',
+              shopId,
+            },
+          })
+        } catch (auditError) {
+          // 審計記錄失敗不影響主要操作
+          fastify.log.error('Failed to create audit log:', auditError)
+        }
+        
         await prisma.$disconnect()
         
         fastify.log.info('✅ 商店資訊、Connection 和 ConnectionItem 已儲存')

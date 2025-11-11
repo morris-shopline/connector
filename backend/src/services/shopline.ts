@@ -440,6 +440,7 @@ export class ShoplineService {
 
   /**
    * 儲存 Webhook 事件
+   * Story 4.3: 加強安全驗證，綁定 connectionItemId
    */
   async saveWebhookEvent(
     storeId: string,
@@ -449,7 +450,8 @@ export class ShoplineService {
     shoplineId: string | null,
     merchantId: string | null,
     apiVersion: string | null,
-    payload: any
+    payload: any,
+    connectionItemId?: string | null
   ): Promise<void> {
     // 從 Store 取得 userId
     const store = await prisma.store.findUnique({
@@ -461,10 +463,29 @@ export class ShoplineService {
       throw new Error(`Store not found: ${storeId}`)
     }
     
+    // Story 4.3: 如果提供了 connectionItemId，驗證它屬於該 userId
+    if (connectionItemId) {
+      const connectionItem = await prisma.connectionItem.findUnique({
+        where: { id: connectionItemId },
+        include: {
+          integrationAccount: {
+            select: {
+              userId: true,
+            },
+          },
+        },
+      })
+      
+      if (connectionItem && connectionItem.integrationAccount.userId !== store.userId) {
+        throw new Error(`ConnectionItem ${connectionItemId} does not belong to user ${store.userId}`)
+      }
+    }
+    
     await prisma.webhookEvent.create({
       data: {
         userId: store.userId,
         storeId,
+        connectionItemId: connectionItemId || null, // Story 4.3: 綁定 connectionItemId
         webhookId,
         topic,
         eventType: topic, // 保留作為兼容欄位

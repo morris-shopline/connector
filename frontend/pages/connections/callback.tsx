@@ -4,7 +4,6 @@ import { ProtectedRoute } from '../../components/ProtectedRoute'
 import { useConnections } from '../../hooks/useConnections'
 import { useConnectionStore } from '../../stores/useConnectionStore'
 import { toast } from '../../hooks/useToast'
-import { activityLog } from '../../hooks/useActivityLog'
 
 function CallbackPage() {
   const router = useRouter()
@@ -47,12 +46,7 @@ function CallbackPage() {
               setSelectedConnection(connection.id)
               const displayName = connection.displayName || connection.externalAccountId || '未命名'
               toast.success(`已成功重新授權 Connection: ${displayName}`)
-              activityLog.add({
-                type: 'connection.reauthorized',
-                connectionId: connection.id,
-                connectionName: displayName,
-                message: `Connection "${displayName}" 已成功重新授權`,
-              })
+              // 審計記錄已由後端寫入，Activity Dock 會自動從後端讀取
             }
           } else if (connectionId) {
             // 新增 Connection 流程 - 優先使用 connectionId（最可靠）
@@ -61,12 +55,7 @@ function CallbackPage() {
               setSelectedConnection(newConnection.id)
               const displayName = newConnection.displayName || newConnection.externalAccountId || '未命名'
               toast.success(`已成功建立 Connection: ${displayName}`)
-              activityLog.add({
-                type: 'connection.created',
-                connectionId: newConnection.id,
-                connectionName: displayName,
-                message: `Connection "${displayName}" 已成功建立`,
-              })
+              // 審計記錄已由後端寫入，Activity Dock 會自動從後端讀取
             } else {
               // 如果找不到，可能是列表還沒刷新，等待一下再試
               console.warn(`Connection ${connectionId} 尚未出現在列表中，等待刷新...`)
@@ -77,12 +66,7 @@ function CallbackPage() {
                   setSelectedConnection(foundConnection.id)
                   const displayName = foundConnection.displayName || foundConnection.externalAccountId || '未命名'
                   toast.success(`已成功建立 Connection: ${displayName}`)
-                  activityLog.add({
-                    type: 'connection.created',
-                    connectionId: foundConnection.id,
-                    connectionName: displayName,
-                    message: `Connection "${displayName}" 已成功建立`,
-                  })
+                  // 審計記錄已由後端寫入，Activity Dock 會自動從後端讀取
                 } else {
                   console.error(`無法找到 Connection ${connectionId}`)
                   toast.error('Connection 建立成功，但無法在列表中顯示')
@@ -98,12 +82,7 @@ function CallbackPage() {
               setSelectedConnection(newConnection.id)
               const displayName = newConnection.displayName || newConnection.externalAccountId || '未命名'
               toast.success(`已成功建立 Connection: ${displayName}`)
-              activityLog.add({
-                type: 'connection.created',
-                connectionId: newConnection.id,
-                connectionName: displayName,
-                message: `Connection "${displayName}" 已成功建立`,
-              })
+              // 審計記錄已由後端寫入，Activity Dock 會自動從後端讀取
             } else {
               console.warn(`無法找到 handle 為 ${handle} 的 Connection`)
               toast.warning('Connection 可能已建立，但無法在列表中顯示')

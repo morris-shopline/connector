@@ -1,7 +1,7 @@
 # Story 4.3: Connection 層級權限與端點保護
 
 **所屬 Epic**: [Epic 4: Connection 管理體驗（Phase 1.2）](../epics/epic-4-multi-store-management.md)  
-**狀態**: 🛠 planning  
+**狀態**: 🛠 in-development  
 **完成 Run**: -  
 **建立日期**: 2025-11-11  
 **對應 Roadmap**: Phase 1.2（多商店管理）
@@ -16,7 +16,7 @@
 
 **核心目標**：
 - 保證所有 Connection / Connection Item 操作皆需登入、具備擁有權並符合平台 scope。
-- 封存匿名入口（例如 `/api/auth/shopline/install`），改為需帶 Session / CSRF token 或特定一次性簽章。
+- 保護 OAuth 入口：`/api/auth/shopline/install` 保留 SHOPLINE 簽名驗證（即「特定一次性簽章」），`/api/auth/shopline/authorize` 需 Session 驗證。
 - 建立審計記錄：記錄 userId、connectionId、operation、結果、timestamp。
 - 將安全防護與錯誤回饋整合到前端 UI（Context Bar、Activity Dock、Toast）。
 
@@ -66,12 +66,14 @@
 
 ### 2. OAuth 入口保護
 - `GET /api/auth/shopline/install`：
-  - 新增 Session 驗證（必須登入）。
-  - 若支援無 UI 安裝流程，需改為一次性 token（本 Story 可先要求登入）。
-  - 檢查 query 中 `handle` 是否屬於該使用者允許的範圍（若無則允許，並於授權後綁定 userId）。
+  - ⚠️ **重要說明**：此端點由 SHOPLINE 平台主動呼叫（在 App Settings 中設定），SHOPLINE 不會有我們的 session。
+  - 已具備 SHOPLINE 簽名驗證（appkey, handle, timestamp, sign），此即為「特定一次性簽章」機制。
+  - **保留匿名訪問**，但需確保簽名驗證嚴格執行。
+  - 若需使用者登入才能安裝，應使用 `/api/auth/shopline/authorize` 端點（已實作，需 session）。
 - `GET /api/auth/shopline/callback`：
-  - 將成功授權的 connection 綁定 `userId`。
+  - 將成功授權的 connection 綁定 `userId`（從 state 參數或 Redis 暫存中取得）。
   - 寫入審計記錄（operation=`connection.create`）。
+  - 若無法取得 userId（匿名安裝），則記錄為匿名操作或要求使用者登入後補綁定。
 
 ### 3. 審計紀錄
 - 新增 Prisma Model（若尚未存在）：`integration_audit_logs`
