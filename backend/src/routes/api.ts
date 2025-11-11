@@ -68,7 +68,7 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
     }
   })
 
-  // Story 4.3: 取得所有審計記錄（用於 Activity Dock）
+  // Story 4.3: 取得當前使用者的審計記錄（用於 Activity Dock）
   fastify.get('/api/audit-logs', { 
     preHandler: [authMiddleware]
   }, async (request, reply) => {
@@ -81,8 +81,10 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
         })
       }
 
+      const userId = request.user.id
       const limit = parseInt((request.query as any).limit || '50', 10)
-      const logs = await auditLogRepository.findRecentAuditLogs(limit)
+      // 只返回當前使用者的審計記錄
+      const logs = await auditLogRepository.findAuditLogsByUser(userId, limit)
 
       return reply.send({
         success: true,
