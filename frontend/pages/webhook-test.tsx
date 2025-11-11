@@ -1,5 +1,4 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
-import { useStores } from '../hooks/useStores'
 import { useWebhookSubscriptions } from '../hooks/useWebhookSubscriptions'
 import { useWebhookEvents } from '../hooks/useWebhookEvents'
 import { useSubscribeWebhook } from '../hooks/useSubscribeWebhook'
@@ -13,13 +12,6 @@ import { WebhookEventCard } from '../components/WebhookEventCard'
 import { ProtectedRoute } from '../components/ProtectedRoute'
 import { useSelectedConnection } from '../hooks/useSelectedConnection'
 import { useConnectionStore } from '../stores/useConnectionStore'
-import type { StoreInfo } from '@/types'
-
-type StoreLike = StoreInfo & {
-  platform?: string | null
-  connectionId?: string | null
-  connectionItemId?: string | null
-}
 
 function WebhookTest() {
   const lockedConnectionItemId = useStoreStore((state) => state.lockedConnectionItemId)
@@ -27,19 +19,6 @@ function WebhookTest() {
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null)
   const [showSubscriptionForm, setShowSubscriptionForm] = useState(false)
   const [eventFilter, setEventFilter] = useState<'all' | 'processed' | 'pending'>('all')
-
-  const { stores } = useStores()
-  const mapStoreToConnection = useCallback((store: StoreLike): ConnectionParams => {
-    const platform = store.platform ?? 'shopline'
-    const connectionId = store.connectionId ?? store.shoplineId ?? store.id ?? null
-    const connectionItem = store.connectionItemId ?? store.id ?? store.shoplineId ?? null
-
-    return {
-      platform,
-      connectionId,
-      connectionItemId: connectionItem,
-    }
-  }, [])
 
   // Use shared connection state from useConnectionStore
   const { handle: selectedHandle, connectionItemId: selectedConnectionItemId } = useSelectedConnection()
