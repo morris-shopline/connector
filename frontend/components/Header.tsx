@@ -29,18 +29,14 @@ export function Header() {
     return () => window.removeEventListener('hashchange', updateHash)
   }, [])
 
-  // 定義導航項目
-  const navItems: NavItem[] = [
-    { label: '商店列表', href: '/' },
-    { label: 'Webhook 事件', href: '/#events' },
-    { label: 'Webhook 管理', href: '/webhook-test' },
-    { label: 'Admin API 測試', href: '/admin-api-test' }
-  ]
+  // 簡化 Header：移除重複的導覽項目（已在 Primary Nav）
+  // 只保留必要的導覽項目（如果需要）
+  const navItems: NavItem[] = []
 
   // 判斷是否為當前頁面
   const isActive = (href: string) => {
-    if (href === '/') {
-      return currentPath === '/' && (!currentHash || currentHash === '')
+    if (href === '/connections') {
+      return currentPath === '/connections'
     }
     if (href === '/#events') {
       return currentPath === '/' && currentHash === '#events'
@@ -51,8 +47,8 @@ export function Header() {
   // 取得頁面標題
   const getPageTitle = () => {
     switch (currentPath) {
-      case '/':
-        return 'Shopline API 整合儀表板'
+      case '/connections':
+        return 'Connection 管理'
       case '/webhook-test':
         return 'Webhook 管理'
       case '/admin-api-test':
@@ -108,7 +104,8 @@ export function Header() {
                 登入
               </Link>
             )}
-            {navItems.map((item) => {
+            {/* 移除重複的導覽項目，已在 Primary Nav 顯示 */}
+            {false && navItems.map((item) => {
               const active = isActive(item.href)
               // 處理 hash 路由的特殊情況
               if (item.href === '/#events') {
@@ -124,33 +121,6 @@ export function Header() {
                       } else {
                         router.push('/#events')
                       }
-                    }}
-                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                      active
-                        ? 'bg-blue-600 text-white hover:bg-blue-700'
-                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                )
-              }
-              // 處理「商店列表」連結，當有 hash 時需要清除
-              if (item.href === '/' && currentPath === '/' && currentHash) {
-                return (
-                  <Link
-                    key={item.href}
-                    href="/"
-                    scroll={false}
-                    onClick={(e) => {
-                      e.preventDefault()
-                      if (window.history.replaceState) {
-                        window.history.replaceState(null, '', '/')
-                      } else {
-                        window.location.hash = ''
-                      }
-                      setCurrentHash('')
-                      window.dispatchEvent(new Event('hashchange'))
                     }}
                     className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                       active

@@ -1,18 +1,11 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/router'
-import { useStores } from '../hooks/useStores'
 import { useAdminAPI } from '../hooks/useAdminAPI'
 import { useStoreStore } from '../stores/useStoreStore'
-import { Header } from '../components/Header'
+import { PrimaryLayout } from '../components/layout/PrimaryLayout'
 import { ProtectedRoute } from '../components/ProtectedRoute'
-import { useConnection, type ConnectionParams } from '../hooks/useConnection'
-import type { StoreInfo } from '@/types'
-
-type StoreLike = StoreInfo & {
-  platform?: string | null
-  connectionId?: string | null
-  connectionItemId?: string | null
-}
+import { useSelectedConnection } from '../hooks/useSelectedConnection'
+import { useConnectionStore } from '../stores/useConnectionStore'
 
 // API 功能定義
 type ApiFunction = {
@@ -102,138 +95,39 @@ function AdminAPITest() {
   const [isErrorOpen, setIsErrorOpen] = useState<boolean>(false)
   const [paramValues, setParamValues] = useState<Record<string, string>>({})
 
-  const { stores } = useStores()
-  const mapStoreToConnection = useCallback((store: StoreLike): ConnectionParams => {
-    const platform = store.platform ?? 'shopline'
-    const connectionId = store.connectionId ?? store.shoplineId ?? store.id ?? null
-    const connectionItem = store.connectionItemId ?? store.id ?? store.shoplineId ?? null
+  // Use shared connection state from useConnectionStore
+  const { handle: selectedHandle, connectionItemId: selectedConnectionItemId } = useSelectedConnection()
+  const { connections, setSelectedConnection } = useConnectionStore()
 
-    return {
-      platform,
-      connectionId,
-      connectionItemId: connectionItem,
+  const activeHandle = selectedHandle || null
+  const activeConnectionItemId = selectedConnectionItemId || null
+
+  // When handle changes in dropdown, update the connection store
+  const handleStoreChange = useCallback(async (newHandle: string | null) => {
+    if (!newHandle) {
+      setResponse(null)
+      setError(null)
+      setSelectedFunction(null)
+      return
     }
-  }, [])
 
-  const resolveConnectionItem = useCallback(
-    (connectionItemId: string) => {
-      const target = stores.find((store) => {
-        if (!store) return false
-        const enriched = store as StoreLike
-        const candidateIds = [enriched.id, enriched.shoplineId, enriched.connectionItemId]
-        return candidateIds.filter(Boolean).includes(connectionItemId)
-      })
-
-      if (!target) {
-        return null
-      }
-
-      return mapStoreToConnection(target as StoreLike)
-    },
-    [stores, mapStoreToConnection]
-  )
-
-  const { currentConnection, applyConnection } = useConnection()
-
-  const defaultConnection = useMemo(() => {
-    if (!stores.length) {
-      return null
-    }
-    return mapStoreToConnection(stores[0])
-  }, [stores, mapStoreToConnection])
-
-  // ⚠️ 移除自動設置 Connection 的邏輯（違反 State 分層原則）
-  // 如果 URL 沒有 Connection 參數，應該顯示「請選擇商店」，不自動設置
-  // useEffect(() => {
-  //   if (!defaultConnection) {
-  //     return
-  //   }
-  //   if (currentConnection.connectionItemId) {
-  //     return
-  //   }
-  //   applyConnection(defaultConnection)
-  // }, [applyConnection, currentConnection.connectionItemId, defaultConnection])
-
-  const activeStore = useMemo(() => {
-    return (
-      stores.find((store) => {
-        if (!store) return false
-        const params = mapStoreToConnection(store)
-        if (currentConnection.connectionItemId && params.connectionItemId === currentConnection.connectionItemId) {
-          return true
-        }
-        if (currentConnection.connectionId && params.connectionId === currentConnection.connectionId) {
-          return true
-        }
-        return false
-      }) || null
+    // Find the connection that matches this handle
+    const targetConnection = connections.find(
+      (c) => c.externalAccountId === newHandle
     )
-  }, [currentConnection.connectionId, currentConnection.connectionItemId, stores, mapStoreToConnection])
-
-  const activeHandle = useMemo(
-    () =>
-      activeStore?.handle ||
-      activeStore?.shoplineId ||
-      currentConnection.connectionItemId ||
-      currentConnection.connectionId ||
-      null,
-    [activeStore, currentConnection.connectionId, currentConnection.connectionItemId]
-  )
-
-  const activeConnectionItemId = useMemo(() => {
-    if (activeStore) {
-      return mapStoreToConnection(activeStore).connectionItemId ?? null
+    
+    if (targetConnection) {
+      setSelectedConnection(targetConnection.id)
+      setResponse(null)
+      setError(null)
+      setSelectedFunction(null)
     }
-    return currentConnection.connectionItemId ?? null
-  }, [activeStore, currentConnection.connectionItemId, mapStoreToConnection])
+  }, [connections, setSelectedConnection])
 
   const adminAPI = useAdminAPI({
     handle: activeHandle,
     connectionItemId: activeConnectionItemId,
   })
-
-  const handleStoreChange = async (newHandle: string | null) => {
-    if (!newHandle) {
-      await applyConnection({
-        platform: null,
-        connectionId: null,
-        connectionItemId: null,
-      })
-          setResponse(null)
-          setError(null)
-          setSelectedFunction(null)
-      return
-    }
-
-    const targetStore = stores.find((store) => {
-      if (!store) return false
-      return (
-        store.handle === newHandle ||
-        store.shoplineId === newHandle ||
-        store.id === newHandle
-      )
-    })
-
-    if (!targetStore) {
-      return
-    }
-
-    const params = mapStoreToConnection(targetStore)
-
-    if (
-      lockedConnectionItemId &&
-      params.connectionItemId &&
-      lockedConnectionItemId !== params.connectionItemId
-    ) {
-      alert(`無法切換商店：${lockedConnectionItemId} 正在操作中，請等待操作完成`)
-      return
-    }
-    
-    await applyConnection(params)
-    setResponse(null)
-    setError(null)
-    setSelectedFunction(null)
-  }
 
   const toggleGroup = (group: string) => {
     const newOpenGroups = new Set(openGroups)
@@ -311,11 +205,9 @@ function AdminAPITest() {
     : ''
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-
+    <PrimaryLayout>
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="p-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Panel - Store Selector & Toggle Menu */}
           <div className="lg:col-span-1 space-y-4">
@@ -327,15 +219,17 @@ function AdminAPITest() {
               <select
                 value={activeHandle || ''}
                 onChange={(e) => {
-                  handleStoreChange(e.target.value || null)
+                  if (e.target.value) {
+                    handleStoreChange(e.target.value)
+                  }
                 }}
                 disabled={!!lockedConnectionItemId}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">請選擇商店</option>
-                {stores.map(store => (
-                  <option key={store.id} value={store.handle || store.shoplineId}>
-                    {store.handle || store.shoplineId}
+                {connections.map(connection => (
+                  <option key={connection.id} value={connection.externalAccountId}>
+                    {connection.displayName || connection.externalAccountId}
                   </option>
                 ))}
               </select>
@@ -554,8 +448,8 @@ function AdminAPITest() {
             )}
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </PrimaryLayout>
   )
 }
 

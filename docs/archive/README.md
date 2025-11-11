@@ -14,7 +14,8 @@ archive/
 ├── refactors/        # 已完成的 Refactors
 ├── issues/           # 已完成的 Issues
 ├── stories/          # 已完成的 Stories
-└── old-runs/         # 舊 Run 記錄
+├── old-runs/         # 舊 Run 記錄
+└── deployment-logs/   # 部署日誌記錄
 ```
 
 ---
@@ -34,6 +35,7 @@ archive/
 - **討論過程**: `archive/discussions/` - 討論過程留底，決策已記錄在 `memory/decisions/`
 - **已完成任務**: `archive/epics/`, `archive/refactors/`, `archive/issues/`, `archive/stories/`
 - **舊 Run 記錄**: `archive/old-runs/`
+- **部署日誌**: `archive/deployment-logs/` - 每次 Run 推上線的詳細記錄
 
 ---
 

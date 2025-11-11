@@ -214,6 +214,20 @@ export class ConnectionRepository {
       },
     })
   }
+
+  /**
+   * 更新 ConnectionItem 狀態
+   */
+  async updateConnectionItemStatus(itemId: string, status: 'active' | 'disabled') {
+    return prisma.connectionItem.update({
+      where: {
+        id: itemId,
+      },
+      data: {
+        status,
+      },
+    })
+  }
 }
 
 // 匯出單例

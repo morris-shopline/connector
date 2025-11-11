@@ -6,6 +6,43 @@
 
 ## Run 列表
 
+### ✅ Run 2025-11-11-01: Bug Fix + Technical Debt Cleanup + Documentation
+
+**Run ID**: run-2025-11-11-01  
+**類型**: Bug Fix + Technical Debt Cleanup + Documentation  
+**狀態**: ✅ closed  
+**開始時間**: 2025-11-11  
+**完成時間**: 2025-11-11
+
+**Stories**:
+- [Issue 2025-11-10-001: Auth 流程被搞壞（正式環境）](../backlog/issues/issue-2025-11-10-001.md) ✅ resolved
+- 技術債清理：移除過渡期映射工具 ✅ completed
+
+**完成內容**:
+- ✅ 修復 OAuth callback 簽名驗證問題
+  - 根本原因：簽名驗證未包含 `code` 參數
+  - 修復方式：恢復為直接傳遞整個 `params` 物件給 `verifyInstallRequest`
+  - 修改檔案：`backend/src/types.ts`, `backend/src/routes/auth.ts`
+- ✅ 清理技術債：移除 `frontend/utils/storeToConnection.ts`
+- ✅ 建立 Shopline OAuth 實作指南
+  - 建立 `docs/reference/guides/SHOPLINE_OAUTH_IMPLEMENTATION.md`
+  - 更新相關文件加入關鍵實作細節
+  - 加入 Shopline 官方文件連結
+
+**測試結果**:
+- ✅ Agent 功能測試：所有修復通過
+- ✅ User Test：正式環境驗證通過（2025-11-11）
+  - OAuth 授權流程正常
+  - 商店授權功能正常
+  - 重新授權流程正常
+
+**相關 Issue**:
+- ✅ Issue 2025-11-10-001: OAuth callback 簽名驗證問題 → resolved
+
+**推上線狀態**: ✅ 已推上線（2025-11-11，Commit: 446c3ad）
+
+---
+
 ### ✅ Run 2025-11-10-01: Connection 基礎重構（Phase 1.2 前置）
 
 **Run ID**: run-2025-11-10-01  
@@ -164,5 +201,5 @@
 
 ---
 
-**最後更新**: 2025-11-07
+**最後更新**: 2025-11-11
 

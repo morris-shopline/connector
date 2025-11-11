@@ -43,40 +43,34 @@
 - 可自介面完成新增、重新授權與停用 Connection，回傳狀態與錯誤處理一致
 - 針對 Connection 相關 API 與 Webhook 實作使用者／Connection 擁有權保護，並補齊記錄與測試
 - 既有 Admin 功能在多 Connection 情境下不再出現舊資料殘留、閃跳或未授權存取
-- **依照 `ADMIN_APP_UI_ARCHITECTURE.md` + `CONNECTION_MANAGEMENT_UI_DESIGN.md` 建立統一的前台操作體驗，確保 Phase 1.3/Phase 2 能沿用同一 UI 分層**
-
----
-
-## UI / UX 設計指引
-
-- 上位架構：`docs/reference/design-specs/ADMIN_APP_UI_ARCHITECTURE.md`
-- 詳細設計規格：`docs/reference/design-specs/CONNECTION_MANAGEMENT_UI_DESIGN.md`
-- 設計原則：
-  - Connection Rail + Workspace Tab 架構，支援平台切換與擴充能力  
-  - Zustand 為唯一 Source of Truth，URL 僅作初始化（對應 `connection-state-sync` 決策）  
-  - 重用狀態徽章、平台徽章等元件，降低多平台擴充成本  
-  - Activity / Insight 面板 Phase 1.2 先留空，Phase 2 可即插即用
-- 實作時需建立組件目錄 `components/connections/`，統一封裝 Connection UI 元件，並與 `components/layout/PrimaryNav.tsx` 等全域元件對齊。
 
 ---
 
 ## Stories
 
-| Story | 類型 | 所屬 | 狀態 | 完成 Run |
-|-------|------|------|------|----------|
-| [Story 4.1: Connection Dashboard 與列表體驗](../stories/story-4-1-connection-dashboard.md) | Feature | Epic 4 | 🛠 planning | - |
-| [Story 4.2: Connection 建立與重新授權工作流](../stories/story-4-2-connection-workflow.md) | Feature | Epic 4 | 🛠 planning | - |
-| [Story 4.3: Connection 層級權限與端點保護](../stories/story-4-3-connection-security.md) | Feature | Epic 4 | 🛠 planning | - |
+### ⏳ Story 4.1: Connection Dashboard 與列表體驗（Phase 1.2 MVP）
+- **描述**: 建立新的 Connection List & Dashboard，取代現有商店列表，整合空態、狀態徽章與基本操作入口
+- **範圍 / 要點**:
+  - 串接 `/api/connections`，呈現 Connection 及其 Connection Items（Shopline-only）
+  - 空態引導：尚未有 Connection → 引導建立流程與測試指引
+  - 狀態顯示：Active / Expired / Error，沿用 R3.2 的錯誤碼映射
+  - 測試需覆蓋 `note-2025-11-06-002` 列出的 UI / 流程缺口與 happy path / edge cases
 
----
+### ⏳ Story 4.2: Connection 建立與重新授權工作流
+- **描述**: 整合新增 Connection、重新授權、停用流程，提供一致 UX 與紀錄
+- **範圍 / 要點**:
+  - 新增 Connection Flow：選擇平台（Shopline）、導向 OAuth、回前端後自動刷新列表
+  - 重新授權入口：整合 R3.2 的提示機制，提供「重新授權」「重試」等操作
+  - 停用／刪除流程：確認視窗、API 連動、狀態同步（包含 Token revoke 後的 UI 變化）
+  - 事件記錄：顯示最近授權時間、錯誤訊息、重新授權結果，並補齊測試腳本
 
-## 成功標準 / 驗收重點
-
-- Run 完成後，登入落地頁即為 `Connections` 模組，畫面結構符合 `ADMIN_APP_UI_ARCHITECTURE.md` 定義（Primary Nav + Context Bar + Workspace + Activity Dock 空態）。
-- Connection 管理功能遵循 `CONNECTION_MANAGEMENT_UI_DESIGN.md` 的流程與元件設計，含 Flow C1~C4 行為、空態引導與狀態徽章。
-- Cross-module 整合：Webhook / Admin API 頁面能共用 Context Bar 的 Connection 狀態，無閃跳或殘留資料。
-- Activity / 通知：Token 重新授權、停用操作、錯誤提示透過統一通道呈現（Activity Dock 或 toast），符合 Token Lifecycle 決策。
-- 文件回收：Story 4.1~4.3 在技術細節階段需引用上述設計文件並列出測試矩陣，Run 驗收時更新 Story 驗收紀錄。
+### ⏳ Story 4.3: Connection 層級權限與端點保護
+- **描述**: 針對 Connection 相關 API / Webhook 補齊使用者與 Connection 擁有權驗證，納入審計記錄，封存公開端點
+- **範圍 / 要點**:
+  - 驗證 Connection 所屬使用者與 platform scope，確保多 Connection 情境資料隔離
+  - 調整 `/api/auth/shopline/install` 等入口：需登入 Session 或流向明確的安全 Token，避免匿名授權
+  - API / Webhook 層級紀錄 userId、connectionId、操作時間；補齊 `note-2025-11-07-001` 所列安全缺口
+  - 測試：撰寫權限測試腳本與自動化檢核，覆蓋 `note-2025-11-06-002` 的未測情境
 
 ---
 

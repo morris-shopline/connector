@@ -144,6 +144,20 @@ export const apiClient = {
     }
   },
 
+  // 停用/啟用 Connection Item
+  async updateConnectionItemStatus(
+    itemId: string,
+    status: 'active' | 'disabled'
+  ): Promise<ApiResponse<any>> {
+    try {
+      const response = await api.patch(`/api/connection-items/${itemId}`, { status })
+      return response.data
+    } catch (error: any) {
+      console.error('Update connection item status error:', error)
+      throw error
+    }
+  },
+
   // 取得所有商店（向後相容）
   async getStores(): Promise<ApiResponse<StoreInfo[]>> {
     console.log('🔍 [DEBUG] getStores() 開始調用')

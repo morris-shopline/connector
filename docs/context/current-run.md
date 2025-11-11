@@ -1,177 +1,95 @@
 # Current Run
 
-**Run ID**: run-2025-11-11-01  
-**Run 類型**: Bug Fix + Technical Debt Cleanup + Documentation  
-**狀態**: ✅ closed  
-**開始時間**: 2025-11-11  
-**完成時間**: 2025-11-11  
-**推上線時間**: 2025-11-11  
-**Commit**: 446c3ad  
-**最後更新**: 2025-11-11
+**Run ID**: run-2025-11-12-01  
+**Run 類型**: Feature Development (Epic 4)  
+**狀態**: 🛠 in-progress  
+**開始時間**: 2025-11-12  
 
 ---
 
 ## Run 核心目標
-
-1. **修復 Issue 2025-11-10-001**: OAuth 授權流程（auth callback）返回 `Invalid signature` 錯誤
-2. **清理技術債**: 移除過渡期映射工具 `frontend/utils/storeToConnection.ts`
-3. **文件更新**: 建立 Shopline OAuth 實作指南並加入官方文件連結
+1. Story 4.1：拆除舊版「商店列表」首頁，落地 `ADMIN_APP_UI_ARCHITECTURE.md` 全域架構（Primary Nav / Context Bar / Activity Dock / Workspace Tabs）。
+2. Story 4.2：在新架構上串起新增／重新授權／停用等 Connection 工作流，完成 Toast 與 Activity Dock 事件寫入。
+3. Story 4.3：補齊 Connection 權限檢查、審計紀錄與安全防護，最終 Activity Dock 連結後端紀錄並驗證 Shopline OAuth Flow 無回歸。
 
 ---
 
 ## 任務清單
 
-### Issue 2025-11-10-001: Auth 流程被搞壞（正式環境）
+### Story 4.1: Connection Dashboard 與列表體驗
+- **狀態**: ✅ completed
+- ✅ 取代 `pages/index.tsx`，新建 `pages/connections/index.tsx` 搭載 `PrimaryLayout`
+- ✅ 新增 `PrimaryNav`、`ContextBar`、`ActivityDock(空態)`、`ConnectionRail`、`Overview` 元件
+- ✅ 串接 `/api/connections`，顯示狀態徽章、空態、預覽列表
+- ✅ `/` redirect 至 `/connections`，Header 導覽同步
 
-**狀態**: ✅ completed  
-**優先級**: 🔴 Critical
+### Story 4.2: Connection 建立與重新授權工作流
+- **狀態**: ✅ ready-for-user-test
+- ✅ Flow C2：新增 Connection（平台選擇 → OAuth → 回前端刷新）
+- ✅ Flow C3：重新授權流程（Modal + OAuth + Activity 記錄）
+- ✅ Flow C4：停用 / 啟用 Connection Item
+- ✅ Toast / Activity Dock 事件暫以前端狀態寫入（為 4.3 打底）
+- ✅ UI 層級優化：Primary Nav 圖標式、Global Header 簡化（GA4 風格）
 
-**問題描述**:
-- OAuth 授權流程（auth callback）返回 `Invalid signature` 錯誤
-- 發生位置：`api/auth/shopline/callback`
-- 影響：用戶無法完成 OAuth 授權流程、無法新增商店授權、無法重新授權已過期的 Token
-
-**根本原因**:
-- OAuth callback 的簽名驗證邏輯未包含 `code` 參數
-- 根據 Shopline API 文件，簽名驗證應該包含所有參數（除了 `sign` 本身）
-- `verifyCallbackParams` 只包含了 `appkey`, `handle`, `timestamp`, `sign`，缺少 `code`
-
-**修復內容**:
-- ✅ 更新 `ShoplineAuthParams` 類型定義，新增可選的 `code` 參數
-- ✅ 修復 OAuth callback 簽名驗證邏輯，包含 `code` 參數
-- ✅ 確認安裝請求驗證不受影響（因為 `code` 是可選參數）
-
-**修改檔案**:
-- `backend/src/types.ts`: 更新 `ShoplineAuthParams` 類型定義
-- `backend/src/routes/auth.ts`: 修復 OAuth callback 簽名驗證邏輯
-
-**待辦事項**:
-- [x] 檢查 OAuth callback 簽名驗證邏輯
-- [x] 確認簽名驗證是否包含所有必要參數（`appkey`, `code`, `handle`, `timestamp`）
-- [x] 修復簽名驗證邏輯
-- [x] 測試修復後的 OAuth 流程（User Test - 正式環境驗證通過）
-- [x] 推上線並驗證
-- [x] 建立實作指南文件
-- [x] 加入官方文件連結
+### Story 4.3: Connection 層級權限與端點保護
+- **狀態**: 🛠 planning → _Run 末段進行_
+- ✅ Fastify decorator 驗證 user + connection 擁有權
+- ✅ 封存匿名 OAuth 入口（需登入 / 一次性 Token）
+- ✅ Prisma `integration_audit_logs` + 寫入 API + Activity Dock 串接後端資料
+- ✅ Webhook 層安全補強（簽章驗證、userId 綁定）
 
 ---
 
-### 技術債清理：移除過渡期映射工具
-
-**狀態**: ✅ completed  
-**優先級**: Medium
-
-**問題描述**:
-- `frontend/utils/storeToConnection.ts` 為過渡期映射工具
-- Run 2025-11-10-01 完成後應移除，但未清理
-- 目前沒有被使用（grep 未找到使用處）
-
-**處理結果**:
-- ✅ 確認 `storeToConnection.ts` 確實未被使用（無任何 import）
-- ✅ 移除 `frontend/utils/storeToConnection.ts` 檔案
-- ✅ 確認移除後沒有破壞任何功能（相關頁面使用本地定義的函數）
-
-**待辦事項**:
-- [x] 確認 `storeToConnection.ts` 確實未被使用
-- [x] 移除 `frontend/utils/storeToConnection.ts` 檔案
-- [x] 確認移除後沒有破壞任何功能
+## 既有現況摘要
+- Shopline OAuth Flow 正常運作，簽章與 callback 近期已修復，本 Run 任何調整不得破壞該流程。
+- Refactor 3 已完成資料分層：`Connection` 代表平台帳戶授權（負責 OAuth / Token / 停用），`Connection Item` 代表該帳戶下的資源（負責 API 操作 / Webhook）；本 Run 的 UI 需維持這個層級但在單一商店情境下保持簡潔。
+- 現有 Admin UI 仍為舊式「商店列表」頁面；Run 首要任務是完全替換成設計規格中的新架構（Primary Layout + Context Bar + Activity Dock）。
+- Connection API (`GET /api/connections`) 已提供 R3 schema；Activity Dock 尚無實際資料，本 Run 會先以前端事件寫入，再由 Story 4.3 串接審計紀錄。
 
 ---
 
-## 測試計劃
+## Run 執行策略
+1. **階段 1 – 架構重建（Story 4.1）**：
+   - 拆除舊頁面與組件，建立新的 `PrimaryLayout` 與 Connections Landing Page。
+   - 確認登入後落地 `/connections`，UI 結構與設計規格一致。
+2. **階段 2 – 工作流串接（Story 4.2）**：
+   - 基於新 Layout 實作新增／重新授權／停用流程，確保 Toast 與 Activity Dock 事件一致。
+3. **階段 3 – 安全與審計（Story 4.3）**：
+   - 套用 API 權限檢查、建立審計紀錄，替換 Activity Dock 資料來源並做 Shopline OAuth regression。
 
-### Agent 測試項目
-
-**Issue 2025-11-10-001**:
-- [x] 檢查 OAuth callback 簽名驗證邏輯
-- [x] 確認簽名驗證包含所有必要參數（包含 `code`）
-- [x] 驗證修復後的簽名驗證邏輯正確運作
-- [x] 確認類型定義更新正確（`code` 為可選參數，不影響安裝請求）
-- [x] 檢查 linter 錯誤（無錯誤）
-- [x] 確認後端編譯成功（TypeScript 編譯通過）
-- [x] 對比參考實現（`temp/oauth.js`）確認邏輯正確
-
-**技術債清理**:
-- [x] 確認 `storeToConnection.ts` 未被引用（grep 確認無 import）
-- [x] 移除檔案後確認編譯無錯誤（linter 確認無錯誤）
-
-**測試結果摘要**：
-- ✅ 簽名驗證邏輯正確：`verifyInstallRequest` 會自動包含所有參數（包含 `code`）進行簽名驗證
-- ✅ 參數順序正確：`verifyGetSignature` 會按字母順序排序參數（`appkey`, `code`, `handle`, `timestamp`）
-- ✅ 向後兼容：`code` 為可選參數，安裝請求（不需要 `code`）仍然正常工作
-- ✅ 編譯通過：後端 TypeScript 編譯成功，前端 Next.js 編譯成功
-- ✅ 無 Linter 錯誤：所有檔案通過 linter 檢查
-- ✅ 參考實現驗證：對比 `temp/oauth.js` 的實現，確認邏輯正確
-- ✅ 安裝請求驗證：確認安裝請求路由（`/api/auth/shopline/install`）不受影響，仍只傳遞 `appkey`, `handle`, `timestamp`, `sign`
-- ✅ OAuth Callback 驗證：確認 OAuth callback 路由（`/api/auth/shopline/callback`）正確包含 `code` 參數
-
-### User Test 項目
-
-**Issue 2025-11-10-001**:
-- [x] 在正式環境測試 OAuth 授權流程（✅ 通過）
-- [x] 確認可以完成商店授權（✅ 通過）
-- [x] 確認可以重新授權已過期的 Token（✅ 通過）
-
-### 文件更新項目
-
-- [x] 建立 `docs/reference/guides/SHOPLINE_OAUTH_IMPLEMENTATION.md` 實作指南
-- [x] 更新 `docs/reference/platform-apis/shopline-api-docs.md` 加入關鍵實作細節
-- [x] 更新 `docs/archive/discussions/COMPLIANCE_CHECK.md` 加入重構注意事項
-- [x] 建立 `docs/memory/decisions/shopline-oauth-signature-verification.md` 決策記錄
-- [x] 更新 `docs/reference/README.md` 加入新文件索引
-- [x] 更新 `docs/00-AGENT-ONBOARDING.md` 加入實作指南連結
-- [x] 加入 Shopline 官方文件連結（三個官方文件 URL）
+> ⚠️ 4.2 與 4.3 對 Activity Dock / Toast 的事件格式必須沿用 4.1 的實作，避免後續整合衝突。
 
 ---
 
-## 完成摘要
-
-### ✅ 已完成項目
-
-1. **Issue 2025-11-10-001 修復**:
-   - 根本原因：OAuth callback 簽名驗證未包含 `code` 參數
-   - 修復方式：更新 `ShoplineAuthParams` 類型定義，在 callback 簽名驗證中包含 `code` 參數
-   - 修改檔案：`backend/src/types.ts`, `backend/src/routes/auth.ts`
-
-2. **技術債清理**:
-   - 移除過渡期映射工具 `frontend/utils/storeToConnection.ts`
-   - 確認未被使用且移除後無影響
-
-### ✅ 推上線狀態
-
-- **Commit**: `446c3ad`（包含文件更新）
-- **推送時間**: 2025-11-11
-- **狀態**: 已推送到 `origin/main`，已自動部署
-- **部署平台**: 
-  - 後端：Render（自動部署）
-  - 前端：Vercel（自動部署）
-
-### ✅ 正式環境驗證
-
-- ✅ OAuth 授權流程已在正式環境進行 User Test 驗證（通過）
-- ✅ 商店授權功能正常運作
-- ✅ 重新授權流程正常運作
-- 正式環境 URL：
-  - 前端：`https://connector-theta.vercel.app/`
-  - 後端：`https://connector-o5hx.onrender.com/`
-
-### ✅ 文件更新完成
-
-- ✅ 建立 Shopline OAuth 實作指南（`SHOPLINE_OAUTH_IMPLEMENTATION.md`）
-- ✅ 更新相關文件加入關鍵實作細節
-- ✅ 加入 Shopline 官方文件連結（三個官方文件 URL）
-- ✅ 更新 Agent Onboarding 文件
+## 預期 User Test 景象（Run 完成後）
+1. **登入後首頁 (`/connections`)**：
+   - 看到新的 `PrimaryLayout`：左側 `PrimaryNav` 顯示「Connections / Webhook 事件 / Webhook 管理 / Admin API 測試」，頂部 `GlobalHeader` 展示帳號與快速操作，頁面中央由 `ContextBar`（顯示目前 Connection 平台徽章 + 平台帳戶識別，例如 Shopline handle + 狀態徽章）與 `Workspace Tabs`（預設在 `Overview`）組成。
+   - `Overview` 分頁中包含 `ConnectionSummaryCard`（平台資訊、平台帳戶 handle、授權狀態、Token 到期時間、最近重新授權時間、建立/最後更新時間、Owner 資訊、Connection Item 數量）與 `ConnectionItemsPreview`（若只有 0~1 筆 Item 則收合為摘要顯示「主要商店：{handle}」；有多筆時列出前三筆 Item 名稱、外部資源 ID/handle、狀態徽章、最近同步時間，並提供「查看全部」按鈕），底部的 `ActivityDock` 顯示「目前沒有通知」的空態。
+2. **新增 Connection Flow (`AddConnectionModal` + Shopline OAuth)**：
+   - 點擊 `ConnectionRail` 上方的「+ 新增 Connection」按鈕 → 彈出 `AddConnectionModal`，先選平台（預設 Shopline），再輸入 Handle（保留現有預設值）→ 按「前往授權」跳轉至 Shopline OAuth 頁面。
+   - 授權完成返回 `/connections/callback` 時，系統自動刷新 `/api/connections`，新的 Connection 立即出現在 `ConnectionRail`，並在 `ContextBar` 中被選取；`ActivityDock` 加入一筆「Connection 建立成功」紀錄。若平台支援 refresh endpoint，`QuickActionsGrid` 會出現「Refresh Token」按鈕，可立即驗證 refresh API 是否更新 Token 到期時間與 Activity Dock 記錄。
+3. **重新授權**：模擬 Token 過期 → 使用提示操作 → 狀態徽章恢復 Active，Activity Dock 記錄重新授權。
+4. **停用 / 啟用 Connection Item**：操作後狀態即時刷新，審計紀錄可查。
+5. **安全驗證**：未登入或非擁有者無法存取 Connection API／OAuth 入口；Webhook 僅接受對應 user 的事件。
+6. **Shopline OAuth Flow Regression**：全程走通（成功 / 失敗 / scope mismatch），確保近期修復不會被此 Run 破壞。
 
 ---
 
-## 相關文件
-
-- **Issue**: `docs/backlog/issues/issue-2025-11-10-001.md`
-- **後續待辦**: `docs/backlog/inbox/note-2025-11-10-run-2025-11-10-01-follow-up.md`
-- **後端路由**: `backend/src/routes/auth.ts`
-- **Shopline Service**: `backend/src/services/shopline.ts`
-- **簽名驗證**: `backend/src/utils/signature.ts`
+## 風險與注意事項
+- Activity Dock：4.2 會先寫入前端狀態，4.3 需成功改為後端資料來源。
+- OAuth 流程：務必排定 regression 測試；如需修改後端路由要加倍審慎。
+- Prisma Migration：`integration_audit_logs` 需完成 migration + 回滾策略。
+- 測試環境：建議至少兩個使用者帳號驗證權限阻擋，搭配一組 webhook 測試資料。
+- **UI 層級調整**：Story 4.2 需一併完成 Global Header 與 Primary Nav 的 GA4 風格調整，確保最邊邊的導覽 tab 縮小為圖標式，顏色區別，讓畫面更乾淨。
 
 ---
 
-**最後更新**: 2025-11-11
+## Document & PR 指引
+- Run 結束需更新：
+  - `docs/reference/design-specs/ADMIN_APP_UI_ARCHITECTURE.md`（註記 Primary Layout、Activity Dock 實作完成）
+  - `docs/reference/design-specs/CONNECTION_MANAGEMENT_UI_DESIGN.md`（補充執行畫面與行為備註）
+  - `docs/reference/guides/SHOPLINE_OAUTH_IMPLEMENTATION.md`（新增登入限制與審計流程）
+- PR 描述必須附上：
+  - 新 UI 截圖或影片
+  - 新增/重新授權/停用流程測試結果
+  - Shopline OAuth regression 測試紀錄

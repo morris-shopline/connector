@@ -105,11 +105,20 @@ Bug/Issue 追蹤。
 - 子任務: `story-{epic-id}-{story-seq}.{sub-seq}-{slug}.md`
 
 **Story 狀態**：
-- `planned` - 規劃中
-- `in-progress` - 開發中
-- `dev-completed` - 開發完成，等待 User Test
+- `not-started` - Story 尚未開始規劃，文件尚未建立
+- `planning` - Story 開始規劃，Agent 正在整理資訊
+- `planned` - Agent 整理完一輪，Story 文件已建立（但尚未經過用戶確認）
+- `ready-for-dev` - 用戶確認沒問題，可以開始開發
+- `in-development` - 開發中
+- `agent-testing` - Agent 正在執行功能測試
+- `ready-for-user-test` - Agent 測試完成，等待 User Test
 - `user-test-passed` - User Test 通過，觀察中
 - `completed` - 已完成
+
+**狀態轉換流程**：
+```
+not-started → planning → planned → ready-for-dev → in-development → agent-testing → ready-for-user-test → user-test-passed → completed
+```
 
 **包含內容**：
 - Story 描述

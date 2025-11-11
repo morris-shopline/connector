@@ -2,6 +2,7 @@ import type { AppProps } from 'next/app'
 import '../styles/globals.css'
 import { useInitConnectionFromURL } from '../hooks/useInitConnectionFromURL'
 import { TokenExpiredModal } from '../components/TokenExpiredModal'
+import { ToastContainer } from '../components/common/ToastContainer'
 import { useEffect } from 'react'
 import { useRouter } from 'next/router'
 import { useConnections } from '../hooks/useConnections'
@@ -25,6 +26,15 @@ function AppContent({ Component, pageProps }: AppProps) {
     if (router.isReady) {
       const urlParams = new URLSearchParams(window.location.search)
       const authSuccess = urlParams.get('auth_success')
+      
+      // 如果是 OAuth 回調，且不在 callback 頁面，導向到 callback 頁面統一處理
+      if (authSuccess && router.pathname !== '/connections/callback') {
+        const currentPath = router.asPath.split('?')[0] // 移除 query 參數
+        router.replace(`/connections/callback${window.location.search}`)
+        return
+      }
+      
+      // 處理舊的 reauthorize 流程（向後相容）
       const returnPath = sessionStorage.getItem('reauthorize_return_path')
       const reauthorizeHandle = sessionStorage.getItem('reauthorize_handle')
 
@@ -45,12 +55,13 @@ function AppContent({ Component, pageProps }: AppProps) {
         }
       }
     }
-  }, [router.isReady, router.asPath, refetchConnections, clearTokenError, router])
+  }, [router.isReady, router.asPath, router.pathname, refetchConnections, clearTokenError, router])
 
   return (
     <>
       <Component {...pageProps} />
       <TokenExpiredModal />
+      <ToastContainer />
     </>
   )
 }

@@ -532,8 +532,8 @@ not-started → planning → planned → ready-for-dev → in-development → ag
 
 5. **Roadmap 調整**
    - 對話中討論 roadmap 的改變
-   - 依照「常駐型文件維護流程」先備份舊版至 `docs/archive/roadmap/`，再更新 `memory/roadmap.md`
    - 更新 `memory/roadmap.md`
+   - 調整 Epic 規劃
 
 ---
 
@@ -840,40 +840,6 @@ not-started → planning → planned → ready-for-dev → in-development → ag
 
 ---
 
-**最後更新**: 2025-11-11  
+**最後更新**: 2025-11-04  
 **維護者**: 專案團隊
-
-#### 3. 常駐型文件維護流程（Roadmap / Index 等）
-
-**用途**：維持會持續演進的核心文件（如 `memory/roadmap.md`、`backlog/index.md`、`docs/reference/*` 指南等）一致性，同時保留必要的歷史紀錄。
-
-**關鍵原則**：
-- 原始檔名永遠代表「最新版本」，不可在同一工作目錄底下累積日期版本。
-- **只有符合「重大異動」時才需先歸檔**；一般文字微調直接在原檔修改即可，依賴 IDE / Git diff 審核。
-- 歸檔時使用 `docs/archive/{分類}/檔名-YYYY-MM-DD.md`（或加序號）命名；若分類尚未存在可自行建立。
-
-**重大異動判準（需先歸檔）**：
-- 調整文件結構或章節層級（新增/移除主要章節、重排大段內容）。
-- 更新流程規範、決策準則、命名規範等「邏輯」或「政策」層資訊。
-- 大幅度改寫（例如超過原檔 30% 內容、全面替換表格 / 清單）。
-- 版本切換（例如 roadmap 里程碑更新、index 重排、指南改版）。
-
-**一般調整判準（直接改原檔）**：
-- 修正錯字、格式、連結、輕微措辭調整。
-- 補充 1-2 行備註或更新個別數據（例如進度百分比）。
-- 針對單一段落的限制範圍修改，且未改變整體流程與規則。
-
-**操作步驟（僅在重大異動時執行）**：
-1. 建立或確認歸檔目錄存在：`mkdir -p docs/archive/{分類}`。
-2. 複製原檔至歸檔目錄，例如：
-   ```bash
-   cp docs/memory/roadmap.md docs/archive/roadmap/roadmap-2025-11-11.md
-   cp docs/backlog/index.md docs/archive/backlog-index/index-2025-11-11.md
-   ```
-3. 回到原始檔（保持原檔名）進行重大異動內容更新。
-4. 若需在方法論、Run 或 PR 描述中追蹤，註記本次歸檔檔名與異動摘要。
-
-**備註**：
-- `context/current-run.md` 依既有 Run 流程處理（Run 結束、下一個 Run 開始時才歸檔）。
-- 若 archive 資料量增加，可在對應子目錄新增 README 說明命名規則或快照整理策略。
 

@@ -33,6 +33,61 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
     }
   })
 
+  // 更新 Connection Item 狀態（需要登入）
+  fastify.patch('/api/connection-items/:id', { preHandler: [authMiddleware] }, async (request, reply) => {
+    try {
+      if (!request.user) {
+        return reply.status(401).send({
+          success: false,
+          error: 'Authentication required'
+        })
+      }
+
+      const userId = request.user.id
+      const itemId = (request.params as any).id
+      const { status } = request.body as { status?: 'active' | 'disabled' }
+
+      if (!status || (status !== 'active' && status !== 'disabled')) {
+        return reply.status(400).send({
+          success: false,
+          error: 'Invalid status. Must be "active" or "disabled"'
+        })
+      }
+
+      // 驗證 Connection Item 屬於該使用者
+      const item = await connectionRepository.findConnectionItemById(itemId)
+      if (!item) {
+        return reply.status(404).send({
+          success: false,
+          error: 'Connection Item not found'
+        })
+      }
+
+      // 檢查 Connection 是否屬於該使用者
+      const connection = await connectionRepository.findConnectionById(item.integrationAccountId)
+      if (!connection || connection.userId !== userId) {
+        return reply.status(403).send({
+          success: false,
+          error: 'Forbidden: You do not have permission to update this Connection Item'
+        })
+      }
+
+      // 更新狀態
+      const updatedItem = await connectionRepository.updateConnectionItemStatus(itemId, status)
+
+      return reply.send({
+        success: true,
+        data: updatedItem
+      })
+    } catch (error) {
+      fastify.log.error('Update connection item status error:', error)
+      return reply.status(500).send({
+        success: false,
+        error: 'Internal server error'
+      })
+    }
+  })
+
   // 取得所有已授權的商店（需要登入）
   fastify.get('/api/stores', { preHandler: [authMiddleware] }, async (request, reply) => {
     try {

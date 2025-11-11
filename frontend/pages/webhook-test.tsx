@@ -5,13 +5,14 @@ import { useWebhookEvents } from '../hooks/useWebhookEvents'
 import { useSubscribeWebhook } from '../hooks/useSubscribeWebhook'
 import { useUnsubscribeWebhook } from '../hooks/useUnsubscribeWebhook'
 import { useStoreStore } from '../stores/useStoreStore'
-import { Header } from '../components/Header'
+import { PrimaryLayout } from '../components/layout/PrimaryLayout'
 import { SubscriptionItem } from '../components/SubscriptionItem'
 import { SubscriptionStats } from '../components/SubscriptionStats'
 import { SubscriptionForm } from '../components/SubscriptionForm'
 import { WebhookEventCard } from '../components/WebhookEventCard'
 import { ProtectedRoute } from '../components/ProtectedRoute'
-import { useConnection, type ConnectionParams } from '../hooks/useConnection'
+import { useSelectedConnection } from '../hooks/useSelectedConnection'
+import { useConnectionStore } from '../stores/useConnectionStore'
 import type { StoreInfo } from '@/types'
 
 type StoreLike = StoreInfo & {
@@ -40,55 +41,24 @@ function WebhookTest() {
     }
   }, [])
 
-  const { currentConnection, applyConnection } = useConnection()
+  // Use shared connection state from useConnectionStore
+  const { handle: selectedHandle, connectionItemId: selectedConnectionItemId } = useSelectedConnection()
+  const { connections, setSelectedConnection } = useConnectionStore()
 
-  const defaultConnection = useMemo(() => {
-    if (!stores.length) {
-      return null
-    }
-    return mapStoreToConnection(stores[0])
-  }, [stores, mapStoreToConnection])
+  // Map stores to connection IDs for dropdown
+  const activeHandle = selectedHandle || null
 
-  // ⚠️ 移除自動設置 Connection 的邏輯（違反 State 分層原則）
-  // 如果 URL 沒有 Connection 參數，應該顯示「請選擇商店」，不自動設置
-  // useEffect(() => {
-  //   if (!defaultConnection) {
-  //     return
-  //   }
-  //   if (currentConnection.connectionItemId) {
-  //     return
-  //   }
-  //   applyConnection(defaultConnection)
-  // }, [applyConnection, currentConnection.connectionItemId, defaultConnection])
-
-  const activeStore = useMemo(() => {
-    return (
-      stores.find((store) => {
-        if (!store) {
-          return false
-        }
-        const params = mapStoreToConnection(store)
-        if (currentConnection.connectionItemId && params.connectionItemId === currentConnection.connectionItemId) {
-          return true
-        }
-        if (currentConnection.connectionId && params.connectionId === currentConnection.connectionId) {
-          return true
-        }
-        return false
-      }) || null
+  // When handle changes in dropdown, update the connection store
+  const handleStoreChange = useCallback(async (newHandle: string) => {
+    // Find the connection that matches this handle
+    const targetConnection = connections.find(
+      (c) => c.externalAccountId === newHandle
     )
-  }, [currentConnection.connectionId, currentConnection.connectionItemId, stores, mapStoreToConnection])
-
-  const activeHandle = useMemo(
-    () =>
-    activeStore?.handle ||
-    activeStore?.shoplineId ||
-    currentConnection.connectionItemId ||
-    currentConnection.connectionId ||
-    null
-    ,
-    [activeStore, currentConnection.connectionId, currentConnection.connectionItemId]
-  )
+    
+    if (targetConnection) {
+      setSelectedConnection(targetConnection.id)
+    }
+  }, [connections, setSelectedConnection])
 
   const {
     subscriptions,
@@ -193,11 +163,9 @@ function WebhookTest() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-
+    <PrimaryLayout>
       {/* Main Layout - 雙欄式 */}
-      <div className="flex h-[calc(100vh-4rem)]">
+      <div className="flex flex-1 overflow-hidden">
         {/* 左側欄 */}
         <aside className="w-80 border-r bg-gray-50 flex flex-col">
           {/* 商店選擇 */}
@@ -209,37 +177,15 @@ function WebhookTest() {
               value={activeHandle || ''}
               onChange={async (e) => {
                 const newHandle = e.target.value
-                const targetStore = stores.find((store) => {
-                  if (!store) return false
-                  return (
-                    store.handle === newHandle ||
-                    store.shoplineId === newHandle ||
-                    store.id === newHandle
-                  )
-                })
-                if (!targetStore) {
-                  return
-                }
-
-                const params = mapStoreToConnection(targetStore)
-                if (
-                  lockedConnectionItemId &&
-                  params.connectionItemId &&
-                  lockedConnectionItemId !== params.connectionItemId
-                ) {
-                  alert(`無法切換商店：${lockedConnectionItemId} 正在操作中，請等待操作完成`)
-                  return
-                }
-
-                await applyConnection(params)
+                await handleStoreChange(newHandle)
                 setSelectedTopic(null) // 切換商店時清空選中訂閱
               }}
               disabled={!!lockedConnectionItemId}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {stores.map(store => (
-                <option key={store.id} value={store.handle || store.shoplineId}>
-                  {store.handle || store.shoplineId}
+              {connections.map(connection => (
+                <option key={connection.id} value={connection.externalAccountId}>
+                  {connection.displayName || connection.externalAccountId}
                 </option>
               ))}
             </select>
@@ -398,7 +344,7 @@ function WebhookTest() {
         onSubmit={handleSubscribe}
         defaultHandle={activeHandle || ''}
       />
-    </div>
+    </PrimaryLayout>
   )
 }
 
