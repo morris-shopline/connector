@@ -11,7 +11,7 @@
 | [Epic 0: 基礎架構與 OAuth 授權](./epics/epic-0-foundation.md) | ✅ completed | 100% | Phase 0 | Run 1 |
 | [Epic 2: Admin API 測試功能](./epics/epic-2-admin-api-testing.md) | ✅ completed | 100% | Phase 0.6 | Run 3 |
 | [Epic 3: Admin 管理系統](./epics/epic-3-admin-management-system.md) | ✅ completed | 100% | Phase 1.1 | run-2025-11-06-01 |
-| [Epic 4: Connection 管理體驗](./epics/epic-4-multi-store-management.md) | ⏸ blocked | 0% | Phase 1.2 | - |
+| [Epic 4: Connection 管理體驗](./epics/epic-4-multi-store-management.md) | 🔄 ready-for-dev | 0% | Phase 1.2 | - |
 | [Epic 5: 多 API 類型支援](./epics/epic-5-multi-api-types.md) | 🔄 部分完成 | 50% | Phase 1.3 | - |
 
 ---
@@ -31,7 +31,7 @@
 
 | Issue | 類型 | 狀態 | 優先級 | 相關 Run |
 |-------|------|------|--------|----------|
-| [Issue 2025-11-10-001: Auth 流程被搞壞（正式環境）](./issues/issue-2025-11-10-001.md) | Bug | 🔄 open | 🔴 Critical | run-2025-11-10-01 |
+| [Issue 2025-11-10-001: Auth 流程被搞壞（正式環境）](./issues/issue-2025-11-10-001.md) | Bug | ✅ resolved | 🔴 Critical | run-2025-11-11-01 |
 | [Issue 2025-11-06-001: URL 參數與 Zustand Store 同步機制導致閃跳問題](./issues/issue-2025-11-06-001.md) | 架構設計 | ✅ resolved | High | run-2025-11-10-01 |
 | [Issue 2025-11-07-001: OAuth Token 過期時誤觸發 Admin 登出](./issues/issue-2025-11-07-001.md) | Bug | ✅ resolved | High | run-2025-11-10-01 |
 
@@ -119,9 +119,9 @@
 
 | Story | 類型 | 所屬 | 狀態 | 完成 Run |
 |-------|------|------|------|----------|
-| [Story R3.0: Connection 資料模型與 Migration](./stories/story-r3-0-connection-data-model.md) | Refactor | Refactor 3 | ✅ ready-for-dev | run-2025-11-10-01 |
-| [Story R3.1: Connection 狀態同步與 URL 單一來源](./stories/story-r3-1-connection-state-sync.md) | Refactor | Refactor 3 | ✅ ready-for-dev | run-2025-11-10-01 |
-| [Story R3.2: Token Lifecycle 與重新授權流程](./stories/story-r3-2-token-lifecycle.md) | Refactor | Refactor 3 | ✅ ready-for-dev | run-2025-11-10-01 |
+| [Story R3.0: Connection 資料模型與 Migration](./stories/story-r3-0-connection-data-model.md) | Refactor | Refactor 3 | ✅ completed | run-2025-11-10-01 |
+| [Story R3.1: Connection 狀態同步與 URL 單一來源](./stories/story-r3-1-connection-state-sync.md) | Refactor | Refactor 3 | ✅ completed | run-2025-11-10-01 |
+| [Story R3.2: Token Lifecycle 與重新授權流程](./stories/story-r3-2-token-lifecycle.md) | Refactor | Refactor 3 | ✅ completed | run-2025-11-11-01 |
 
 ---
 

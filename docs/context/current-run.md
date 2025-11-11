@@ -1,12 +1,12 @@
 # Current Run
 
 **Run ID**: run-2025-11-11-01  
-**Run 類型**: Bug Fix + Technical Debt Cleanup  
+**Run 類型**: Bug Fix + Technical Debt Cleanup + Documentation  
 **狀態**: ✅ closed  
 **開始時間**: 2025-11-11  
 **完成時間**: 2025-11-11  
 **推上線時間**: 2025-11-11  
-**Commit**: 24acfba  
+**Commit**: 446c3ad  
 **最後更新**: 2025-11-11
 
 ---
@@ -15,6 +15,7 @@
 
 1. **修復 Issue 2025-11-10-001**: OAuth 授權流程（auth callback）返回 `Invalid signature` 錯誤
 2. **清理技術債**: 移除過渡期映射工具 `frontend/utils/storeToConnection.ts`
+3. **文件更新**: 建立 Shopline OAuth 實作指南並加入官方文件連結
 
 ---
 
@@ -48,8 +49,10 @@
 - [x] 檢查 OAuth callback 簽名驗證邏輯
 - [x] 確認簽名驗證是否包含所有必要參數（`appkey`, `code`, `handle`, `timestamp`）
 - [x] 修復簽名驗證邏輯
-- [ ] 測試修復後的 OAuth 流程（User Test）
-- [ ] 推上線並驗證
+- [x] 測試修復後的 OAuth 流程（User Test - 正式環境驗證通過）
+- [x] 推上線並驗證
+- [x] 建立實作指南文件
+- [x] 加入官方文件連結
 
 ---
 
@@ -105,9 +108,19 @@
 ### User Test 項目
 
 **Issue 2025-11-10-001**:
-- [ ] 在正式環境測試 OAuth 授權流程
-- [ ] 確認可以完成商店授權
-- [ ] 確認可以重新授權已過期的 Token
+- [x] 在正式環境測試 OAuth 授權流程（✅ 通過）
+- [x] 確認可以完成商店授權（✅ 通過）
+- [x] 確認可以重新授權已過期的 Token（✅ 通過）
+
+### 文件更新項目
+
+- [x] 建立 `docs/reference/guides/SHOPLINE_OAUTH_IMPLEMENTATION.md` 實作指南
+- [x] 更新 `docs/reference/platform-apis/shopline-api-docs.md` 加入關鍵實作細節
+- [x] 更新 `docs/archive/discussions/COMPLIANCE_CHECK.md` 加入重構注意事項
+- [x] 建立 `docs/memory/decisions/shopline-oauth-signature-verification.md` 決策記錄
+- [x] 更新 `docs/reference/README.md` 加入新文件索引
+- [x] 更新 `docs/00-AGENT-ONBOARDING.md` 加入實作指南連結
+- [x] 加入 Shopline 官方文件連結（三個官方文件 URL）
 
 ---
 
@@ -126,19 +139,28 @@
 
 ### ✅ 推上線狀態
 
-- **Commit**: `24acfba`
+- **Commit**: `446c3ad`（包含文件更新）
 - **推送時間**: 2025-11-11
-- **狀態**: 已推送到 `origin/main`，等待自動部署
+- **狀態**: 已推送到 `origin/main`，已自動部署
 - **部署平台**: 
   - 後端：Render（自動部署）
   - 前端：Vercel（自動部署）
 
-### ⏳ 待正式環境驗證
+### ✅ 正式環境驗證
 
-- OAuth 授權流程需要在正式環境進行 User Test 驗證
+- ✅ OAuth 授權流程已在正式環境進行 User Test 驗證（通過）
+- ✅ 商店授權功能正常運作
+- ✅ 重新授權流程正常運作
 - 正式環境 URL：
   - 前端：`https://connector-theta.vercel.app/`
   - 後端：`https://connector-o5hx.onrender.com/`
+
+### ✅ 文件更新完成
+
+- ✅ 建立 Shopline OAuth 實作指南（`SHOPLINE_OAUTH_IMPLEMENTATION.md`）
+- ✅ 更新相關文件加入關鍵實作細節
+- ✅ 加入 Shopline 官方文件連結（三個官方文件 URL）
+- ✅ 更新 Agent Onboarding 文件
 
 ---
 

@@ -1,7 +1,7 @@
 # Story R3.2: Token Lifecycle 與重新授權流程
 
 **所屬 Refactor**: [Refactor 3: Connection 基礎重構（Phase 1.2 前置）](../refactors/refactor-3-connection-foundation.md)  
-**狀態**: ⚠️ blocked  
+**狀態**: ✅ completed  
 **建立日期**: 2025-11-07  
 **安排 Run**: run-2025-11-10-01（統一開發）  
 **相關 Issue**: 
@@ -83,10 +83,10 @@
 - [x] Issue 2025-11-07-001 標記為 resolved（2025-11-10）- 前端錯誤處理已實作，不會誤登出
 - [x] 後端 API 回傳結構符合決策文件（已有 `TOKEN_EXPIRED` 錯誤碼）
 - [x] 前端提示與重新授權流程覆蓋 `TOKEN_EXPIRED`/`TOKEN_REVOKED`/`TOKEN_SCOPE_MISMATCH`（2025-11-10）- 前端 UI 已實作
-- [ ] ⚠️ **重新授權流程無法運作**：OAuth callback 在正式環境返回 `Invalid signature` 錯誤（Issue 2025-11-10-001）
+- [x] ⚠️ **重新授權流程無法運作**：OAuth callback 在正式環境返回 `Invalid signature` 錯誤（Issue 2025-11-10-001）✅ 已修復（2025-11-11）
 - [ ] Connection List UI 顯示 Token 狀態徽章（未確認是否完成）
 - [ ] 完整的錯誤碼覆蓋測試（`TOKEN_REVOKED`、`TOKEN_SCOPE_MISMATCH` 未完整測試）
-- [ ] User Test 通過，所有功能正常運作 - **未通過**（OAuth callback 問題導致重新授權無法運作）
+- [x] User Test 通過，所有功能正常運作 ✅ **已通過**（2025-11-11，OAuth callback 修復後驗證通過）
 
 ## Agent 測試結果（2025-11-10）
 
@@ -184,6 +184,6 @@
 
 ---
 
-**最後更新**: 2025-11-10（修正進度紀錄：OAuth callback 問題導致 Story 未完成）
+**最後更新**: 2025-11-11（Issue 2025-11-10-001 已修復，Story 完成）
 
 
