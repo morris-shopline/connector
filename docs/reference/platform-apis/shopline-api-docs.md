@@ -1,7 +1,14 @@
 # Shopline API 官方文件重點
 
+> 📚 **官方文件來源**：
+> - [應用授權 (App Authorization)](https://developer.shopline.com/docs/apps/api-instructions-for-use/app-authorization?version=v20260301)
+> - [生成和驗證簽名 (Generate and Verify Signatures)](https://developer.shopline.com/docs/apps/api-instructions-for-use/generate-and-verify-signatures?version=v20260301)
+> - [訪問範圍 (Access Scope)](https://developer.shopline.com/docs/apps/api-instructions-for-use/access-scope?version=v20260301)
+
+---
+
 ## 1. 應用授權 (App Authorization)
-**文件**: https://developer.shopline.com/docs/apps/api-instructions-for-use/app-authorization?version=v20260301
+**官方文件**: https://developer.shopline.com/docs/apps/api-instructions-for-use/app-authorization?version=v20260301
 
 ### OAuth 2.0 授權流程
 
@@ -52,7 +59,7 @@ sign: {sign}
 ```
 
 ## 2. 生成和驗證簽名 (Generate and Verify Signatures)
-**文件**: https://developer.shopline.com/docs/apps/api-instructions-for-use/generate-and-verify-signatures?version=v20260301
+**官方文件**: https://developer.shopline.com/docs/apps/api-instructions-for-use/generate-and-verify-signatures?version=v20260301
 
 ### 簽名生成算法
 使用 HMAC-SHA256 算法：
@@ -99,7 +106,7 @@ const verifyParams = {
 **詳細實作指南**：見 `docs/reference/guides/SHOPLINE_OAUTH_IMPLEMENTATION.md`
 
 ## 3. 訪問範圍 (Access Scope)
-**文件**: https://developer.shopline.com/docs/apps/api-instructions-for-use/access-scope?version=v20260301
+**官方文件**: https://developer.shopline.com/docs/apps/api-instructions-for-use/access-scope?version=v20260301
 
 ### 常用權限範圍
 - `read_products`: 讀取商品資訊

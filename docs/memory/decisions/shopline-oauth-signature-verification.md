@@ -103,6 +103,12 @@ const isValidSignature = await shoplineService.verifyInstallRequest(verifyParams
 - **參考實作**：`temp/oauth.js`
 - **合規性檢查**：`docs/archive/discussions/COMPLIANCE_CHECK.md`
 
+## 📚 官方文件來源
+
+- [應用授權 (App Authorization)](https://developer.shopline.com/docs/apps/api-instructions-for-use/app-authorization?version=v20260301)
+- [生成和驗證簽名 (Generate and Verify Signatures)](https://developer.shopline.com/docs/apps/api-instructions-for-use/generate-and-verify-signatures?version=v20260301)
+- [訪問範圍 (Access Scope)](https://developer.shopline.com/docs/apps/api-instructions-for-use/access-scope?version=v20260301)
+
 ---
 
 **最後更新**: 2025-11-11

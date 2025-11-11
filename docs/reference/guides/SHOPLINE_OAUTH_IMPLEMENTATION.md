@@ -2,6 +2,11 @@
 
 > 🚨 **Agent 必讀**：實作或修改 Shopline OAuth 相關功能時，必須參考此文件。
 
+> 📚 **官方文件來源**：
+> - [應用授權 (App Authorization)](https://developer.shopline.com/docs/apps/api-instructions-for-use/app-authorization?version=v20260301)
+> - [生成和驗證簽名 (Generate and Verify Signatures)](https://developer.shopline.com/docs/apps/api-instructions-for-use/generate-and-verify-signatures?version=v20260301)
+> - [訪問範圍 (Access Scope)](https://developer.shopline.com/docs/apps/api-instructions-for-use/access-scope?version=v20260301)
+
 ---
 
 ## 📋 目錄
@@ -350,6 +355,12 @@ SHOPLINE_REDIRECT_URI=https://your-domain.com/api/auth/shopline/callback
 - **合規性檢查**：`docs/archive/discussions/COMPLIANCE_CHECK.md`
 - **參考實作**：`temp/oauth.js`
 - **當前實作**：`backend/src/routes/auth.ts`
+
+## 📚 官方文件來源
+
+- [應用授權 (App Authorization)](https://developer.shopline.com/docs/apps/api-instructions-for-use/app-authorization?version=v20260301)
+- [生成和驗證簽名 (Generate and Verify Signatures)](https://developer.shopline.com/docs/apps/api-instructions-for-use/generate-and-verify-signatures?version=v20260301)
+- [訪問範圍 (Access Scope)](https://developer.shopline.com/docs/apps/api-instructions-for-use/access-scope?version=v20260301)
 
 ---
 
