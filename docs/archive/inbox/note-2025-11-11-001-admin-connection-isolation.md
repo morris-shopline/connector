@@ -127,6 +127,63 @@
 
 ---
 
+---
+
+## 後續待處理項目（Run 2025-11-12-01 完成後）
+
+### 🔍 需要討論的（架構面設計，需要做成新的 decision）
+
+1. **Admin x Connection 綁定策略**
+   - 是否允許多個 admin 綁定同一個平台帳戶？
+   - 如果允許：需要什麼 UI/UX 機制？
+   - 如果不允許：錯誤處理方式（拒絕/轉移/提示）？
+   - Webhook 路由策略：如何確保事件路由到正確的 admin？
+   - 是否需要 Connection 轉移功能？
+   - **相關文件**: `docs/archive/inbox/note-2025-11-11-001-admin-connection-isolation.md`
+
+2. **Connection 管理 API 設計**
+   - `GET /api/connections/:connectionId` - 是否需要？
+   - `PATCH /api/connections/:connectionId` - 是否需要？
+   - Connection 是否應該允許手動編輯（目前是自動管理）？
+
+### 📋 後續要其他 Story 處理的
+
+1. **前端錯誤處理完善**（建議：Story 4.4 或 UI/UX 優化 Story）
+   - 處理 `CONNECTION_FORBIDDEN` 錯誤碼
+   - 處理 `AUTHENTICATION_REQUIRED` 錯誤碼
+   - 處理 `PLATFORM_MISMATCH` 錯誤碼
+   - 顯示適當的 Toast 訊息和錯誤提示
+
+2. **Context Bar 橘色 Banner**（建議：Story 4.4 或 UI/UX 優化 Story）
+   - 實作未授權錯誤時的橘色 Banner
+   - 鎖定操作按鈕的機制
+   - **Story 需求**: Story 4.3 中有提到但未實作
+
+3. **測試覆蓋**（建議：獨立的測試 Story）
+   - 後端 e2e 測試：
+     - 未登入呼叫 `/api/connections` → 401
+     - 登入但非擁有者呼叫 `/api/connections/:id` → 403
+     - 登入後新增 Connection → 審計紀錄寫入
+     - Webhook 呼叫使用不同 userId → 驗證被拒
+   - 前端 Cypress 測試（如果有）：
+     - 未授權使用者看到限制提示
+     - Activity Dock 顯示審計紀錄
+
+4. **文件更新**（建議：文件維護 Story）
+   - 更新 `docs/reference/guides/SHOPLINE_OAUTH_IMPLEMENTATION.md`：補充需登入與審計流程
+   - 更新 `docs/reference/design-specs/ADMIN_APP_UI_ARCHITECTURE.md`：在 Activity Dock / Security 章節標註已落地
+
+### 🐛 後續要解的 Issue
+
+1. **停用 Connection Item 時出現 Network Error**
+   - **Issue**: `docs/archive/inbox/issue-2025-11-11-001-disable-connection-item-network-error.md`
+   - **狀態**: 🔍 待調查
+   - **優先級**: 中
+   - **問題**: 點擊「停用」按鈕時出現 Network Error（可能是 CORS 問題）
+   - **需要調查**: Network 標籤中的完整錯誤訊息、後端 CORS 設定、API 請求格式
+
+---
+
 ## 備註
 
 此問題需要在 Phase 1.2 完成後，Phase 1.3 或 Phase 2 之前討論並決定處理策略。

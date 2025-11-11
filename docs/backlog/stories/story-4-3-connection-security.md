@@ -1,7 +1,8 @@
 # Story 4.3: Connection 層級權限與端點保護
 
 **所屬 Epic**: [Epic 4: Connection 管理體驗（Phase 1.2）](../epics/epic-4-multi-store-management.md)  
-**狀態**: ✅ ready-for-user-test  
+**狀態**: ✅ completed  
+**完成 Run**: run-2025-11-12-01  
 **完成 Run**: -  
 **建立日期**: 2025-11-11  
 **對應 Roadmap**: Phase 1.2（多商店管理）

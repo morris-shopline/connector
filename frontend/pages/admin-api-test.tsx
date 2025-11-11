@@ -105,9 +105,9 @@ function AdminAPITest() {
   // When handle changes in dropdown, update the connection store
   const handleStoreChange = useCallback(async (newHandle: string | null) => {
     if (!newHandle) {
-      setResponse(null)
-      setError(null)
-      setSelectedFunction(null)
+          setResponse(null)
+          setError(null)
+          setSelectedFunction(null)
       return
     }
 
@@ -118,10 +118,10 @@ function AdminAPITest() {
     
     if (targetConnection) {
       setSelectedConnection(targetConnection.id)
-      setResponse(null)
-      setError(null)
-      setSelectedFunction(null)
-    }
+    setResponse(null)
+    setError(null)
+    setSelectedFunction(null)
+  }
   }, [connections, setSelectedConnection])
 
   const adminAPI = useAdminAPI({
@@ -448,7 +448,7 @@ function AdminAPITest() {
             )}
           </div>
         </div>
-      </div>
+    </div>
     </PrimaryLayout>
   )
 }

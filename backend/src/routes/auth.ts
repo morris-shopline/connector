@@ -625,7 +625,7 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
             // 直接 redirect，不顯示紫色頁面
             return reply.redirect(302, redirectUrl)
           }
-        }
+                    }
         
         // 直接 redirect，不顯示紫色頁面
         // 在重導向 URL 中加入認證狀態參數、Connection ID（如果有 Session ID）

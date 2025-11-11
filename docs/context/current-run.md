@@ -2,8 +2,9 @@
 
 **Run ID**: run-2025-11-12-01  
 **Run 類型**: Feature Development (Epic 4)  
-**狀態**: 🛠 in-progress  
+**狀態**: ✅ completed  
 **開始時間**: 2025-11-12  
+**完成時間**: 2025-11-12  
 
 ---
 
@@ -24,7 +25,7 @@
 - ✅ `/` redirect 至 `/connections`，Header 導覽同步
 
 ### Story 4.2: Connection 建立與重新授權工作流
-- **狀態**: ✅ ready-for-user-test
+- **狀態**: ✅ completed
 - ✅ Flow C2：新增 Connection（平台選擇 → OAuth → 回前端刷新）
 - ✅ Flow C3：重新授權流程（Modal + OAuth + Activity 記錄）
 - ✅ Flow C4：停用 / 啟用 Connection Item
@@ -32,7 +33,7 @@
 - ✅ UI 層級優化：Primary Nav 圖標式、Global Header 簡化（GA4 風格）
 
 ### Story 4.3: Connection 層級權限與端點保護
-- **狀態**: ✅ ready-for-user-test
+- **狀態**: ✅ completed
 - ✅ Prisma `integration_audit_logs` model 與 migration
 - ✅ Audit Log Repository 建立
 - ✅ `requireConnectionOwner` middleware 實作
