@@ -178,31 +178,34 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
     } catch (error) {
       fastify.log.error('Update connection item status error:', error)
       
-      // 寫入錯誤審計記錄
-      try {
-        if (request.user) {
-          const itemId = (request.params as any).id
-          const item = await connectionRepository.findConnectionItemById(itemId)
-          if (item) {
-            await auditLogRepository.createAuditLog({
-              userId: request.user.id,
-              connectionId: item.integrationAccountId,
-              connectionItemId: itemId,
-              operation: 'connection_item.update',
-              result: 'error',
-              errorCode: 'INTERNAL_ERROR',
-              errorMessage: error instanceof Error ? error.message : 'Unknown error',
-            })
-          }
-        }
-      } catch (auditError) {
-        fastify.log.error('Failed to create error audit log:', auditError)
-      }
-      
-      return reply.status(500).send({
+      // 先回傳錯誤回應
+      reply.status(500).send({
         success: false,
         code: 'INTERNAL_ERROR',
         error: 'Internal server error'
+      })
+      
+      // 寫入錯誤審計記錄（非阻塞）
+      setImmediate(async () => {
+        try {
+          if (request.user) {
+            const itemId = (request.params as any).id
+            const item = await connectionRepository.findConnectionItemById(itemId)
+            if (item) {
+              await auditLogRepository.createAuditLog({
+                userId: request.user.id,
+                connectionId: item.integrationAccountId,
+                connectionItemId: itemId,
+                operation: 'connection_item.update',
+                result: 'error',
+                errorCode: 'INTERNAL_ERROR',
+                errorMessage: error instanceof Error ? error.message : 'Unknown error',
+              })
+            }
+          }
+        } catch (auditError) {
+          fastify.log.error('Failed to create error audit log (non-blocking):', auditError)
+        }
       })
     }
   })

@@ -127,26 +127,28 @@ export async function webhookRoutes(fastify: FastifyInstance, options: any) {
             storeUserId: store.userId,
             connectionItemUserId: connectionItem.integrationAccount.userId,
           })
-          // 記錄安全事件，但不阻止處理（因為已經回應 200）
-          try {
-            const { auditLogRepository } = await import('../repositories/auditLogRepository')
-            await auditLogRepository.createAuditLog({
-              userId: store.userId,
-              connectionId: connectionItem.integrationAccount.id,
-              connectionItemId: connectionItem.id,
-              operation: 'webhook.security_mismatch',
-              result: 'error',
-              errorCode: 'USER_ID_MISMATCH',
-              errorMessage: `Webhook userId mismatch: store.userId=${store.userId}, connectionItem.userId=${connectionItem.integrationAccount.userId}`,
-              metadata: {
-                webhookId,
-                shopId,
-                topic,
-              },
-            })
-          } catch (auditError) {
-            fastify.log.error('Failed to create security audit log:', auditError)
-          }
+          // 記錄安全事件（非阻塞，因為已經回應 200）
+          setImmediate(async () => {
+            try {
+              const { auditLogRepository } = await import('../repositories/auditLogRepository')
+              await auditLogRepository.createAuditLog({
+                userId: store.userId,
+                connectionId: connectionItem.integrationAccount.id,
+                connectionItemId: connectionItem.id,
+                operation: 'webhook.security_mismatch',
+                result: 'error',
+                errorCode: 'USER_ID_MISMATCH',
+                errorMessage: `Webhook userId mismatch: store.userId=${store.userId}, connectionItem.userId=${connectionItem.integrationAccount.userId}`,
+                metadata: {
+                  webhookId,
+                  shopId,
+                  topic,
+                },
+              })
+            } catch (auditError) {
+              fastify.log.error('Failed to create security audit log (non-blocking):', auditError)
+            }
+          })
         }
         
         await shoplineService.saveWebhookEvent(
