@@ -10,8 +10,8 @@
 - **ngrok 管理**: http://localhost:4040
 
 ### 🌍 ngrok 對外服務
-- **完整 URL**: https://f79597ed859e.ngrok-free.app ✓
-- **Backend API**: https://f79597ed859e.ngrok-free.app/api/
+- **完整 URL**: https://7ef5b5a4599f.ngrok-free.app ✓
+- **Backend API**: https://7ef5b5a4599f.ngrok-free.app/api/
 
 ### 🔧 環境設定
 - ✅ 後端 `.env`: 所有配置已設定（資料庫、Shopline API、ngrok URL）
@@ -31,14 +31,14 @@
 
 #### 1️⃣ App URL（應用程式 URL）
 ```
-https://f79597ed859e.ngrok-free.app/api/auth/shopline/install
+https://7ef5b5a4599f.ngrok-free.app/api/auth/shopline/install
 ```
 
 **說明**：這是應用程式的安裝入口點，Shopline 會向這個 URL 發送安裝請求。
 
 #### 2️⃣ App callback URL（應用程式回調 URL）
 ```
-https://f79597ed859e.ngrok-free.app/api/auth/shopline/callback
+https://7ef5b5a4599f.ngrok-free.app/api/auth/shopline/callback
 ```
 
 **說明**：這是 OAuth 授權完成後的重定向地址。
@@ -47,7 +47,7 @@ https://f79597ed859e.ngrok-free.app/api/auth/shopline/callback
 
 **Webhook URL**：
 ```
-https://f79597ed859e.ngrok-free.app/webhook/shopline
+https://7ef5b5a4599f.ngrok-free.app/webhook/shopline
 ```
 
 **說明**：這是接收 Shopline 事件通知的 Webhook 端點。

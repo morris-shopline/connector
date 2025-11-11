@@ -8,7 +8,7 @@
 // Node.js 18+ 內建 fetch，無需額外安裝
 
 const BASE_URL = 'http://localhost:3001'
-const NGROK_URL = 'https://f79597ed859e.ngrok-free.app'
+const NGROK_URL = 'https://7ef5b5a4599f.ngrok-free.app'
 const HANDLE = 'paykepoc'
 
 // 測試用的事件主題

@@ -5,6 +5,7 @@ export interface ShoplineAuthParams {
   handle: string
   timestamp: string
   sign: string
+  code?: string // OAuth callback 需要包含 code 參數進行簽名驗證
 }
 
 export interface ShoplineTokenResponse {

@@ -266,11 +266,14 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
       }
 
       const params = parseResult.data
+      // OAuth callback 的簽名驗證需要包含所有參數（包含 code）
+      // 根據 Shopline API 文件，簽名驗證應該包含所有參數（除了 sign 本身）
       const verifyCallbackParams: ShoplineAuthParams = {
         appkey: params.appkey,
         handle: params.handle,
         timestamp: params.timestamp,
-        sign: params.sign
+        sign: params.sign,
+        code: params.code // 必須包含 code 參數進行簽名驗證
       }
       
       // 驗證簽名

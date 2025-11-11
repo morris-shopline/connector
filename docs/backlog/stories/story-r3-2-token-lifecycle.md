@@ -1,13 +1,12 @@
 # Story R3.2: Token Lifecycle 與重新授權流程
 
 **所屬 Refactor**: [Refactor 3: Connection 基礎重構（Phase 1.2 前置）](../refactors/refactor-3-connection-foundation.md)  
-**狀態**: ✅ completed  
-**完成日期**: 2025-11-10  
-**User Test**: ✅ 通過（2025-11-10）  
+**狀態**: ⚠️ blocked  
 **建立日期**: 2025-11-07  
 **安排 Run**: run-2025-11-10-01（統一開發）  
-**完成日期**: 2025-11-10  
-**相關 Issue**: [Issue 2025-11-07-001](../issues/issue-2025-11-07-001.md)  
+**相關 Issue**: 
+- [Issue 2025-11-07-001](../issues/issue-2025-11-07-001.md) - ✅ resolved（2025-11-10） | Bug | High | Token 過期誤判為登入失效 → 已由前端錯誤處理機制解決
+- [Issue 2025-11-10-001](../issues/issue-2025-11-10-001.md) - 🔄 open | Bug | 🔴 Critical | OAuth callback 在正式環境被搞壞，導致重新授權流程無法運作 → **阻塞 Story 完成**  
 **相關決策**: 
 - `docs/memory/decisions/token-lifecycle-handling.md`
 
@@ -81,12 +80,13 @@
 
 ## 驗收標準
 
-- [x] Issue 2025-11-07-001 標記為 resolved（2025-11-10）
+- [x] Issue 2025-11-07-001 標記為 resolved（2025-11-10）- 前端錯誤處理已實作，不會誤登出
 - [x] 後端 API 回傳結構符合決策文件（已有 `TOKEN_EXPIRED` 錯誤碼）
-- [x] 前端提示與重新授權流程覆蓋 `TOKEN_EXPIRED`/`TOKEN_REVOKED`/`TOKEN_SCOPE_MISMATCH`（2025-11-10）
-- [x] 重新授權成功後，Connection List 顯示最新狀態且不需要重新登入（2025-11-10）
-- [x] 撰寫測試紀錄，包含如何模擬過期情境（見下方 Agent 測試結果）
-- [x] User Test 通過，所有功能正常運作（2025-11-10）
+- [x] 前端提示與重新授權流程覆蓋 `TOKEN_EXPIRED`/`TOKEN_REVOKED`/`TOKEN_SCOPE_MISMATCH`（2025-11-10）- 前端 UI 已實作
+- [ ] ⚠️ **重新授權流程無法運作**：OAuth callback 在正式環境返回 `Invalid signature` 錯誤（Issue 2025-11-10-001）
+- [ ] Connection List UI 顯示 Token 狀態徽章（未確認是否完成）
+- [ ] 完整的錯誤碼覆蓋測試（`TOKEN_REVOKED`、`TOKEN_SCOPE_MISMATCH` 未完整測試）
+- [ ] User Test 通過，所有功能正常運作 - **未通過**（OAuth callback 問題導致重新授權無法運作）
 
 ## Agent 測試結果（2025-11-10）
 
@@ -104,11 +104,26 @@
    - ✅ `SESSION_EXPIRED` 錯誤碼：觸發登出流程
    - ✅ 其他 401 錯誤：預設行為（登出）
 
-3. **重新授權流程**
-   - ✅ 點擊「重新授權」按鈕後，跳轉至 OAuth 授權頁面
-   - ✅ 授權完成後自動返回原頁面
-   - ✅ 自動刷新 Connection 列表
-   - ✅ 清除 Token 錯誤狀態
+3. **後端錯誤碼標準化**
+   - ✅ 後端 API 路由已實作 `TOKEN_EXPIRED` 錯誤碼回傳（`backend/src/routes/api.ts`）
+   - ⚠️ `TOKEN_REVOKED`、`TOKEN_SCOPE_MISMATCH` 錯誤碼可能未完整實作
+
+### ⚠️ 關鍵問題（2025-11-10 發現）
+
+**OAuth Callback 被搞壞**：
+- ❌ OAuth callback 在正式環境返回 `Invalid signature` 錯誤（Issue 2025-11-10-001）
+- ❌ 重新授權流程無法運作（因為 OAuth callback 失敗）
+- ❌ 用戶無法完成重新授權，導致 Story 核心功能無法使用
+
+**影響範圍**：
+- 無法新增商店授權
+- 無法重新授權已過期的 Token
+- Story R3.2 的核心功能（重新授權流程）無法運作
+
+**待修復項目**：
+- [ ] 修復 OAuth callback 的簽名驗證邏輯
+- [ ] 確認正式環境的環境變數設定
+- [ ] 測試重新授權流程端到端運作
 
 ### 編譯測試
 
@@ -116,20 +131,30 @@
 - ✅ 無 Linter 錯誤
 - ✅ Next.js 建置成功
 
-### 待 User Test 項目
+### ⚠️ 待修復與測試項目
 
-1. **功能測試**
+1. **Critical：OAuth Callback 修復**
+   - [ ] 修復 OAuth callback 簽名驗證邏輯（Issue 2025-11-10-001）
+   - [ ] 確認正式環境的環境變數設定（`SHOPLINE_APP_SECRET` 等）
+   - [ ] 本地環境重現並修復問題
+   - [ ] 推上線並驗證修復
+
+2. **功能測試（需在 OAuth callback 修復後進行）**
    - [ ] 模擬後端返回 `TOKEN_EXPIRED` 錯誤，確認不會被登出
    - [ ] 確認 Modal 正確顯示，包含錯誤訊息和商店 handle
    - [ ] 點擊「重新授權」按鈕，確認跳轉至 OAuth 授權頁面
-   - [ ] 完成授權後，確認返回原頁面並刷新 Connection 列表
+   - [ ] ⚠️ **完成授權後，確認返回原頁面並刷新 Connection 列表**（目前無法測試，因為 OAuth callback 失敗）
    - [ ] 測試多個商店同時 Token 過期的情況
 
-2. **邊界情況測試**
+3. **邊界情況測試**
    - [ ] 測試 `TOKEN_REVOKED` 錯誤碼
    - [ ] 測試 `TOKEN_SCOPE_MISMATCH` 錯誤碼
    - [ ] 測試 `SESSION_EXPIRED` 錯誤碼（應觸發登出）
    - [ ] 測試在登入/註冊頁面時不會觸發登出
+
+4. **Connection List UI**
+   - [ ] 確認 Connection List UI 是否顯示 Token 狀態徽章
+   - [ ] 確認是否有提供重新授權入口
 
 ### 測試方法
 
@@ -159,10 +184,6 @@
 
 ---
 
-**最後更新**: 2025-11-10
-
----
-
-**最後更新**: 2025-11-07
+**最後更新**: 2025-11-10（修正進度紀錄：OAuth callback 問題導致 Story 未完成）
 
 
