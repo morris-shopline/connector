@@ -21,7 +21,7 @@ function AppContent({ Component, pageProps }: AppProps) {
   const { mutate: refetchConnections } = useConnections()
   const { clearTokenError } = useTokenErrorStore()
 
-  // 處理 OAuth 回調後的狀態刷新
+  // 處理 OAuth 回調：統一導向到 callback 頁面處理
   useEffect(() => {
     if (router.isReady) {
       const urlParams = new URLSearchParams(window.location.search)
@@ -29,33 +29,11 @@ function AppContent({ Component, pageProps }: AppProps) {
       
       // 如果是 OAuth 回調，且不在 callback 頁面，導向到 callback 頁面統一處理
       if (authSuccess && router.pathname !== '/connections/callback') {
-        const currentPath = router.asPath.split('?')[0] // 移除 query 參數
         router.replace(`/connections/callback${window.location.search}`)
         return
       }
-      
-      // 處理舊的 reauthorize 流程（向後相容）
-      const returnPath = sessionStorage.getItem('reauthorize_return_path')
-      const reauthorizeHandle = sessionStorage.getItem('reauthorize_handle')
-
-      if (authSuccess === 'true' && returnPath) {
-        // 清除 sessionStorage
-        sessionStorage.removeItem('reauthorize_return_path')
-        sessionStorage.removeItem('reauthorize_handle')
-
-        // 清除 Token 錯誤狀態
-        clearTokenError()
-
-        // 刷新 Connection 列表
-        refetchConnections()
-
-        // 返回原頁面（如果路徑不同）
-        if (router.asPath !== returnPath) {
-          router.push(returnPath)
-        }
-      }
     }
-  }, [router.isReady, router.asPath, router.pathname, refetchConnections, clearTokenError, router])
+  }, [router.isReady, router.pathname, router])
 
   return (
     <>

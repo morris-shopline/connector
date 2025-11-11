@@ -470,25 +470,90 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         await shoplineService.saveStoreInfo(tokenData, params.handle, userId)
         
         console.log('✅ [DEBUG] 商店資訊已儲存')
-        console.log('🔍 [DEBUG] 驗證儲存結果...')
         
-        // 驗證儲存結果
+        // 建立或更新 Connection 和 ConnectionItem
+        const { connectionRepository } = await import('../repositories/connectionRepository')
         const { PrismaClient } = await import('@prisma/client')
         const prisma = new PrismaClient()
-        const savedStore = await prisma.store.findFirst({
-          where: { handle: params.handle },
-          include: { user: { select: { id: true, email: true } } }
+        
+        // 確保有 userId（如果沒有則使用系統使用者）
+        let finalUserId = userId
+        if (!finalUserId) {
+          const systemUser = await prisma.user.findUnique({
+            where: { email: 'system@admin.com' }
+          })
+          if (systemUser) {
+            finalUserId = systemUser.id
+          } else {
+            fastify.log.error('❌ 系統使用者不存在')
+            await prisma.$disconnect()
+            return reply.status(500).send({
+              success: false,
+              error: 'System user not found'
+            })
+          }
+        }
+        
+        // 從 JWT 中解碼資訊
+        const access_token = tokenData.data.accessToken
+        const jwtPayload = JSON.parse(Buffer.from(access_token.split('.')[1], 'base64').toString())
+        const shop_id = jwtPayload.storeId
+        const expiresAt = jwtPayload.exp ? new Date(jwtPayload.exp * 1000) : null
+        
+        // 建立或更新 Connection
+        const connection = await connectionRepository.upsertConnection({
+          userId: finalUserId,
+          platform: 'shopline',
+          externalAccountId: params.handle,
+          displayName: params.handle,
+          authPayload: {
+            accessToken: access_token,
+            expires_at: expiresAt?.toISOString(),
+            scope: tokenData.data.scope,
+          },
+          status: 'active',
         })
-        console.log('🔍 [DEBUG] 儲存後的商店:', {
-          id: savedStore?.id,
-          shoplineId: savedStore?.shoplineId,
-          handle: savedStore?.handle,
-          userId: savedStore?.userId,
-          userEmail: savedStore?.user?.email
+        
+        fastify.log.info(`✅ Connection 已建立/更新: ${connection.id} (${params.handle})`)
+        
+        // 建立或更新 ConnectionItem
+        const existingItem = await prisma.connectionItem.findFirst({
+          where: {
+            integrationAccountId: connection.id,
+            externalResourceId: shop_id,
+          },
         })
+        
+        let connectionItem
+        if (existingItem) {
+          // 更新現有的 ConnectionItem
+          connectionItem = await prisma.connectionItem.update({
+            where: { id: existingItem.id },
+            data: {
+              status: 'active',
+              updatedAt: new Date(),
+            },
+          })
+        } else {
+          // 建立新的 ConnectionItem
+          connectionItem = await connectionRepository.createConnectionItem({
+            integrationAccountId: connection.id,
+            platform: 'shopline',
+            externalResourceId: shop_id,
+            displayName: params.handle,
+            metadata: {
+              domain: jwtPayload.domain || null,
+              handle: params.handle,
+            },
+            status: 'active',
+          })
+        }
+        
+        fastify.log.info(`✅ ConnectionItem 已建立/更新: ${connectionItem.id} (${shop_id})`)
+        
         await prisma.$disconnect()
         
-        fastify.log.info('✅ 商店資訊已儲存')
+        fastify.log.info('✅ 商店資訊、Connection 和 ConnectionItem 已儲存')
         
         // 取得前端 URL (從環境變數或使用預設值)
         // 生產環境必須設定 FRONTEND_URL
@@ -526,9 +591,9 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
             const token = generateToken(user.id, user.email, sessionId)
             console.log('✅ [DEBUG] 已生成新的 JWT Token')
             
-            // 在重導向 URL 中包含 Token 和 Session ID，讓前端可以直接恢復登入狀態
-            const redirectUrl = `${frontendUrl}?auth_success=true&token=${encodeURIComponent(token)}&session_id=${encodeURIComponent(sessionId)}`
-            console.log('✅ [DEBUG] 重導向 URL 包含新的 Token 和 Session ID')
+            // 在重導向 URL 中包含 Token、Session ID 和 Connection ID
+            const redirectUrl = `${frontendUrl}/connections/callback?auth_success=true&status=success&connectionId=${encodeURIComponent(connection.id)}&token=${encodeURIComponent(token)}&session_id=${encodeURIComponent(sessionId)}`
+            console.log('✅ [DEBUG] 重導向 URL 包含新的 Token、Session ID 和 Connection ID')
             console.log('🔍 [DEBUG] 最終重導向 URL:', redirectUrl)
             console.log('🔍 [DEBUG] Frontend URL:', frontendUrl)
             
@@ -653,17 +718,16 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         }
         
         // 返回成功頁面 HTML，自動重導向到前端
-        // 在重導向 URL 中加入認證狀態參數（如果有 Session ID）
-        let redirectUrl = frontendUrl
+        // 在重導向 URL 中加入認證狀態參數、Connection ID（如果有 Session ID）
+        let redirectUrl = `${frontendUrl}/connections/callback?auth_success=true&status=success&connectionId=${encodeURIComponent(connection.id)}`
         if (sessionId) {
           // 在重導向 URL 中加入 Session ID，讓前端可以恢復認證狀態
-          redirectUrl = `${frontendUrl}?auth_success=true&session_id=${encodeURIComponent(sessionId)}`
-          console.log('✅ [DEBUG] 重導向 URL 包含 Session ID:', redirectUrl)
-          fastify.log.info('✅ 重導向 URL 包含 Session ID')
+          redirectUrl += `&session_id=${encodeURIComponent(sessionId)}`
+          console.log('✅ [DEBUG] 重導向 URL 包含 Session ID 和 Connection ID:', redirectUrl)
+          fastify.log.info('✅ 重導向 URL 包含 Session ID 和 Connection ID')
         } else {
-          redirectUrl = `${frontendUrl}?auth_success=true`
-          console.log('⚠️  [DEBUG] 重導向 URL 不包含 Session ID（Session 無效或不存在）:', redirectUrl)
-          fastify.log.info('⚠️  重導向 URL 不包含 Session ID（Session 無效或不存在）')
+          console.log('⚠️  [DEBUG] 重導向 URL 不包含 Session ID（Session 無效或不存在），但包含 Connection ID:', redirectUrl)
+          fastify.log.info('⚠️  重導向 URL 不包含 Session ID（Session 無效或不存在），但包含 Connection ID')
         }
         
         console.log('🔍 [DEBUG] 最終重導向 URL:', redirectUrl)
@@ -786,6 +850,14 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         `)
       } else {
         fastify.log.error('Access token 獲取失敗:', tokenData.error)
+        
+        // 錯誤時也要 redirect 到前端 callback 頁面
+        const frontendUrl = process.env.FRONTEND_URL
+        if (frontendUrl) {
+          const errorRedirectUrl = `${frontendUrl}/connections/callback?auth_success=false&status=error&error=${encodeURIComponent(tokenData.error || '授權失敗')}`
+          return reply.redirect(302, errorRedirectUrl)
+        }
+        
         return reply.status(500).send({
           success: false,
           error: tokenData.error
@@ -794,6 +866,14 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
     } catch (error: any) {
       fastify.log.error('Callback error:', error)
       fastify.log.error('Error stack:', error?.stack)
+      
+      // 錯誤時也要 redirect 到前端 callback 頁面
+      const frontendUrl = process.env.FRONTEND_URL
+      if (frontendUrl) {
+        const errorRedirectUrl = `${frontendUrl}/connections/callback?auth_success=false&status=error&error=${encodeURIComponent(error?.message || 'Internal server error')}`
+        return reply.redirect(302, errorRedirectUrl)
+      }
+      
       return reply.status(500).send({
         success: false,
         error: 'Internal server error',
