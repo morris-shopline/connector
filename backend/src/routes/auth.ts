@@ -563,7 +563,7 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
             metadata: {
               handle: params.handle,
               platform: 'shopline',
-              shopId,
+              shopId: shop_id,
             },
           })
         } catch (auditError) {
