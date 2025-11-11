@@ -255,6 +255,25 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
       const rawState = typeof rawQuery.state === 'string' ? rawQuery.state : undefined
       fastify.log.info('State 參數:', rawState)
       
+      // 先檢查必要參數（參考 temp/oauth.js 的實作）
+      if (!rawQuery.appkey || !rawQuery.code || !rawQuery.handle || !rawQuery.timestamp || !rawQuery.sign) {
+        fastify.log.error('缺少必要參數:', {
+          hasAppkey: !!rawQuery.appkey,
+          hasCode: !!rawQuery.code,
+          hasHandle: !!rawQuery.handle,
+          hasTimestamp: !!rawQuery.timestamp,
+          hasSign: !!rawQuery.sign
+        })
+        return reply.status(400).send({
+          success: false,
+          error: 'Missing required parameters',
+          details: {
+            required: ['appkey', 'code', 'handle', 'timestamp', 'sign'],
+            received: Object.keys(rawQuery)
+          }
+        })
+      }
+      
       const parseResult = callbackSchema.safeParse(request.query)
       if (!parseResult.success) {
         fastify.log.error('Parse error:', parseResult.error)
@@ -266,20 +285,15 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
       }
 
       const params = parseResult.data
-      // OAuth callback 的簽名驗證需要包含所有參數（包含 code）
-      // 根據 Shopline API 文件，簽名驗證應該包含所有參數（除了 sign 本身）
-      const verifyCallbackParams: ShoplineAuthParams = {
-        appkey: params.appkey,
-        handle: params.handle,
-        timestamp: params.timestamp,
-        sign: params.sign,
-        code: params.code // 必須包含 code 參數進行簽名驗證
-      }
       
-      // 驗證簽名
-      const isValidSignature = await shoplineService.verifyInstallRequest(verifyCallbackParams)
+      // 驗證簽名 - 直接傳遞整個 params（包含 code, lang, customField 等所有參數）
+      // 這是重構前的正確做法，verifyInstallRequest 會自動遍歷所有參數進行簽名驗證
+      // 重構時（Run 2025-11-10-01）被錯誤地改為只傳遞部分參數，導致缺少 code 參數而簽名驗證失敗
+      // 恢復為重構前的做法：直接傳遞整個 params
+      const isValidSignature = await shoplineService.verifyInstallRequest(params as any)
       if (!isValidSignature) {
         fastify.log.error('回調簽名驗證失敗')
+        fastify.log.error('簽名驗證參數:', JSON.stringify(params, null, 2))
         return reply.status(401).send({
           success: false,
           error: 'Invalid signature'

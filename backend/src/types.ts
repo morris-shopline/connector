@@ -6,6 +6,10 @@ export interface ShoplineAuthParams {
   timestamp: string
   sign: string
   code?: string // OAuth callback 需要包含 code 參數進行簽名驗證
+  lang?: string // OAuth callback 可能包含 lang 參數
+  customField?: string // OAuth callback 可能包含 customField 參數
+  state?: string // OAuth callback 可能包含 state 參數
+  [key: string]: string | undefined // 允許其他參數（verifyInstallRequest 會自動處理）
 }
 
 export interface ShoplineTokenResponse {
