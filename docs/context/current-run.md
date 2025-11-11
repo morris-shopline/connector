@@ -32,16 +32,16 @@
 - ✅ UI 層級優化：Primary Nav 圖標式、Global Header 簡化（GA4 風格）
 
 ### Story 4.3: Connection 層級權限與端點保護
-- **狀態**: 🛠 in-development
+- **狀態**: ✅ ready-for-user-test
 - ✅ Prisma `integration_audit_logs` model 與 migration
 - ✅ Audit Log Repository 建立
 - ✅ `requireConnectionOwner` middleware 實作
 - ✅ API routes 保護（`/api/connections`, `/api/connection-items/:id`, `/api/connections/:connectionId/logs`）
-- ✅ OAuth callback 寫入審計記錄
-- ✅ Connection Item 狀態更新寫入審計記錄
+- ✅ OAuth callback 寫入審計記錄（connection.create, connection.reauthorize）
+- ✅ Connection Item 狀態更新寫入審計記錄（connection_item.enable, connection_item.disable）
 - ✅ Activity Dock 從後端 `/api/audit-logs` 讀取資料
 - ✅ Webhook 安全驗證加強（connectionItemId 綁定與 userId 驗證）
-- ⏳ 測試安全功能，確保不破壞現有功能
+- ✅ 編譯測試通過
 
 ---
 
