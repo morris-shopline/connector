@@ -181,11 +181,6 @@ export function ConnectionRail() {
             {filteredConnections.map((connection) => {
               const isSelected = connection.id === selectedConnectionId
               const displayName = connection.displayName || connection.externalAccountId || '未命名'
-              const expiresAt = connection.authPayload?.expires_at
-                ? (connection.authPayload.expires_at instanceof Date 
-                    ? connection.authPayload.expires_at 
-                    : new Date(connection.authPayload.expires_at))
-                : null
 
               return (
                 <li key={connection.id}>
@@ -200,17 +195,12 @@ export function ConnectionRail() {
                       onClick={() => handleConnectionClick(connection)}
                       className="w-full"
                     >
-                      <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center justify-between">
                         <div className="text-sm font-medium text-gray-900 truncate">
                           {displayName}
                         </div>
                         <ConnectionStatusPill status={connection.status} />
                       </div>
-                      {expiresAt && (
-                        <div className="text-xs text-gray-500">
-                          到期: {format(expiresAt, 'MM/dd', { locale: zhTW })}
-                        </div>
-                      )}
                     </button>
                     {/* Hover 快速操作 */}
                     <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
