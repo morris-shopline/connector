@@ -150,27 +150,30 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
       // 更新狀態
       const updatedItem = await connectionRepository.updateConnectionItemStatus(itemId, status)
 
-      // 寫入審計記錄
-      try {
-        await auditLogRepository.createAuditLog({
-          userId,
-          connectionId: item.integrationAccountId,
-          connectionItemId: itemId,
-          operation: status === 'active' ? 'connection_item.enable' : 'connection_item.disable',
-          result: 'success',
-          metadata: {
-            previousStatus: item.status,
-            newStatus: status,
-          },
-        })
-      } catch (auditError) {
-        // 審計記錄失敗不影響主要操作，只記錄錯誤
-        fastify.log.error('Failed to create audit log:', auditError)
-      }
-
-      return reply.send({
+      // 先回傳成功回應，確保主要操作完成
+      reply.send({
         success: true,
         data: updatedItem
+      })
+
+      // 寫入審計記錄（非阻塞，不影響主要操作）
+      setImmediate(async () => {
+        try {
+          await auditLogRepository.createAuditLog({
+            userId,
+            connectionId: item.integrationAccountId,
+            connectionItemId: itemId,
+            operation: status === 'active' ? 'connection_item.enable' : 'connection_item.disable',
+            result: 'success',
+            metadata: {
+              previousStatus: item.status,
+              newStatus: status,
+            },
+          })
+        } catch (auditError) {
+          // 審計記錄失敗不影響主要操作，只記錄錯誤
+          fastify.log.error('Failed to create audit log (non-blocking):', auditError)
+        }
       })
     } catch (error) {
       fastify.log.error('Update connection item status error:', error)

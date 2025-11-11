@@ -551,29 +551,34 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         
         fastify.log.info(`✅ ConnectionItem 已建立/更新: ${connectionItem.id} (${shop_id})`)
         
-        // 寫入審計記錄（新增或重新授權）
-        try {
-          const { auditLogRepository } = await import('../repositories/auditLogRepository')
-          const isNewConnection = !existingItem // 如果沒有現有 item，視為新 Connection
-          await auditLogRepository.createAuditLog({
-            userId: finalUserId,
-            connectionId: connection.id,
-            operation: isNewConnection ? 'connection.create' : 'connection.reauthorize',
-            result: 'success',
-            metadata: {
-              handle: params.handle,
-              platform: 'shopline',
-              shopId: shop_id,
-            },
-          })
-        } catch (auditError) {
-          // 審計記錄失敗不影響主要操作
-          fastify.log.error('Failed to create audit log:', auditError)
-        }
-        
+        // 先斷開 prisma 連接（主要操作已完成）
         await prisma.$disconnect()
         
         fastify.log.info('✅ 商店資訊、Connection 和 ConnectionItem 已儲存')
+        
+        // 寫入審計記錄（新增或重新授權）- 使用非阻塞方式，不影響主要流程
+        // 使用 setTimeout 確保在主要流程完成後再執行，即使失敗也不影響 OAuth 流程
+        setImmediate(async () => {
+          try {
+            const { auditLogRepository } = await import('../repositories/auditLogRepository')
+            const isNewConnection = !existingItem // 如果沒有現有 item，視為新 Connection
+            await auditLogRepository.createAuditLog({
+              userId: finalUserId,
+              connectionId: connection.id,
+              operation: isNewConnection ? 'connection.create' : 'connection.reauthorize',
+              result: 'success',
+              metadata: {
+                handle: params.handle,
+                platform: 'shopline',
+                shopId: shop_id,
+              },
+            })
+            fastify.log.info(`✅ 審計記錄已寫入: ${isNewConnection ? 'connection.create' : 'connection.reauthorize'}`)
+          } catch (auditError) {
+            // 審計記錄失敗不影響主要操作，只記錄錯誤
+            fastify.log.error('Failed to create audit log (non-blocking):', auditError)
+          }
+        })
         
         // 取得前端 URL (從環境變數或使用預設值)
         // 生產環境必須設定 FRONTEND_URL
