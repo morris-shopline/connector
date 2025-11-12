@@ -1018,39 +1018,97 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         })
       }
 
-      // 從 session cookie 識別用戶（透過 optionalAuthMiddleware）
+      // 前後端分離架構：OAuth callback 時 session cookie 無法跨域傳遞
+      // 解決方案：從 redirect_uri 參數中解析出我們加入的 state 來識別用戶
       let userId: string | undefined = undefined
-      if (request.user) {
-        userId = request.user.id
-        fastify.log.info('✅ 從 session cookie 取得使用者 ID:', userId)
+      const redirectUri = rawQuery.redirect_uri as string | undefined
+      let ourState: string | undefined = undefined
+      
+      // 方法 1: 嘗試從 redirect_uri 參數中解析出我們的 state
+      if (redirectUri) {
+        try {
+          const redirectUrl = new URL(decodeURIComponent(redirectUri))
+          ourState = redirectUrl.searchParams.get('state') || undefined
+          fastify.log.info('🔍 從 redirect_uri 解析出我們的 state:', {
+            ourState: ourState ? 'found' : 'not found',
+            redirectUriLength: redirectUri.length,
+          })
+        } catch (error: any) {
+          fastify.log.warn('⚠️ 無法解析 redirect_uri:', error.message)
+        }
       }
 
-      // 如果無法從 session 識別，嘗試從 Redis 使用 uid 查找（備用方式）
-      if (!userId) {
+      // 使用我們的 state 來識別用戶
+      if (ourState) {
         const { getRedisClient } = await import('../utils/redis')
         const redis = getRedisClient()
+
         if (redis) {
           try {
-            // 在授權前，我們會將 userId 存入 Redis，使用 uid 作為 key
-            // 但問題是：我們無法預先知道 Next Engine 會生成什麼 uid
-            // 所以這個備用方式可能無法使用
-            fastify.log.warn('⚠️ 無法從 session 識別用戶，且無法使用 uid 備用方式（因為無法預先知道 uid）')
+            const redisKey = `oauth:next-engine:state:${ourState}`
+            const cachedUserId = await redis.get(redisKey)
+            fastify.log.info('🔍 Redis 查詢結果:', {
+              redisKey,
+              cachedUserId: cachedUserId ? 'found' : 'not found',
+            })
+            if (cachedUserId) {
+              userId = cachedUserId
+              await redis.del(redisKey) // 一次性使用
+              fastify.log.info('✅ 從 Redis 取得使用者 ID:', userId)
+            }
           } catch (redisError: any) {
             fastify.log.error('❌ Redis 查詢錯誤:', redisError.message)
           }
         }
+
+        // 如果 Redis 沒有，嘗試解密我們的 state
+        if (!userId) {
+          const { decryptState } = await import('../utils/state')
+          const decrypted = decryptState(ourState)
+          fastify.log.info('🔍 State 解密結果:', {
+            decrypted: decrypted ? 'success' : 'failed',
+            decryptedLength: decrypted?.length || 0,
+          })
+          if (decrypted) {
+            // 格式可能是 "sessionId" 或 "userId:nonce"
+            const parts = decrypted.split(':')
+            if (parts.length === 2) {
+              userId = parts[0]
+              fastify.log.info('✅ 從解密 state 取得 userId (格式: userId:nonce):', userId)
+            } else {
+              // 嘗試從 session 取得 userId
+              const { getSession } = await import('../utils/session')
+              const session = await getSession(decrypted)
+              if (session) {
+                userId = session.userId
+                fastify.log.info('✅ 從 session 取得 userId:', userId)
+              } else {
+                fastify.log.warn('⚠️ 無法從 session 取得 userId，sessionId:', decrypted)
+              }
+            }
+          } else {
+            fastify.log.warn('⚠️ State 解密失敗，state 格式不符合預期')
+          }
+        }
+      }
+
+      // 方法 2: 嘗試從 session cookie（如果有的話，作為備用）
+      if (!userId && request.user) {
+        userId = request.user.id
+        fastify.log.info('✅ 從 session cookie 取得使用者 ID（備用方式）:', userId)
       }
 
       if (!userId) {
         fastify.log.error('❌ 無法取得使用者 ID', {
-          hasSession: !!request.user,
-          uid: uid ? 'present' : 'missing',
+          ourState: ourState ? 'present' : 'missing',
           neState: neState ? 'present' : 'missing',
+          redirectUri: redirectUri ? 'present' : 'missing',
+          hasSession: !!request.user,
         })
         return reply.status(401).send({
           success: false,
           error: 'Unable to identify user',
-          details: '無法從 session cookie 識別用戶。請確認已登入並重新嘗試授權。'
+          details: '無法從 redirect_uri 中的 state 參數或 session cookie 識別用戶。請確認授權流程正確執行。'
         })
       }
 
