@@ -360,6 +360,66 @@ export const apiClient = {
       console.error('Get locations error:', error)
       throw error
     }
+  },
+
+  // Next Engine API Methods
+  async searchShops(connectionId: string, fields?: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await api.post(`/api/connections/${connectionId}/shops/search`, {
+        fields: fields || 'shop_id,shop_name,shop_abbreviated_name,shop_note'
+      })
+      return response.data
+    } catch (error: any) {
+      console.error('Search shops error:', error)
+      throw error
+    }
+  },
+
+  async createShop(connectionId: string, xmlData: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await api.post(`/api/connections/${connectionId}/shops/create`, {
+        data: xmlData
+      })
+      return response.data
+    } catch (error: any) {
+      console.error('Create shop error:', error)
+      throw error
+    }
+  },
+
+  async searchGoods(connectionId: string, params?: {
+    fields?: string
+    offset?: string
+    limit?: string
+    goods_id_eq?: string
+  }): Promise<ApiResponse<any>> {
+    try {
+      const body: any = {
+        fields: params?.fields || 'goods_id,goods_name,stock_quantity,supplier_name',
+        offset: params?.offset || '0',
+        limit: params?.limit || '100'
+      }
+      if (params?.goods_id_eq) {
+        body.goods_id_eq = params.goods_id_eq
+      }
+      const response = await api.post(`/api/connections/${connectionId}/goods/search`, body)
+      return response.data
+    } catch (error: any) {
+      console.error('Search goods error:', error)
+      throw error
+    }
+  },
+
+  async uploadGoods(connectionId: string, csvData: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await api.post(`/api/connections/${connectionId}/goods/upload`, {
+        data: csvData
+      })
+      return response.data
+    } catch (error: any) {
+      console.error('Upload goods error:', error)
+      throw error
+    }
   }
 }
 

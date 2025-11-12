@@ -8,7 +8,7 @@ import { useSelectedConnection } from '../hooks/useSelectedConnection'
 import { useConnectionStore } from '../stores/useConnectionStore'
 import { ConnectionSelectorDropdown } from '../components/connections/ConnectionSelectorDropdown'
 import { getPlatformApiConfig, type PlatformApiConfig, type ApiGroup, type ApiFunction as ConfigApiFunction } from '../content/platforms/api-configs'
-import { getBackendUrl } from '../lib/api'
+import { apiClient } from '../lib/api'
 
 // 舊的 API 功能定義（保留用於 Shopline，待遷移）
 type LegacyApiFunction = {
@@ -183,7 +183,7 @@ function AdminAPITest() {
     try {
       let result: any
 
-      // Next Engine API 呼叫
+      // Next Engine API 呼叫（使用統一的 apiClient，與 Shopline 一致）
       if (selectedConnection.platform === 'next-engine') {
         if (!connectionId) {
           setError('請先選擇一個 Connection')
@@ -191,51 +191,12 @@ function AdminAPITest() {
           return
         }
 
-        const endpoint = func.endpoint(connectionId)
-        const backendUrl = getBackendUrl()
-        // 確保 endpoint 有開頭斜線，backendUrl 沒有尾部斜線
-        const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
-        const fullUrl = `${backendUrl}${normalizedEndpoint}`
-        const token = localStorage.getItem('auth_token')
-        
-        console.log('🔍 [DEBUG] API Request:', {
-          backendUrl,
-          endpoint,
-          normalizedEndpoint,
-          fullUrl,
-          hasToken: !!token
-        })
-
         switch (selectedFunction) {
           case 'neSearchShops': {
-            const body = {
-              fields: paramValues.fields || 'shop_id,shop_name,shop_abbreviated_name,shop_note'
-            }
-            const response = await fetch(fullUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify(body)
-            })
-            // 檢查 HTTP 狀態碼
-            if (!response.ok) {
-              let errorMessage = `HTTP ${response.status}: ${response.statusText}`
-              try {
-                const errorData = await response.json()
-                errorMessage = errorData.error || errorData.message || errorMessage
-              } catch {
-                // 如果無法解析 JSON，使用預設錯誤訊息
-              }
-              throw new Error(errorMessage)
-            }
-            
-            const responseData = await response.json()
-            if (!responseData.success) {
-              throw new Error(responseData.error || responseData.message || 'API 呼叫失敗')
-            }
-            result = responseData
+            result = await apiClient.searchShops(
+              connectionId,
+              paramValues.fields || 'shop_id,shop_name,shop_abbreviated_name,shop_note'
+            )
             break
           }
           case 'neCreateShop': {
@@ -244,67 +205,16 @@ function AdminAPITest() {
               setIsLoading(false)
               return
             }
-            const response = await fetch(fullUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify({ data: paramValues.xmlData })
-            })
-            // 檢查 HTTP 狀態碼
-            if (!response.ok) {
-              let errorMessage = `HTTP ${response.status}: ${response.statusText}`
-              try {
-                const errorData = await response.json()
-                errorMessage = errorData.error || errorData.message || errorMessage
-              } catch {
-                // 如果無法解析 JSON，使用預設錯誤訊息
-              }
-              throw new Error(errorMessage)
-            }
-            
-            const responseData = await response.json()
-            if (!responseData.success) {
-              throw new Error(responseData.error || responseData.message || 'API 呼叫失敗')
-            }
-            result = responseData
+            result = await apiClient.createShop(connectionId, paramValues.xmlData)
             break
           }
           case 'neSearchGoods': {
-            const body: any = {
+            result = await apiClient.searchGoods(connectionId, {
               fields: paramValues.fields || 'goods_id,goods_name,stock_quantity,supplier_name',
               offset: paramValues.offset || '0',
-              limit: paramValues.limit || '100'
-            }
-            if (paramValues.goods_id_eq) {
-              body.goods_id_eq = paramValues.goods_id_eq
-            }
-            const response = await fetch(fullUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify(body)
+              limit: paramValues.limit || '100',
+              goods_id_eq: paramValues.goods_id_eq
             })
-            // 檢查 HTTP 狀態碼
-            if (!response.ok) {
-              let errorMessage = `HTTP ${response.status}: ${response.statusText}`
-              try {
-                const errorData = await response.json()
-                errorMessage = errorData.error || errorData.message || errorMessage
-              } catch {
-                // 如果無法解析 JSON，使用預設錯誤訊息
-              }
-              throw new Error(errorMessage)
-            }
-            
-            const responseData = await response.json()
-            if (!responseData.success) {
-              throw new Error(responseData.error || responseData.message || 'API 呼叫失敗')
-            }
-            result = responseData
             break
           }
           case 'neUploadGoods': {
@@ -313,31 +223,7 @@ function AdminAPITest() {
               setIsLoading(false)
               return
             }
-            const response = await fetch(fullUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify({ data: paramValues.csvData })
-            })
-            // 檢查 HTTP 狀態碼
-            if (!response.ok) {
-              let errorMessage = `HTTP ${response.status}: ${response.statusText}`
-              try {
-                const errorData = await response.json()
-                errorMessage = errorData.error || errorData.message || errorMessage
-              } catch {
-                // 如果無法解析 JSON，使用預設錯誤訊息
-              }
-              throw new Error(errorMessage)
-            }
-            
-            const responseData = await response.json()
-            if (!responseData.success) {
-              throw new Error(responseData.error || responseData.message || 'API 呼叫失敗')
-            }
-            result = responseData
+            result = await apiClient.uploadGoods(connectionId, paramValues.csvData)
             break
           }
           default:
