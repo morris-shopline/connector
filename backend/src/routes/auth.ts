@@ -956,24 +956,16 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         state = encryptState(`${userId}:${nonce}`)
       }
 
-      // Next Engine API 文件顯示授權 URL 只支援 client_id 和 redirect_uri，不支援 state 參數
-      // 正確做法：在 redirect_uri 中加入 state 參數來識別用戶
-      // Next Engine 應該會保留 redirect_uri 中的參數並在 callback 時回傳
+      // Next Engine 會自己生成 state，我們無法自訂
+      // 授權 URL 只接受 client_id 和 redirect_uri，不接受 state 參數
+      // 用戶識別應該使用 session cookie（已在 authMiddleware 中處理）
+      // 參考：ne-test 專案的實作方式
       
-      // 將 state 和 userId 的對應關係存入 Redis
-      const { getRedisClient } = await import('../utils/redis')
-      const redis = getRedisClient()
-      if (redis) {
-        const redisKey = `oauth:next-engine:state:${state}`
-        await redis.setex(redisKey, 600, userId) // 10 分鐘過期
-        fastify.log.info({ msg: '✅ 已在 Redis 暫存 state 和 userId 對應關係', userId, state })
-      }
-
       // 取得 Next Engine Adapter
       PlatformServiceFactory.initialize() // 確保 adapter 已註冊
       const adapter = PlatformServiceFactory.getAdapter('next-engine')
 
-      // 生成授權 URL（在 redirect_uri 中加入 state 參數）
+      // 生成授權 URL（不包含 state，Next Engine 會自己生成）
       const authUrl = adapter.getAuthorizeUrl(state)
 
       return reply.send({
@@ -997,16 +989,19 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
    * 
    * Next Engine callback 參數：
    * - uid: 授權碼（類似 Shopline 的 code）
-   * - state: OAuth state 參數
+   * - state: Next Engine 自己生成的 state（我們無法控制）
+   * 
+   * 重要：Next Engine 會自己生成 state，我們無法自訂
+   * 用戶識別應該使用 session cookie（透過 optionalAuthMiddleware）
+   * 參考：ne-test 專案的實作方式
    */
-  fastify.get('/api/auth/next-engine/callback', async (request, reply) => {
+  fastify.get('/api/auth/next-engine/callback', { preHandler: [optionalAuthMiddleware] }, async (request, reply) => {
     try {
       const rawQuery = request.query as Record<string, unknown>
       fastify.log.info('收到 Next Engine 授權回調:', JSON.stringify(rawQuery, null, 2))
 
       const uid = rawQuery.uid as string | undefined
       const neState = rawQuery.state as string | undefined // Next Engine 自己生成的 state
-      const redirectUri = rawQuery.redirect_uri as string | undefined
 
       if (!uid || !neState) {
         fastify.log.error('缺少必要參數:', {
@@ -1023,87 +1018,39 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         })
       }
 
-      // 從 redirect_uri 參數中解析出我們加入的 state（用於識別用戶）
+      // 從 session cookie 識別用戶（透過 optionalAuthMiddleware）
       let userId: string | undefined = undefined
-      let ourState: string | undefined = undefined
-      
-      if (redirectUri) {
-        try {
-          const redirectUrl = new URL(decodeURIComponent(redirectUri))
-          ourState = redirectUrl.searchParams.get('state') || undefined
-          fastify.log.info('🔍 從 redirect_uri 解析出我們的 state:', {
-            ourState: ourState ? 'found' : 'not found',
-            redirectUriLength: redirectUri.length,
-          })
-        } catch (error: any) {
-          fastify.log.warn('⚠️ 無法解析 redirect_uri:', error.message)
-        }
+      if (request.user) {
+        userId = request.user.id
+        fastify.log.info('✅ 從 session cookie 取得使用者 ID:', userId)
       }
 
-      // 使用我們的 state 來識別用戶
-      if (ourState) {
+      // 如果無法從 session 識別，嘗試從 Redis 使用 uid 查找（備用方式）
+      if (!userId) {
         const { getRedisClient } = await import('../utils/redis')
         const redis = getRedisClient()
-
         if (redis) {
           try {
-            const redisKey = `oauth:next-engine:state:${ourState}`
-            const cachedUserId = await redis.get(redisKey)
-            fastify.log.info('🔍 Redis 查詢結果:', {
-              redisKey,
-              cachedUserId: cachedUserId ? 'found' : 'not found',
-            })
-            if (cachedUserId) {
-              userId = cachedUserId
-              await redis.del(redisKey) // 一次性使用
-              fastify.log.info('✅ 從 Redis 取得使用者 ID:', userId)
-            }
+            // 在授權前，我們會將 userId 存入 Redis，使用 uid 作為 key
+            // 但問題是：我們無法預先知道 Next Engine 會生成什麼 uid
+            // 所以這個備用方式可能無法使用
+            fastify.log.warn('⚠️ 無法從 session 識別用戶，且無法使用 uid 備用方式（因為無法預先知道 uid）')
           } catch (redisError: any) {
             fastify.log.error('❌ Redis 查詢錯誤:', redisError.message)
-          }
-        }
-
-        // 如果 Redis 沒有，嘗試解密我們的 state
-        if (!userId) {
-          const { decryptState } = await import('../utils/state')
-          const decrypted = decryptState(ourState)
-          fastify.log.info('🔍 State 解密結果:', {
-            decrypted: decrypted ? 'success' : 'failed',
-            decryptedLength: decrypted?.length || 0,
-          })
-          if (decrypted) {
-            // 格式可能是 "sessionId" 或 "userId:nonce"
-            const parts = decrypted.split(':')
-            if (parts.length === 2) {
-              userId = parts[0]
-              fastify.log.info('✅ 從解密 state 取得 userId (格式: userId:nonce):', userId)
-            } else {
-              // 嘗試從 session 取得 userId
-              const { getSession } = await import('../utils/session')
-              const session = await getSession(decrypted)
-              if (session) {
-                userId = session.userId
-                fastify.log.info('✅ 從 session 取得 userId:', userId)
-              } else {
-                fastify.log.warn('⚠️ 無法從 session 取得 userId，sessionId:', decrypted)
-              }
-            }
-          } else {
-            fastify.log.warn('⚠️ State 解密失敗，state 格式不符合預期')
           }
         }
       }
 
       if (!userId) {
         fastify.log.error('❌ 無法取得使用者 ID', {
-          ourState: ourState ? 'present' : 'missing',
+          hasSession: !!request.user,
+          uid: uid ? 'present' : 'missing',
           neState: neState ? 'present' : 'missing',
-          redirectUri: redirectUri ? 'present' : 'missing',
         })
         return reply.status(401).send({
           success: false,
           error: 'Unable to identify user',
-          details: '無法從 redirect_uri 中的 state 參數取得使用者資訊。請確認授權流程正確執行。'
+          details: '無法從 session cookie 識別用戶。請確認已登入並重新嘗試授權。'
         })
       }
 

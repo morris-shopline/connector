@@ -51,18 +51,16 @@ export class NextEngineAdapter implements PlatformAdapter {
    * Next Engine OAuth 流程：
    * GET https://base.next-engine.org/users/sign_in/?client_id={CLIENT_ID}&redirect_uri={REDIRECT_URI}
    * 
-   * Next Engine API 文件顯示授權 URL 只支援 client_id 和 redirect_uri，不支援 state 參數
-   * 因此我們使用 redirect_uri 中加入參數來識別用戶
+   * 重要：Next Engine 會自己生成 state，我們無法自訂
+   * 授權 URL 只接受 client_id 和 redirect_uri，不接受 state 參數
+   * 參考：ne-test 專案的實作方式
    */
   getAuthorizeUrl(state: string, additionalParams?: Record<string, any>): string {
-    // 在 redirect_uri 中加入 state 參數來識別用戶
-    // Next Engine 應該會保留 redirect_uri 中的參數並在 callback 時回傳
-    const redirectUri = new URL(this.baseRedirectUri)
-    redirectUri.searchParams.set('state', state)
-    
+    // Next Engine 會自己生成 state，我們不應該在 redirect_uri 中加入 state
+    // 用戶識別應該使用 session cookie 或其他方式
     const params = new URLSearchParams({
       client_id: this.clientId,
-      redirect_uri: redirectUri.toString(),
+      redirect_uri: this.baseRedirectUri,
     })
 
     return `https://base.next-engine.org/users/sign_in/?${params.toString()}`
