@@ -4,22 +4,26 @@ import { ApiResponse, StoreInfo, StoreInfoResponse, ProductListParams, ProductLi
 // 生產環境必須設定 NEXT_PUBLIC_BACKEND_URL
 // 開發環境可以使用 NEXT_PUBLIC_NGROK_URL（ngrok）或 NEXT_PUBLIC_API_URL
 export const getBackendUrl = () => {
+  let url: string | undefined
+  
   if (process.env.NEXT_PUBLIC_BACKEND_URL) {
-    return process.env.NEXT_PUBLIC_BACKEND_URL
+    url = process.env.NEXT_PUBLIC_BACKEND_URL
+  } else if (process.env.NEXT_PUBLIC_API_URL) {
+    url = process.env.NEXT_PUBLIC_API_URL
+  } else if (process.env.NEXT_PUBLIC_NGROK_URL) {
+    url = process.env.NEXT_PUBLIC_NGROK_URL
+  } else {
+    // 生產環境不應該到這裡，應該拋出錯誤
+    if (process.env.NODE_ENV === 'production') {
+      console.error('❌ 錯誤：生產環境必須設定 NEXT_PUBLIC_BACKEND_URL 環境變數')
+      throw new Error('NEXT_PUBLIC_BACKEND_URL is required in production')
+    }
+    // 開發環境允許使用 localhost
+    url = 'http://localhost:3001'
   }
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL
-  }
-  if (process.env.NEXT_PUBLIC_NGROK_URL) {
-    return process.env.NEXT_PUBLIC_NGROK_URL
-  }
-  // 生產環境不應該到這裡，應該拋出錯誤
-  if (process.env.NODE_ENV === 'production') {
-    console.error('❌ 錯誤：生產環境必須設定 NEXT_PUBLIC_BACKEND_URL 環境變數')
-    throw new Error('NEXT_PUBLIC_BACKEND_URL is required in production')
-  }
-  // 開發環境允許使用 localhost
-  return 'http://localhost:3001'
+  
+  // 移除尾部斜線，確保 URL 格式一致
+  return url.replace(/\/+$/, '')
 }
 
 const api = axios.create({

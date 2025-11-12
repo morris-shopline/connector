@@ -193,8 +193,18 @@ function AdminAPITest() {
 
         const endpoint = func.endpoint(connectionId)
         const backendUrl = getBackendUrl()
-        const fullUrl = `${backendUrl}${endpoint}`
+        // 確保 endpoint 有開頭斜線，backendUrl 沒有尾部斜線
+        const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
+        const fullUrl = `${backendUrl}${normalizedEndpoint}`
         const token = localStorage.getItem('auth_token')
+        
+        console.log('🔍 [DEBUG] API Request:', {
+          backendUrl,
+          endpoint,
+          normalizedEndpoint,
+          fullUrl,
+          hasToken: !!token
+        })
 
         switch (selectedFunction) {
           case 'neSearchShops': {
@@ -209,8 +219,20 @@ function AdminAPITest() {
               },
               body: JSON.stringify(body)
             })
+            // 檢查 HTTP 狀態碼
+            if (!response.ok) {
+              let errorMessage = `HTTP ${response.status}: ${response.statusText}`
+              try {
+                const errorData = await response.json()
+                errorMessage = errorData.error || errorData.message || errorMessage
+              } catch {
+                // 如果無法解析 JSON，使用預設錯誤訊息
+              }
+              throw new Error(errorMessage)
+            }
+            
             const responseData = await response.json()
-            if (!response.ok || !responseData.success) {
+            if (!responseData.success) {
               throw new Error(responseData.error || responseData.message || 'API 呼叫失敗')
             }
             result = responseData
@@ -230,8 +252,20 @@ function AdminAPITest() {
               },
               body: JSON.stringify({ data: paramValues.xmlData })
             })
+            // 檢查 HTTP 狀態碼
+            if (!response.ok) {
+              let errorMessage = `HTTP ${response.status}: ${response.statusText}`
+              try {
+                const errorData = await response.json()
+                errorMessage = errorData.error || errorData.message || errorMessage
+              } catch {
+                // 如果無法解析 JSON，使用預設錯誤訊息
+              }
+              throw new Error(errorMessage)
+            }
+            
             const responseData = await response.json()
-            if (!response.ok || !responseData.success) {
+            if (!responseData.success) {
               throw new Error(responseData.error || responseData.message || 'API 呼叫失敗')
             }
             result = responseData
@@ -254,8 +288,20 @@ function AdminAPITest() {
               },
               body: JSON.stringify(body)
             })
+            // 檢查 HTTP 狀態碼
+            if (!response.ok) {
+              let errorMessage = `HTTP ${response.status}: ${response.statusText}`
+              try {
+                const errorData = await response.json()
+                errorMessage = errorData.error || errorData.message || errorMessage
+              } catch {
+                // 如果無法解析 JSON，使用預設錯誤訊息
+              }
+              throw new Error(errorMessage)
+            }
+            
             const responseData = await response.json()
-            if (!response.ok || !responseData.success) {
+            if (!responseData.success) {
               throw new Error(responseData.error || responseData.message || 'API 呼叫失敗')
             }
             result = responseData
@@ -275,8 +321,20 @@ function AdminAPITest() {
               },
               body: JSON.stringify({ data: paramValues.csvData })
             })
+            // 檢查 HTTP 狀態碼
+            if (!response.ok) {
+              let errorMessage = `HTTP ${response.status}: ${response.statusText}`
+              try {
+                const errorData = await response.json()
+                errorMessage = errorData.error || errorData.message || errorMessage
+              } catch {
+                // 如果無法解析 JSON，使用預設錯誤訊息
+              }
+              throw new Error(errorMessage)
+            }
+            
             const responseData = await response.json()
-            if (!response.ok || !responseData.success) {
+            if (!responseData.success) {
               throw new Error(responseData.error || responseData.message || 'API 呼叫失敗')
             }
             result = responseData
