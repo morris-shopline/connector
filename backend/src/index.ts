@@ -34,20 +34,61 @@ const prisma = new PrismaClient()
 // 註冊插件
 async function registerPlugins() {
   // CORS 設定
+  // 生產環境允許的來源列表
+  const productionOrigins = [
+    'https://connector-theta.vercel.app',
+    'https://connector.vercel.app',
+    /https:\/\/connector.*\.vercel\.app/, // 允許所有 Vercel 子域名
+  ]
+  
+  // 如果有 FRONTEND_URL 環境變數，也加入允許列表
+  if (process.env.FRONTEND_URL) {
+    productionOrigins.push(process.env.FRONTEND_URL)
+  }
+  
+  // 開發環境允許的來源列表
+  const developmentOrigins = process.env.FRONTEND_URL 
+    ? [process.env.FRONTEND_URL]
+    : ['http://localhost:3000']
+  
+  const isProduction = process.env.NODE_ENV === 'production'
+  const allowedOrigins = isProduction ? productionOrigins : developmentOrigins
+  
+  // Debug 日誌
+  console.log('🌍 [CORS] 環境設定:', {
+    NODE_ENV: process.env.NODE_ENV,
+    isProduction,
+    FRONTEND_URL: process.env.FRONTEND_URL,
+    allowedOrigins: allowedOrigins.map((o: any) => typeof o === 'string' ? o : o.toString())
+  })
+  
   await fastify.register(cors, {
-    origin: process.env.NODE_ENV === 'production'
-      ? [
-          'https://connector-theta.vercel.app',
-          'https://connector.vercel.app',
-          /https:\/\/connector.*\.vercel\.app/, // 允許所有 Vercel 子域名
-          process.env.FRONTEND_URL || 'https://connector-theta.vercel.app'
-        ]
-      : process.env.FRONTEND_URL 
-          ? [process.env.FRONTEND_URL]
-          : ['http://localhost:3000'],
+    origin: (origin, callback) => {
+      // 允許沒有 origin 的請求（例如 Postman、curl）
+      if (!origin) {
+        return callback(null, true)
+      }
+      
+      // 檢查是否在允許列表中
+      for (const allowedOrigin of allowedOrigins) {
+        if (typeof allowedOrigin === 'string') {
+          if (origin === allowedOrigin) {
+            return callback(null, true)
+          }
+        } else if (allowedOrigin instanceof RegExp) {
+          if (allowedOrigin.test(origin)) {
+            return callback(null, true)
+          }
+        }
+      }
+      
+      // 如果都不匹配，記錄並拒絕
+      console.warn('⚠️ [CORS] 拒絕來源:', origin)
+      callback(new Error('Not allowed by CORS'), false)
+    },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Session-Id']
   })
 
   // 安全標頭
