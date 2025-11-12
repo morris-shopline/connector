@@ -85,6 +85,21 @@
   - `backend/src/routes/api.ts` - `POST /api/auth/next-engine/complete`
   - `backend/src/services/nextEngine.ts` - `getShops()` 方法
 
+#### 6. Note 2025-11-12-002: UI/UX 改進項目
+- **狀態**: 📝 collected
+- **優先級**: 中
+- **問題**: 
+  1. 狀態永久化：連線選擇 refresh 後會重置
+  2. API list toggle 狀態管理：切換連線後展開狀態會重置
+  3. Token 到期時間處理：需要短期和長期方案
+  4. UI Layout 架構調整：多個組件需要固定定位和樣式改進
+- **建議**: 
+  - 狀態永久化、API toggle：優化階段處理
+  - Token 到期時間（短期）：下個 Run 或優化階段
+  - Token 到期時間（長期）：Phase 2 設計討論
+  - UI Layout 調整：建議獨立一個 Refactor Story
+- **相關文件**: `docs/backlog/inbox/note-2025-11-12-002-ui-ux-improvements.md`
+
 ---
 
 ### ✅ 已解決（記錄備查）
@@ -109,6 +124,11 @@
 ### Phase 2 或後續處理
 4. **Note 2025-11-11-001**: Admin x Connection 資料隔離與綁定策略
 5. **Next Engine Store 建立邏輯** - 設計討論
+6. **Note 2025-11-12-002**: UI/UX 改進項目
+   - 狀態永久化（連線選擇）
+   - API list toggle 狀態管理
+   - Token 到期時間處理（長期方案）
+   - UI Layout 架構調整（建議獨立 Refactor Story）
 
 ---
 
