@@ -211,32 +211,24 @@ function AdminAPITest() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Panel - Store Selector & Toggle Menu */}
           <div className="lg:col-span-1 space-y-4">
-            {/* Store Selector */}
+            {/* Story 5.3.1: 連線選擇（跟隨 Context Bar） */}
             <div className="bg-white p-4 rounded-lg shadow">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                選擇商店
+                連線選擇
               </label>
-              <select
-                value={activeHandle || ''}
-                onChange={(e) => {
-                  if (e.target.value) {
-                    handleStoreChange(e.target.value)
-                  }
-                }}
-                disabled={!!lockedConnectionItemId}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <option value="">請選擇商店</option>
-                {connections.map(connection => (
-                  <option key={connection.id} value={connection.externalAccountId}>
-                    {connection.displayName || connection.externalAccountId}
-                  </option>
-                ))}
-              </select>
-              {lockedConnectionItemId && (
-                <p className="mt-2 text-xs text-yellow-600">
-                  ⚠️ {lockedConnectionItemId} 正在操作中，無法切換商店
-                </p>
+              {selectedConnection ? (
+                <div className="px-3 py-2 border border-gray-300 rounded-md bg-gray-50">
+                  <div className="text-sm font-medium text-gray-900">
+                    {selectedConnection.displayName || selectedConnection.externalAccountId}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {selectedConnection.platform === 'shopline' ? 'Shopline' : selectedConnection.platform === 'next-engine' ? 'Next Engine' : selectedConnection.platform}
+                  </div>
+                </div>
+              ) : (
+                <div className="px-3 py-2 border border-gray-300 rounded-md bg-yellow-50">
+                  <p className="text-sm text-yellow-800">請先在 Connection Dashboard 選擇一個 Connection</p>
+                </div>
               )}
             </div>
 
@@ -282,7 +274,22 @@ function AdminAPITest() {
 
           {/* Right Panel - Request & Response */}
           <div className="lg:col-span-2 space-y-4">
-            {!activeHandle ? (
+            {!selectedConnection ? (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+                <p className="text-sm text-yellow-800">請先在 Connection Dashboard 選擇一個 Connection</p>
+              </div>
+            ) : selectedConnection.platform === 'next-engine' ? (
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                <p className="text-sm text-blue-800 mb-2">Next Engine API 測試功能開發中</p>
+                <p className="text-xs text-blue-600">將實作以下 API 測試功能：</p>
+                <ul className="text-xs text-blue-600 mt-2 list-disc list-inside">
+                  <li>取得店舖列表</li>
+                  <li>建立店舖</li>
+                  <li>建立商品</li>
+                  <li>查詢商品</li>
+                </ul>
+              </div>
+            ) : !activeHandle ? (
               <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
                 <p className="text-sm text-yellow-800">請先選擇商店</p>
               </div>

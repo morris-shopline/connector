@@ -3,9 +3,12 @@ import { ProtectedRoute } from '../components/ProtectedRoute'
 import { PrimaryLayout } from '../components/layout/PrimaryLayout'
 import { useWebhookEvents } from '../hooks/useWebhookEvents'
 import { WebhookEventCard } from '../components/WebhookEventCard'
+import { useSelectedConnection } from '../hooks/useSelectedConnection'
 
 function WebhookEventsPage() {
-  const { events, isLoading } = useWebhookEvents()
+  // Story 5.3.1: 跟隨 Context Bar 的 selectedConnectionId
+  const { selectedConnection, connectionId } = useSelectedConnection()
+  const { events, isLoading } = useWebhookEvents(connectionId)
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null)
   const [eventFilter, setEventFilter] = useState<'all' | 'processed' | 'pending'>('all')
 
@@ -58,7 +61,9 @@ function WebhookEventsPage() {
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">尚未收到事件</h3>
             <p className="text-gray-600">
-              尚未收到任何 Webhook 事件，請等待商店觸發事件
+              {selectedConnection 
+                ? `尚未收到「${selectedConnection.displayName || selectedConnection.externalAccountId}」的 Webhook 事件，請等待觸發事件`
+                : '尚未收到任何 Webhook 事件，請先選擇一個 Connection'}
             </p>
           </div>
         ) : (

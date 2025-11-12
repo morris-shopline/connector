@@ -20,8 +20,8 @@ function WebhookTest() {
   const [showSubscriptionForm, setShowSubscriptionForm] = useState(false)
   const [eventFilter, setEventFilter] = useState<'all' | 'processed' | 'pending'>('all')
 
-  // Use shared connection state from useConnectionStore
-  const { handle: selectedHandle, connectionItemId: selectedConnectionItemId } = useSelectedConnection()
+  // Story 5.3.1: 跟隨 Context Bar 的 selectedConnectionId
+  const { selectedConnection, connectionId, handle: selectedHandle } = useSelectedConnection()
   const { connections, setSelectedConnection } = useConnectionStore()
 
   // Map stores to connection IDs for dropdown
@@ -39,14 +39,16 @@ function WebhookTest() {
     }
   }, [connections, setSelectedConnection])
 
+  // Story 5.3.1: 只在 Shopline platform 時載入 webhook subscriptions
   const {
     subscriptions,
     isLoading: subsLoading,
     isTokenExpired,
     tokenExpiredMessage,
     mutate: mutateSubs,
-  } = useWebhookSubscriptions(activeHandle)
-  const { events, isLoading: eventsLoading } = useWebhookEvents()
+  } = useWebhookSubscriptions(selectedConnection?.platform === 'shopline' ? activeHandle : null)
+  // Story 5.3.1: 只顯示當前 Connection 的事件
+  const { events, isLoading: eventsLoading } = useWebhookEvents(connectionId)
   const { subscribe, isLoading: isSubscribing } = useSubscribeWebhook()
   const { unsubscribe, isLoading: isUnsubscribing } = useUnsubscribeWebhook()
 
@@ -147,50 +149,60 @@ function WebhookTest() {
       <div className="flex flex-1 overflow-hidden">
         {/* 左側欄 */}
         <aside className="w-80 border-r bg-gray-50 flex flex-col">
-          {/* 商店選擇 */}
+          {/* Story 5.3.1: 連線選擇（跟隨 Context Bar） */}
           <div className="p-4 border-b bg-white">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              商店選擇
+              連線選擇
             </label>
-            <select
-              value={activeHandle || ''}
-              onChange={async (e) => {
-                const newHandle = e.target.value
-                await handleStoreChange(newHandle)
-                setSelectedTopic(null) // 切換商店時清空選中訂閱
-              }}
-              disabled={!!lockedConnectionItemId}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {connections.map(connection => (
-                <option key={connection.id} value={connection.externalAccountId}>
-                  {connection.displayName || connection.externalAccountId}
-                </option>
-              ))}
-            </select>
-            {lockedConnectionItemId && (
-              <p className="mt-2 text-xs text-yellow-600">
-                ⚠️ {lockedConnectionItemId} 正在操作中，無法切換商店
-              </p>
+            {selectedConnection ? (
+              <div className="px-3 py-2 border border-gray-300 rounded-md bg-gray-50">
+                <div className="text-sm font-medium text-gray-900">
+                  {selectedConnection.displayName || selectedConnection.externalAccountId}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {selectedConnection.platform === 'shopline' ? 'Shopline' : selectedConnection.platform === 'next-engine' ? 'Next Engine' : selectedConnection.platform}
+                </div>
+              </div>
+            ) : (
+              <div className="px-3 py-2 border border-gray-300 rounded-md bg-yellow-50">
+                <p className="text-sm text-yellow-800">請先在 Connection Dashboard 選擇一個 Connection</p>
+              </div>
+            )}
+            {selectedConnection?.platform === 'next-engine' && (
+              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <p className="text-sm text-blue-800">
+                  Next Engine Webhook 功能開發中，目前僅支援 Shopline
+                </p>
+              </div>
             )}
           </div>
 
-          {/* 新增訂閱按鈕 */}
-          <div className="p-4 border-b bg-white">
-            <button
-              onClick={() => setShowSubscriptionForm(true)}
-              className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
-            >
-              + 新增訂閱
-            </button>
-            <button
-              onClick={handleQuickTest}
-              disabled={isSubscribing}
-              className="w-full mt-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubscribing ? '訂閱中...' : '快速測試 (products/update)'}
-            </button>
-          </div>
+          {/* Story 5.3.1: 只在 Shopline platform 時顯示訂閱按鈕 */}
+          {selectedConnection?.platform === 'shopline' ? (
+            <div className="p-4 border-b bg-white">
+              <button
+                onClick={() => setShowSubscriptionForm(true)}
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
+              >
+                + 新增訂閱
+              </button>
+              <button
+                onClick={handleQuickTest}
+                disabled={isSubscribing || !activeHandle}
+                className="w-full mt-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubscribing ? '訂閱中...' : '快速測試 (products/update)'}
+              </button>
+            </div>
+          ) : selectedConnection?.platform === 'next-engine' ? (
+            <div className="p-4 border-b bg-white">
+              <div className="p-3 bg-gray-50 border border-gray-200 rounded-md">
+                <p className="text-sm text-gray-600">
+                  Next Engine Webhook 功能開發中
+                </p>
+              </div>
+            </div>
+          ) : null}
 
           {/* 訂閱統計 */}
           {!subsLoading && subscriptions.length > 0 && (
@@ -199,59 +211,73 @@ function WebhookTest() {
             </div>
           )}
 
-          {/* 訂閱列表（可滾動） */}
-          <div className="flex-1 overflow-y-auto p-4">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">📋 訂閱列表</h3>
-            
-            {/* Token 過期提示 */}
-            {isTokenExpired && (
-              <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                <p className="text-sm text-yellow-800 mb-2">{tokenExpiredMessage}</p>
-                <button
-                  onClick={() => {
-                    if (confirm('是否要重新授權商店？')) {
-                      window.location.href = '/'
-                    }
-                  }}
-                  className="text-xs text-yellow-900 underline hover:text-yellow-700"
-                >
-                  前往重新授權
-                </button>
+          {/* Story 5.3.1: 只在 Shopline platform 時顯示訂閱列表 */}
+          {selectedConnection?.platform === 'shopline' ? (
+            <div className="flex-1 overflow-y-auto p-4">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">📋 訂閱列表</h3>
+              
+              {/* Token 過期提示 */}
+              {isTokenExpired && (
+                <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                  <p className="text-sm text-yellow-800 mb-2">{tokenExpiredMessage}</p>
+                  <button
+                    onClick={() => {
+                      if (confirm('是否要重新授權商店？')) {
+                        window.location.href = '/connections'
+                      }
+                    }}
+                    className="text-xs text-yellow-900 underline hover:text-yellow-700"
+                  >
+                    前往重新授權
+                  </button>
+                </div>
+              )}
+              
+              {subsLoading ? (
+                <div className="text-center py-8">
+                  <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                  <p className="mt-2 text-sm text-gray-600">載入中...</p>
+                </div>
+              ) : subscriptions.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-sm text-gray-500">尚未訂閱任何 Webhook</p>
+                  <p className="text-xs text-gray-400 mt-1">點擊上方按鈕新增訂閱</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {subscriptions.map((subscription: any) => (
+                    <div key={subscription.id} className="group">
+                      <SubscriptionItem
+                        subscription={subscription}
+                        isSelected={selectedTopic === subscription.topic}
+                        onSelect={() => {
+                          // 如果已經選中，再次點擊則取消選中（顯示全部）
+                          if (selectedTopic === subscription.topic) {
+                            setSelectedTopic(null)
+                          } else {
+                            setSelectedTopic(subscription.topic)
+                          }
+                        }}
+                        onDelete={() => handleUnsubscribe(subscription.id)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : selectedConnection?.platform === 'next-engine' ? (
+            <div className="flex-1 overflow-y-auto p-4">
+              <div className="text-center py-12">
+                <p className="text-sm text-gray-500">Next Engine Webhook 功能開發中</p>
               </div>
-            )}
-            
-            {subsLoading ? (
-              <div className="text-center py-8">
-                <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                <p className="mt-2 text-sm text-gray-600">載入中...</p>
+            </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto p-4">
+              <div className="text-center py-12">
+                <p className="text-sm text-gray-500">請先選擇一個 Connection</p>
               </div>
-            ) : subscriptions.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-sm text-gray-500">尚未訂閱任何 Webhook</p>
-                <p className="text-xs text-gray-400 mt-1">點擊上方按鈕新增訂閱</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {subscriptions.map((subscription: any) => (
-                  <div key={subscription.id} className="group">
-                    <SubscriptionItem
-                      subscription={subscription}
-                      isSelected={selectedTopic === subscription.topic}
-                      onSelect={() => {
-                        // 如果已經選中，再次點擊則取消選中（顯示全部）
-                        if (selectedTopic === subscription.topic) {
-                          setSelectedTopic(null)
-                        } else {
-                          setSelectedTopic(subscription.topic)
-                        }
-                      }}
-                      onDelete={() => handleUnsubscribe(subscription.id)}
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </aside>
 
         {/* 右側主要內容區 */}
@@ -295,9 +321,11 @@ function WebhookTest() {
                 </div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">尚未收到事件</h3>
                 <p className="text-gray-600">
-                  {selectedTopic 
-                    ? `尚未收到「${selectedTopic}」事件，請等待商店觸發事件`
-                    : '尚未收到任何事件，請等待商店觸發事件'}
+                  {selectedConnection
+                    ? selectedTopic 
+                      ? `尚未收到「${selectedTopic}」事件，請等待 ${selectedConnection.displayName || selectedConnection.externalAccountId} 觸發事件`
+                      : `尚未收到「${selectedConnection.displayName || selectedConnection.externalAccountId}」的事件，請等待觸發事件`
+                    : '尚未收到任何事件，請先選擇一個 Connection'}
                 </p>
               </div>
             ) : (

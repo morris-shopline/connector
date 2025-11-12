@@ -206,6 +206,7 @@ export async function webhookRoutes(fastify: FastifyInstance, options: any) {
   })
 
   // 取得 webhook 事件列表（需要登入）
+  // Story 5.3.1: 支援 connectionId 過濾，確保只顯示當前 Connection 的事件
   fastify.get('/webhook/events', { preHandler: [authMiddleware] }, async (request, reply) => {
     try {
       if (!request.user) {
@@ -216,11 +217,23 @@ export async function webhookRoutes(fastify: FastifyInstance, options: any) {
       }
       
       const userId = request.user.id
+      const { connectionId } = request.query as { connectionId?: string }
       const { PrismaClient } = await import('@prisma/client')
       const prisma = new PrismaClient()
 
+      // 建立 where 條件
+      const where: any = filterWebhookEventsByUser(userId)
+      
+      // 如果有 connectionId，過濾該 Connection 的事件
+      if (connectionId) {
+        // 透過 ConnectionItem 關聯過濾
+        where.connectionItem = {
+          integrationAccountId: connectionId
+        }
+      }
+
       const events = await prisma.webhookEvent.findMany({
-        where: filterWebhookEventsByUser(userId),
+        where,
         orderBy: { createdAt: 'desc' },
         take: 50,
         include: {
@@ -228,6 +241,13 @@ export async function webhookRoutes(fastify: FastifyInstance, options: any) {
             select: {
               shoplineId: true,
               domain: true
+            }
+          },
+          connectionItem: {
+            select: {
+              id: true,
+              integrationAccountId: true,
+              displayName: true
             }
           }
         }

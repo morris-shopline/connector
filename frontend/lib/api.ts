@@ -219,8 +219,10 @@ export const apiClient = {
   },
 
   // 取得 Webhook 事件
-  async getWebhookEvents(): Promise<ApiResponse<any[]>> {
-    const response = await api.get('/webhook/events')
+  // Story 5.3.1: 支援 connectionId 參數，確保只顯示當前 Connection 的事件
+  async getWebhookEvents(connectionId?: string): Promise<ApiResponse<any[]>> {
+    const params = connectionId ? { connectionId } : {}
+    const response = await api.get('/webhook/events', { params })
     return response.data
   },
 
