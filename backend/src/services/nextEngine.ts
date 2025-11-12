@@ -33,14 +33,14 @@ interface NextEngineCompanyInfoResponse {
 export class NextEngineAdapter implements PlatformAdapter {
   private clientId: string
   private clientSecret: string
-  private redirectUri: string
+  private baseRedirectUri: string
 
   constructor() {
     this.clientId = process.env.NEXTENGINE_CLIENT_ID || ''
     this.clientSecret = process.env.NEXTENGINE_CLIENT_SECRET || ''
-    this.redirectUri = process.env.NEXTENGINE_REDIRECT_URI || ''
+    this.baseRedirectUri = process.env.NEXTENGINE_REDIRECT_URI || ''
 
-    if (!this.clientId || !this.clientSecret || !this.redirectUri) {
+    if (!this.clientId || !this.clientSecret || !this.baseRedirectUri) {
       throw new Error('缺少必要的 Next Engine 環境變數: NEXTENGINE_CLIENT_ID, NEXTENGINE_CLIENT_SECRET, NEXTENGINE_REDIRECT_URI')
     }
   }
@@ -50,12 +50,19 @@ export class NextEngineAdapter implements PlatformAdapter {
    * 
    * Next Engine OAuth 流程：
    * GET https://base.next-engine.org/users/sign_in/?client_id={CLIENT_ID}&redirect_uri={REDIRECT_URI}
+   * 
+   * Next Engine API 文件顯示授權 URL 只支援 client_id 和 redirect_uri，不支援 state 參數
+   * 因此我們使用 redirect_uri 中加入參數來識別用戶
    */
   getAuthorizeUrl(state: string, additionalParams?: Record<string, any>): string {
+    // 在 redirect_uri 中加入 state 參數來識別用戶
+    // Next Engine 應該會保留 redirect_uri 中的參數並在 callback 時回傳
+    const redirectUri = new URL(this.baseRedirectUri)
+    redirectUri.searchParams.set('state', state)
+    
     const params = new URLSearchParams({
       client_id: this.clientId,
-      redirect_uri: this.redirectUri,
-      state: state,
+      redirect_uri: redirectUri.toString(),
     })
 
     return `https://base.next-engine.org/users/sign_in/?${params.toString()}`

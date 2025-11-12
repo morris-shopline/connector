@@ -956,20 +956,24 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         state = encryptState(`${userId}:${nonce}`)
       }
 
-      // 在 Redis 中暫存 state 和 userId 的對應關係
+      // Next Engine API 文件顯示授權 URL 只支援 client_id 和 redirect_uri，不支援 state 參數
+      // 正確做法：在 redirect_uri 中加入 state 參數來識別用戶
+      // Next Engine 應該會保留 redirect_uri 中的參數並在 callback 時回傳
+      
+      // 將 state 和 userId 的對應關係存入 Redis
       const { getRedisClient } = await import('../utils/redis')
       const redis = getRedisClient()
       if (redis) {
         const redisKey = `oauth:next-engine:state:${state}`
         await redis.setex(redisKey, 600, userId) // 10 分鐘過期
-        fastify.log.info({ msg: '✅ 已在 Redis 暫存 state 和 userId 對應關係', userId })
+        fastify.log.info({ msg: '✅ 已在 Redis 暫存 state 和 userId 對應關係', userId, state })
       }
 
       // 取得 Next Engine Adapter
       PlatformServiceFactory.initialize() // 確保 adapter 已註冊
       const adapter = PlatformServiceFactory.getAdapter('next-engine')
 
-      // 生成授權 URL
+      // 生成授權 URL（在 redirect_uri 中加入 state 參數）
       const authUrl = adapter.getAuthorizeUrl(state)
 
       return reply.send({
