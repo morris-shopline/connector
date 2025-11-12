@@ -1034,7 +1034,8 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         
         // 重導向回前端，帶上錯誤資訊
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000'
-        const redirectUrl = `${frontendUrl}/connections/callback?auth_success=false&status=error&error=${encodeURIComponent(tokenResult.error.message)}`
+        const errorMessage = tokenResult.error?.message || tokenResult.error?.type || 'Token exchange failed'
+        const redirectUrl = `${frontendUrl}/connections/callback?auth_success=false&status=error&error=${encodeURIComponent(errorMessage)}`
         return reply.redirect(302, redirectUrl)
       }
 
