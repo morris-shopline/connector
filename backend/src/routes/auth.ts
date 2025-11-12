@@ -957,24 +957,30 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
       }
 
       // 前後端分離架構：OAuth callback 時 session cookie 無法跨域傳遞
-      // 解決方案：在 redirect_uri 中加入我們的 state 參數（Next Engine 會保留它）
-      // 這樣在 callback 時可以從 redirect_uri 參數中解析出我們的 state 來識別用戶
+      // Next Engine 不支援 state 參數，我們不能對 Next Engine 丟 state
+      // 解決方案：使用臨時授權 token 識別用戶
+      // 生成臨時授權 token，存入 Redis，前端在授權完成後主動調用 API 完成 Connection 建立
+      const { generateRandomString } = await import('../utils/signature')
+      const authToken = generateRandomString(32)
       
-      // 將 state 和 userId 的對應關係存入 Redis（作為備用識別方式）
       const { getRedisClient } = await import('../utils/redis')
       const redis = getRedisClient()
       if (redis) {
-        const redisKey = `oauth:next-engine:state:${state}`
+        const redisKey = `oauth:next-engine:token:${authToken}`
         await redis.setex(redisKey, 600, userId) // 10 分鐘過期
-        fastify.log.info({ msg: '✅ 已在 Redis 暫存 state 和 userId 對應關係', userId, state })
+        fastify.log.info({ msg: '✅ 已在 Redis 暫存授權 token 和 userId 對應關係', userId, authToken })
       }
       
       // 取得 Next Engine Adapter
       PlatformServiceFactory.initialize() // 確保 adapter 已註冊
       const adapter = PlatformServiceFactory.getAdapter('next-engine')
 
-      // 生成授權 URL（在 redirect_uri 中加入我們的 state 參數）
+      // 生成授權 URL（不包含任何額外參數）
       const authUrl = adapter.getAuthorizeUrl(state)
+      
+      // 在授權 URL 中加入我們的授權 token（前端需要保存，授權完成後使用）
+      // 注意：這不是 Next Engine 的參數，而是我們自己加在 URL 的 fragment 或 query 中
+      // 但 Next Engine 可能會清除這些參數，所以我們改用其他方式：讓前端保存 token
 
       return reply.send({
         success: true,
@@ -1027,99 +1033,10 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
       }
 
       // 前後端分離架構：OAuth callback 時 session cookie 無法跨域傳遞
-      // 解決方案：從 redirect_uri 參數中解析出我們加入的 state 來識別用戶
-      let userId: string | undefined = undefined
-      const redirectUri = rawQuery.redirect_uri as string | undefined
-      let ourState: string | undefined = undefined
+      // Next Engine 不支援 state 參數，我們不能對 Next Engine 丟 state
+      // 解決方案：callback 時只交換 token，不建立 Connection
+      // 將 token 資訊暫存到 Redis，前端在授權完成後主動調用 API 完成 Connection 建立
       
-      // 方法 1: 嘗試從 redirect_uri 參數中解析出我們的 state
-      if (redirectUri) {
-        try {
-          const redirectUrl = new URL(decodeURIComponent(redirectUri))
-          ourState = redirectUrl.searchParams.get('state') || undefined
-          fastify.log.info('🔍 從 redirect_uri 解析出我們的 state:', {
-            ourState: ourState ? 'found' : 'not found',
-            redirectUriLength: redirectUri.length,
-          })
-        } catch (error: any) {
-          fastify.log.warn('⚠️ 無法解析 redirect_uri:', error.message)
-        }
-      }
-
-      // 使用我們的 state 來識別用戶
-      if (ourState) {
-        const { getRedisClient } = await import('../utils/redis')
-        const redis = getRedisClient()
-
-        if (redis) {
-          try {
-            const redisKey = `oauth:next-engine:state:${ourState}`
-            const cachedUserId = await redis.get(redisKey)
-            fastify.log.info('🔍 Redis 查詢結果:', {
-              redisKey,
-              cachedUserId: cachedUserId ? 'found' : 'not found',
-            })
-            if (cachedUserId) {
-              userId = cachedUserId
-              await redis.del(redisKey) // 一次性使用
-              fastify.log.info('✅ 從 Redis 取得使用者 ID:', userId)
-            }
-          } catch (redisError: any) {
-            fastify.log.error('❌ Redis 查詢錯誤:', redisError.message)
-          }
-        }
-
-        // 如果 Redis 沒有，嘗試解密我們的 state
-        if (!userId) {
-          const { decryptState } = await import('../utils/state')
-          const decrypted = decryptState(ourState)
-          fastify.log.info('🔍 State 解密結果:', {
-            decrypted: decrypted ? 'success' : 'failed',
-            decryptedLength: decrypted?.length || 0,
-          })
-          if (decrypted) {
-            // 格式可能是 "sessionId" 或 "userId:nonce"
-            const parts = decrypted.split(':')
-            if (parts.length === 2) {
-              userId = parts[0]
-              fastify.log.info('✅ 從解密 state 取得 userId (格式: userId:nonce):', userId)
-            } else {
-              // 嘗試從 session 取得 userId
-              const { getSession } = await import('../utils/session')
-              const session = await getSession(decrypted)
-              if (session) {
-                userId = session.userId
-                fastify.log.info('✅ 從 session 取得 userId:', userId)
-              } else {
-                fastify.log.warn('⚠️ 無法從 session 取得 userId，sessionId:', decrypted)
-              }
-            }
-          } else {
-            fastify.log.warn('⚠️ State 解密失敗，state 格式不符合預期')
-          }
-        }
-      }
-
-      // 方法 2: 嘗試從 session cookie（如果有的話，作為備用）
-      if (!userId && request.user) {
-        userId = request.user.id
-        fastify.log.info('✅ 從 session cookie 取得使用者 ID（備用方式）:', userId)
-      }
-
-      if (!userId) {
-        fastify.log.error('❌ 無法取得使用者 ID', {
-          ourState: ourState ? 'present' : 'missing',
-          neState: neState ? 'present' : 'missing',
-          redirectUri: redirectUri ? 'present' : 'missing',
-          hasSession: !!request.user,
-        })
-        return reply.status(401).send({
-          success: false,
-          error: 'Unable to identify user',
-          details: '無法從 redirect_uri 中的 state 參數或 session cookie 識別用戶。請確認授權流程正確執行。'
-        })
-      }
-
       // 取得 Next Engine Adapter
       PlatformServiceFactory.initialize()
       const adapter = PlatformServiceFactory.getAdapter('next-engine')
@@ -1130,110 +1047,32 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
       if (!tokenResult.success) {
         fastify.log.error('Token exchange failed:', tokenResult.error)
         
-        // 記錄審計
-        await auditLogRepository.createAuditLog({
-          userId,
-          operation: 'connection.create',
-          result: 'error',
-          errorCode: tokenResult.error.type,
-          errorMessage: tokenResult.error.message,
-          metadata: { platform: 'next-engine', raw: tokenResult.error.raw }
-        })
-
-        return reply.status(400).send({
-          success: false,
-          error: tokenResult.error.type,
-          message: tokenResult.error.message
-        })
+        // 重導向回前端，帶上錯誤資訊
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000'
+        const redirectUrl = `${frontendUrl}/connections/callback?auth_success=false&status=error&error=${encodeURIComponent(tokenResult.error.message)}`
+        return reply.redirect(302, redirectUrl)
       }
 
-      // 取得公司資訊（用於 displayName）
-      const identityResult = await adapter.getIdentity(tokenResult.data.accessToken)
-
-      if (!identityResult.success) {
-        fastify.log.warn('Get identity failed:', identityResult.error)
-        // 繼續處理，使用 uid 作為 displayName
-      }
-
-      // 建立或更新 Connection
-      const companyId = identityResult.success ? identityResult.data.id : uid
-      const displayName = identityResult.success ? identityResult.data.name : `Next Engine (${uid.substring(0, 8)}...)`
-
-      // 準備 authPayload（儲存為 JSON 字串）
-      const authPayload = {
-        accessToken: tokenResult.data.accessToken,
-        refreshToken: tokenResult.data.refreshToken,
-        expiresAt: tokenResult.data.expiresAt,
-        refreshExpiresAt: tokenResult.data.refreshExpiresAt,
-        uid: uid, // 儲存 uid 供 refresh 使用
-        state: neState, // 儲存 Next Engine 回傳的 state 供 refresh 使用
-      }
-
-      const connection = await connectionRepository.upsertConnection({
-        userId,
-        platform: 'next-engine',
-        externalAccountId: companyId,
-        displayName,
-        authPayload,
-        status: 'active'
-      })
-
-      // 同步店舖資料（Story 5.2）
-      try {
-        const shopsResult = await adapter.getShops(tokenResult.data.accessToken)
-        if (shopsResult.success && shopsResult.data.length > 0) {
-          // 取得現有的 Connection Items（避免重複建立）
-          const existingItems = await connectionRepository.findConnectionItems(connection.id)
-          const existingShopIds = new Set(existingItems.map(item => item.externalResourceId))
-
-          let createdCount = 0
-          for (const shop of shopsResult.data) {
-            const shopId = shop.shop_id || shop.shopId || String(shop.id || '')
-            
-            // 如果已存在，跳過
-            if (existingShopIds.has(shopId)) {
-              continue
-            }
-
-            // 建立新的 Connection Item
-            await connectionRepository.createConnectionItem({
-              integrationAccountId: connection.id,
-              platform: 'next-engine',
-              externalResourceId: shopId,
-              displayName: shop.shop_name || shop.shopName || shop.name || `Shop ${shopId}`,
-              metadata: {
-                shopId: shopId,
-                shopName: shop.shop_name || shop.shopName,
-                shopAbbreviatedName: shop.shop_abbreviated_name || shop.shopAbbreviatedName,
-                shopNote: shop.shop_note || shop.shopNote,
-              },
-              status: 'active'
-            })
-            createdCount++
-          }
-          
-          if (createdCount > 0) {
-            fastify.log.info(`✅ 已同步 ${createdCount} 個新店舖到 Connection ${connection.id}`)
-          }
+      // 將 token 資訊暫存到 Redis（使用 uid 作為 key，因為 uid 是唯一的）
+      const { getRedisClient } = await import('../utils/redis')
+      const redis = getRedisClient()
+      if (redis) {
+        const redisKey = `oauth:next-engine:token:${uid}`
+        const tokenData = {
+          accessToken: tokenResult.data.accessToken,
+          refreshToken: tokenResult.data.refreshToken,
+          expiresAt: tokenResult.data.expiresAt,
+          refreshExpiresAt: tokenResult.data.refreshExpiresAt,
+          uid: uid,
+          state: neState,
         }
-      } catch (error: any) {
-        fastify.log.warn('同步店舖資料失敗（不影響授權流程）:', error.message)
+        await redis.setex(redisKey, 600, JSON.stringify(tokenData)) // 10 分鐘過期
+        fastify.log.info('✅ 已暫存 token 資訊到 Redis:', redisKey)
       }
 
-      // 記錄審計
-      await auditLogRepository.createAuditLog({
-        userId,
-        connectionId: connection.id,
-        operation: 'connection.create',
-        result: 'success',
-        metadata: { platform: 'next-engine', companyId, displayName }
-      })
-
-      fastify.log.info('✅ Next Engine Connection 建立成功:', connection.id)
-
-      // 重導向回前端
+      // 重導向回前端，帶上 uid 和 state，讓前端完成 Connection 建立
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000'
-      const redirectUrl = `${frontendUrl}/connections?platform=next-engine&connectionId=${connection.id}`
+      const redirectUrl = `${frontendUrl}/connections/callback?platform=next-engine&uid=${encodeURIComponent(uid)}&state=${encodeURIComponent(neState)}`
 
       return reply.redirect(302, redirectUrl)
     } catch (error: any) {

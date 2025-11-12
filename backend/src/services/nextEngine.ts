@@ -53,20 +53,13 @@ export class NextEngineAdapter implements PlatformAdapter {
    * 
    * 重要：Next Engine 會自己生成 state，我們無法自訂
    * 授權 URL 只接受 client_id 和 redirect_uri，不接受 state 參數
-   * 
-   * 解決方案：在 redirect_uri 中加入我們的 state 參數（Next Engine 會保留它）
-   * 這樣在 callback 時可以從 redirect_uri 參數中解析出我們的 state 來識別用戶
-   * 這是前後端分離架構下，跨域 OAuth callback 無法使用 session cookie 的標準解決方案
+   * 我們不能對 Next Engine 丟 state
    */
   getAuthorizeUrl(state: string, additionalParams?: Record<string, any>): string {
-    // 在 redirect_uri 中加入我們的 state 參數（用於識別用戶）
-    // Next Engine 會在 callback 時回傳 redirect_uri 參數，我們可以從中解析出 state
-    const redirectUri = new URL(this.baseRedirectUri)
-    redirectUri.searchParams.set('state', state)
-    
+    // Next Engine 只接受 client_id 和 redirect_uri，不加入任何額外參數
     const params = new URLSearchParams({
       client_id: this.clientId,
-      redirect_uri: redirectUri.toString(),
+      redirect_uri: this.baseRedirectUri,
     })
 
     return `https://base.next-engine.org/users/sign_in/?${params.toString()}`

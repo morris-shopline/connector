@@ -390,10 +390,21 @@ export async function getAuthorizeUrl(handle: string) {
 
 /**
  * 取得 Next Engine 授權 URL（需要登入）
- * @returns 授權 URL 和 state
+ * @returns 授權 URL 和 authToken
  */
 export async function getNextEngineAuthorizeUrl() {
   const response = await api.get('/api/auth/next-engine/install')
+  return response.data
+}
+
+/**
+ * 完成 Next Engine Connection 建立（需要登入）
+ * @param uid Next Engine 回傳的 uid
+ * @param state Next Engine 回傳的 state
+ * @returns Connection 資訊
+ */
+export async function completeNextEngineConnection(uid: string, state: string) {
+  const response = await api.post('/api/auth/next-engine/complete', { uid, state })
   return response.data
 }
 

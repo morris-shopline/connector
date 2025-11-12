@@ -4,6 +4,7 @@ import { ProtectedRoute } from '../../components/ProtectedRoute'
 import { useConnections } from '../../hooks/useConnections'
 import { useConnectionStore } from '../../stores/useConnectionStore'
 import { toast } from '../../hooks/useToast'
+import { completeNextEngineConnection } from '../../lib/api'
 
 function CallbackPage() {
   const router = useRouter()
@@ -24,6 +25,57 @@ function CallbackPage() {
       const connectionId = urlParams.get('connectionId')
       const platform = urlParams.get('platform') || sessionStorage.getItem('oauth_platform')
       const handle = sessionStorage.getItem('oauth_handle')
+      
+      // Next Engine 特殊處理：從 URL 取得 uid 和 state，然後調用完成 API
+      const uid = urlParams.get('uid')
+      const state = urlParams.get('state')
+      
+      if (platform === 'next-engine' && uid && state && !connectionId) {
+        // Next Engine 授權完成，需要調用完成 API
+        try {
+          setStatus('loading')
+          const result = await completeNextEngineConnection(uid, state)
+          if (result.success) {
+            setStatus('success')
+            toast.success(`已成功建立 Connection: ${result.data.displayName}`)
+            
+            // 刷新 Connection 列表
+            await refetchConnections()
+            
+            // 選擇新建立的 Connection
+            if (result.data.connectionId) {
+              setSelectedConnection(result.data.connectionId)
+            }
+            
+            // 3 秒後導向到 /connections
+            setTimeout(() => {
+              router.push('/connections')
+            }, 3000)
+            return
+          } else {
+            setStatus('error')
+            setErrorMessage(result.error || '建立 Connection 失敗')
+            toast.error(`建立 Connection 失敗: ${result.error}`)
+            
+            // 5 秒後導向到 /connections
+            setTimeout(() => {
+              router.push('/connections')
+            }, 5000)
+            return
+          }
+        } catch (error: any) {
+          setStatus('error')
+          const errorMsg = error.message || '建立 Connection 失敗'
+          setErrorMessage(errorMsg)
+          toast.error(`建立 Connection 失敗: ${errorMsg}`)
+          
+          // 5 秒後導向到 /connections
+          setTimeout(() => {
+            router.push('/connections')
+          }, 5000)
+          return
+        }
+      }
 
       // 清除 sessionStorage
       sessionStorage.removeItem('oauth_return_path')

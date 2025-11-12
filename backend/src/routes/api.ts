@@ -793,6 +793,170 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
     }
   })
 
+  // Next Engine OAuth 完成 Connection 建立
+  // POST /api/auth/next-engine/complete
+  // 前端在授權完成後，使用 uid 從 Redis 取得 token，然後建立 Connection
+  fastify.post('/api/auth/next-engine/complete', { preHandler: [authMiddleware] }, async (request, reply) => {
+    try {
+      if (!request.user) {
+        return reply.status(401).send({
+          success: false,
+          error: 'Authentication required'
+        })
+      }
+
+      const userId = request.user.id
+      const { uid, state } = request.body as { uid: string; state: string }
+
+      if (!uid || !state) {
+        return reply.status(400).send({
+          success: false,
+          error: 'Missing uid or state'
+        })
+      }
+
+      // 從 Redis 取得 token 資訊
+      const { getRedisClient } = await import('../utils/redis')
+      const redis = getRedisClient()
+      
+      if (!redis) {
+        return reply.status(500).send({
+          success: false,
+          error: 'Redis not available'
+        })
+      }
+
+      const redisKey = `oauth:next-engine:token:${uid}`
+      const tokenDataStr = await redis.get(redisKey)
+      
+      if (!tokenDataStr) {
+        return reply.status(400).send({
+          success: false,
+          error: 'Token data not found or expired',
+          details: '授權 token 已過期或不存在。請重新授權。'
+        })
+      }
+
+      const tokenData = JSON.parse(tokenDataStr)
+      
+      // 驗證 state 是否匹配
+      if (tokenData.state !== state) {
+        return reply.status(400).send({
+          success: false,
+          error: 'Invalid state',
+          details: 'State 參數不匹配。請重新授權。'
+        })
+      }
+
+      // 刪除 Redis key（一次性使用）
+      await redis.del(redisKey)
+
+      // 取得 Next Engine Adapter
+      PlatformServiceFactory.initialize()
+      const adapter = PlatformServiceFactory.getAdapter('next-engine')
+
+      // 取得公司資訊（用於 displayName）
+      const identityResult = await adapter.getIdentity(tokenData.accessToken)
+
+      if (!identityResult.success) {
+        fastify.log.warn('Get identity failed:', identityResult.error)
+        // 繼續處理，使用 uid 作為 displayName
+      }
+
+      // 建立或更新 Connection
+      const companyId = identityResult.success ? identityResult.data.id : uid
+      const displayName = identityResult.success ? identityResult.data.name : `Next Engine (${uid.substring(0, 8)}...)`
+
+      // 準備 authPayload（儲存為 JSON 字串）
+      const authPayload = {
+        accessToken: tokenData.accessToken,
+        refreshToken: tokenData.refreshToken,
+        expiresAt: tokenData.expiresAt,
+        refreshExpiresAt: tokenData.refreshExpiresAt,
+        uid: uid,
+        state: state,
+      }
+
+      const connection = await connectionRepository.upsertConnection({
+        userId,
+        platform: 'next-engine',
+        externalAccountId: companyId,
+        displayName,
+        authPayload,
+        status: 'active'
+      })
+
+      // 同步店舖資料（Story 5.2）
+      try {
+        const shopsResult = await adapter.getShops(tokenData.accessToken)
+        if (shopsResult.success && shopsResult.data.length > 0) {
+          // 取得現有的 Connection Items（避免重複建立）
+          const existingItems = await connectionRepository.findConnectionItems(connection.id)
+          const existingShopIds = new Set(existingItems.map(item => item.externalResourceId))
+
+          let createdCount = 0
+          for (const shop of shopsResult.data) {
+            const shopId = shop.shop_id || shop.shopId || String(shop.id || '')
+            
+            // 如果已存在，跳過
+            if (existingShopIds.has(shopId)) {
+              continue
+            }
+
+            // 建立新的 Connection Item
+            await connectionRepository.createConnectionItem({
+              integrationAccountId: connection.id,
+              platform: 'next-engine',
+              externalResourceId: shopId,
+              displayName: shop.shop_name || shop.shopName || shop.name || `Shop ${shopId}`,
+              metadata: {
+                shopId: shopId,
+                shopName: shop.shop_name || shop.shopName,
+                shopAbbreviatedName: shop.shop_abbreviated_name || shop.shopAbbreviatedName,
+                shopNote: shop.shop_note || shop.shopNote,
+              },
+              status: 'active'
+            })
+            createdCount++
+          }
+          
+          if (createdCount > 0) {
+            fastify.log.info(`✅ 已同步 ${createdCount} 個新店舖到 Connection ${connection.id}`)
+          }
+        }
+      } catch (error: any) {
+        fastify.log.warn('同步店舖資料失敗（不影響授權流程）:', error.message)
+      }
+
+      // 記錄審計
+      await auditLogRepository.createAuditLog({
+        userId,
+        connectionId: connection.id,
+        operation: 'connection.create',
+        result: 'success',
+        metadata: { platform: 'next-engine', companyId, displayName }
+      })
+
+      fastify.log.info('✅ Next Engine Connection 建立成功:', connection.id)
+
+      return reply.send({
+        success: true,
+        data: {
+          connectionId: connection.id,
+          displayName,
+          platform: 'next-engine'
+        }
+      })
+    } catch (error: any) {
+      fastify.log.error('Next Engine complete error:', error)
+      return reply.status(500).send({
+        success: false,
+        error: 'Internal server error',
+        message: error.message
+      })
+    }
+  })
+
   // 健康檢查
   fastify.get('/api/health', async (request, reply) => {
     const startTime = Date.now()
