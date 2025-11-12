@@ -1,7 +1,7 @@
 # Story 5.2: Next Engine Connection Item 與資料讀取 MVP
 
 **所屬 Epic**: [Epic 5: Next Engine 多平台 MVP（Phase 1.3）](../epics/epic-5-next-engine-mvp.md)  
-**狀態**: 🛠 planning  
+**狀態**: ✅ completed  
 **對應 Roadmap**: Phase 1.3（多平台 MVP）  
 **預估工期**: 3 個工作天
 

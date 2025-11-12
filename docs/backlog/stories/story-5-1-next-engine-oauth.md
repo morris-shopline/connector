@@ -1,7 +1,7 @@
 # Story 5.1: Next Engine OAuth Flow 與 Platform Adapter
 
 **所屬 Epic**: [Epic 5: Next Engine 多平台 MVP（Phase 1.3）](../epics/epic-5-next-engine-mvp.md)  
-**狀態**: 🧪 agent-testing  
+**狀態**: ✅ completed  
 **對應 Roadmap**: Phase 1.3（多平台 MVP）  
 **預估工期**: 2 個工作天
 

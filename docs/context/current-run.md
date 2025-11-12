@@ -2,8 +2,9 @@
 
 **Run ID**: run-2025-11-12-02  
 **Run 類型**: Feature Development (Epic 5)  
-**狀態**: 🟢 in-progress  
+**狀態**: ✅ completed  
 **開始時間**: 2025-11-12  
+**完成時間**: 2025-11-12  
 
 ---
 
@@ -20,7 +21,7 @@
 |-------|------|------|
 | [Story 5.1: Next Engine OAuth Flow 與 Platform Adapter](../backlog/stories/story-5-1-next-engine-oauth.md) | ✅ completed | 後端實作完成，已通過自動化測試 | 
 | [Story 5.2: Next Engine Connection Item 與資料讀取 MVP](../backlog/stories/story-5-2-next-engine-connection-data.md) | ✅ completed | 後端 API 完成，已通過自動化測試 |
-| [Story 5.3: 前端 Connection UX 延伸與重新授權整合](../backlog/stories/story-5-3-next-engine-ux.md) | ✅ completed | 前端整合完成，等待 User Test |
+| [Story 5.3: 前端 Connection UX 延伸與重新授權整合](../backlog/stories/story-5-3-next-engine-ux.md) | ✅ completed | 前端整合完成，User Test 通過 |
 | [Story 5.4: Shopline Platform Adapter 重構](../backlog/stories/story-5-4-shopline-adapter-refactor.md) | ⚪ 待前置 | 待 5.1～5.3 完成並通過 User Test 後啟動 |
 | [Story 5.5: Next Engine 庫存與倉庫 API 補強](../backlog/stories/story-5-5-next-engine-inventory-apis.md) | ⚪ 待前置 | 待 5.1～5.3 確認穩定後、視情況啟動 |
 
@@ -192,6 +193,73 @@
 - Next Engine OAuth 使用 `uid` 而非 `code` 作為授權碼
 - Token 刷新需要 `uid` 和 `state`，已儲存於 Connection 的 `authPayload` 中
 - 錯誤訊息保留原始日文內容於 `raw` 欄位，供 PM/CS 追蹤
+
+---
+
+## ✅ 完成狀態（2025-11-12）
+
+### Next Engine OAuth 測通
+- ✅ **OAuth 授權流程**：成功完成 Next Engine OAuth 授權，建立 Connection
+- ✅ **Connection 建立**：成功將 Next Engine 公司資料寫入 `integration_accounts`
+- ✅ **Connection Items 同步**：成功將 Next Engine 店舖資料寫入 `connection_items`（4 個項目）
+- ✅ **前端顯示**：Connection Dashboard 正確顯示 Next Engine Connection 資訊
+
+### 修正的問題
+1. **`parseDateTime` 方法**：修正 `undefined.split()` 錯誤，加入 null/undefined 檢查
+2. **錯誤處理**：修正 `tokenResult.error.message` 可能為 undefined 的問題
+3. **OAuth 流程架構**：採用 3-step 流程（Frontend → Backend /install → NE → Backend /callback → Frontend /callback → Frontend calls Backend /complete）
+
+### 最終實作架構
+- **前後端分離架構下的 OAuth 流程**：
+  1. 前端觸發授權 → 後端生成 Next Engine 授權 URL
+  2. Next Engine 回呼 → 後端交換 token 並暫存 Redis
+  3. 前端完成 Connection → 前端調用 `/api/auth/next-engine/complete` 建立 Connection
+
+---
+
+## 🚨 發現的問題與待補事項
+
+### Story 遺漏問題
+
+#### 1. Webhook、Event、API 測試頁面未跟隨 Context Bar
+**問題描述**：
+- `webhook-test.tsx`、`admin-api-test.tsx`、`events.tsx` 三個頁面都顯示「商店選擇」而非「連線選擇」
+- 這些頁面沒有跟隨 Context Bar 所選的 `connectionId` 進行操作
+- 目前不管怎麼選，都是當作 Shopline 在處理，沒有因應 `platform` 做異動
+
+**影響**：
+- 無法接續處理 Next Engine 平台授權後的行為（webhook、API 測試、事件查看）
+- 使用者體驗不一致（Connection Dashboard 用 Connection，其他頁面用 Store）
+
+**需要修正**：
+- 將「商店選擇」改為「連線選擇」
+- 讓這些頁面跟隨 `useConnectionStore` 的 `selectedConnectionId`
+- 根據 `selectedConnection.platform` 動態調整 API 端點和邏輯
+
+#### 2. Token 到期時間顯示問題
+**問題描述**：
+- Shopline 和 Next Engine 的 token 到期時間取法不同
+- Next Engine 使用 `expiresAt`（ISO 8601 格式）
+- Shopline 使用 `expires_at`（可能是其他格式）
+- 目前 `ConnectionSummaryCard` 有處理兩種格式，但 Next Engine 的 token 到期時間可能沒有正確從後端取得
+
+**需要檢查**：
+- 後端 `POST /api/auth/next-engine/complete` 是否正確儲存 `expiresAt` 到 `authPayload`
+- Next Engine API 回傳的 `access_token_end_date` 格式是否正確解析
+- 前端 `ConnectionSummaryCard` 的 `expiresAt` 解析邏輯是否正確
+
+### 設計問題
+
+#### 3. Next Engine Store 建立邏輯
+**問題描述**：
+- Next Engine 的 store（店舖）可以用 API 去 create
+- 每增加一個 store，Connection Item 就會增加一個
+- 這可能導致邏輯問題：使用者透過 API 建立 store 後，Connection Item 應該如何同步？
+
+**需要討論**：
+- Connection Item 是否應該自動同步 Next Engine 的 store 變更？
+- 是否需要提供手動同步機制？
+- Store 建立後，Connection Item 的建立時機和方式
 
 ---
 
