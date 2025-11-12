@@ -1162,13 +1162,34 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
       }
 
       // 更新 Connection 的 authPayload
+      // 注意：如果 Next Engine 回傳的 expiresAt 不完整，我們需要根據 token 更新時間（現在）計算
+      // access_token 有效期限：1 天（從 token 更新時間開始計算）
+      // refresh_token 有效期限：3 天（從 token 更新時間開始計算）
+      const now = new Date()
+      const accessTokenExpiresAt = refreshResult.data.expiresAt || new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString() // +1 天
+      const refreshTokenExpiresAt = refreshResult.data.refreshExpiresAt || new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString() // +3 天
+      
       const updatedAuthPayload = {
         ...authPayload,
         accessToken: refreshResult.data.accessToken,
         refreshToken: refreshResult.data.refreshToken,
-        expiresAt: refreshResult.data.expiresAt,
-        refreshExpiresAt: refreshResult.data.refreshExpiresAt,
+        expiresAt: accessTokenExpiresAt,
+        refreshExpiresAt: refreshTokenExpiresAt,
+        // 保留原始 response 以便追查（開發階段）
+        rawResponse: refreshResult.data.rawResponse || authPayload.rawResponse || null,
+        // 保留首次授權時間
+        firstAuthorizedAt: authPayload.firstAuthorizedAt || now.toISOString(),
+        // 記錄 token 更新時間
+        lastTokenUpdatedAt: now.toISOString(),
       }
+      
+      // 完整記錄 token 更新資訊（開發階段，方便追查）
+      fastify.log.info('Next Engine token refreshed:', {
+        expiresAt: accessTokenExpiresAt,
+        refreshExpiresAt: refreshTokenExpiresAt,
+        rawResponse: refreshResult.data.rawResponse,
+        lastTokenUpdatedAt: now.toISOString(),
+      })
 
       await connectionRepository.upsertConnection({
         userId,

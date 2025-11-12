@@ -212,6 +212,9 @@ export class NextEngineAdapter implements PlatformAdapter {
 
       const data: NextEngineTokenResponse = await response.json()
 
+      // 完整記錄原始 response（開發階段，方便追查）
+      console.log('[NextEngineAdapter] Token refresh response:', JSON.stringify(data, null, 2))
+
       // 檢查錯誤碼
       if (data.code && data.code !== '000000') {
         return {
@@ -221,6 +224,7 @@ export class NextEngineAdapter implements PlatformAdapter {
       }
 
       // 解析 expiresAt
+      // 注意：如果 Next Engine 回傳的日期時間格式不完整，我們需要根據 token 更新時間計算
       const expiresAt = this.parseDateTime(data.access_token_end_date)
       const refreshExpiresAt = this.parseDateTime(data.refresh_token_end_date)
 
@@ -231,6 +235,12 @@ export class NextEngineAdapter implements PlatformAdapter {
           refreshToken: data.refresh_token,
           expiresAt: expiresAt.toISOString(),
           refreshExpiresAt: refreshExpiresAt.toISOString(),
+          // 保留原始 response 以便追查（開發階段）
+          rawResponse: {
+            access_token_end_date: data.access_token_end_date,
+            refresh_token_end_date: data.refresh_token_end_date,
+            fullResponse: data,
+          },
         },
       }
     } catch (error: any) {
