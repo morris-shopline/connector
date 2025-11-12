@@ -503,12 +503,28 @@ export class NextEngineAdapter implements PlatformAdapter {
    * 解析 Next Engine 日期時間字串
    * 格式: "YYYY-MM-DD HH:mm:ss"
    */
-  private parseDateTime(dateTimeString: string): Date {
+  private parseDateTime(dateTimeString: string | undefined | null): Date {
+    // 如果沒有日期時間，返回當前時間
+    if (!dateTimeString) {
+      return new Date()
+    }
+    
     // Next Engine 使用 "YYYY-MM-DD HH:mm:ss" 格式
     // 轉換為 ISO 8601 格式
     const [datePart, timePart] = dateTimeString.split(' ')
+    
+    // 如果格式不正確，返回當前時間
+    if (!datePart || !timePart) {
+      return new Date()
+    }
+    
     const [year, month, day] = datePart.split('-')
     const [hour, minute, second] = timePart.split(':')
+    
+    // 如果日期或時間部分不完整，返回當前時間
+    if (!year || !month || !day || !hour || !minute || !second) {
+      return new Date()
+    }
     
     return new Date(
       parseInt(year),
