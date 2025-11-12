@@ -66,6 +66,7 @@ async function registerPlugins() {
     origin: (origin, callback) => {
       // 允許沒有 origin 的請求（例如 Postman、curl）
       if (!origin) {
+        console.log('✅ [CORS] 允許無 origin 請求')
         return callback(null, true)
       }
       
@@ -73,10 +74,12 @@ async function registerPlugins() {
       for (const allowedOrigin of allowedOrigins) {
         if (typeof allowedOrigin === 'string') {
           if (origin === allowedOrigin) {
+            console.log(`✅ [CORS] 允許來源: ${origin}`)
             return callback(null, true)
           }
         } else if (allowedOrigin instanceof RegExp) {
           if (allowedOrigin.test(origin)) {
+            console.log(`✅ [CORS] 允許來源 (regex): ${origin}`)
             return callback(null, true)
           }
         }
@@ -84,6 +87,7 @@ async function registerPlugins() {
       
       // 如果都不匹配，記錄並拒絕
       console.warn('⚠️ [CORS] 拒絕來源:', origin)
+      console.warn('⚠️ [CORS] 允許的來源列表:', allowedOrigins.map((o: any) => typeof o === 'string' ? o : o.toString()))
       callback(new Error('Not allowed by CORS'), false)
     },
     credentials: true,
