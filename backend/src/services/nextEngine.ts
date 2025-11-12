@@ -89,6 +89,29 @@ export class NextEngineAdapter implements PlatformAdapter {
       // 根據 API 文件，token 交換使用 uid 參數
       const uid = code // Next Engine 使用 uid 作為授權碼
 
+      // 檢查必要參數
+      if (!this.clientId || !this.clientSecret) {
+        return {
+          success: false,
+          error: {
+            type: 'PLATFORM_ERROR',
+            message: 'Missing client_id or client_secret',
+            raw: { clientId: !!this.clientId, clientSecret: !!this.clientSecret },
+          },
+        }
+      }
+
+      if (!uid || !state) {
+        return {
+          success: false,
+          error: {
+            type: 'PLATFORM_ERROR',
+            message: 'Missing uid or state',
+            raw: { uid: !!uid, state: !!state },
+          },
+        }
+      }
+
       const params = new URLSearchParams({
         client_id: this.clientId,
         client_secret: this.clientSecret,
@@ -295,12 +318,33 @@ export class NextEngineAdapter implements PlatformAdapter {
    * 映射 Next Engine 錯誤碼
    * 
    * 錯誤碼對照：
+   * - 001001: POSTパラメータにuidが指定されていません → PLATFORM_ERROR
+   * - 001003: 可能是 client_secret 未指定 → PLATFORM_ERROR
+   * - 002001: POSTパラメータにaccess_tokenが指定されていません → PLATFORM_ERROR
    * - 002002: Token 過期 → TOKEN_EXPIRED
    * - 002003: Refresh 失敗 → TOKEN_REFRESH_FAILED
    * - 其他: PLATFORM_UNKNOWN
    */
   private mapErrorCode(code: string, description: string, raw: any): PlatformError {
     switch (code) {
+      case '001001':
+        return {
+          type: 'PLATFORM_ERROR',
+          message: 'Missing uid parameter',
+          raw: { code, description, ...raw },
+        }
+      case '001003':
+        return {
+          type: 'PLATFORM_ERROR',
+          message: 'Missing client_secret or invalid parameter',
+          raw: { code, description, ...raw },
+        }
+      case '002001':
+        return {
+          type: 'PLATFORM_ERROR',
+          message: 'Missing access_token parameter',
+          raw: { code, description, ...raw },
+        }
       case '002002':
         return {
           type: 'TOKEN_EXPIRED',
