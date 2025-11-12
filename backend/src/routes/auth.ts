@@ -958,34 +958,19 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
 
       // 前後端分離架構：OAuth callback 時 session cookie 無法跨域傳遞
       // Next Engine 不支援 state 參數，我們不能對 Next Engine 丟 state
-      // 解決方案：使用臨時授權 token 識別用戶
-      // 生成臨時授權 token，存入 Redis，前端在授權完成後主動調用 API 完成 Connection 建立
-      const { generateRandomString } = await import('../utils/signature')
-      const authToken = generateRandomString(32)
-      
-      const { getRedisClient } = await import('../utils/redis')
-      const redis = getRedisClient()
-      if (redis) {
-        const redisKey = `oauth:next-engine:token:${authToken}`
-        await redis.setex(redisKey, 600, userId) // 10 分鐘過期
-        fastify.log.info({ msg: '✅ 已在 Redis 暫存授權 token 和 userId 對應關係', userId, authToken })
-      }
+      // 解決方案：callback 時只交換 token，將 token 暫存到 Redis（使用 uid 作為 key）
+      // 前端在授權完成後，從 URL 取得 uid 和 state，主動調用完成 API
       
       // 取得 Next Engine Adapter
       PlatformServiceFactory.initialize() // 確保 adapter 已註冊
       const adapter = PlatformServiceFactory.getAdapter('next-engine')
 
-      // 生成授權 URL（不包含任何額外參數）
+      // 生成授權 URL（不包含任何額外參數，只包含 client_id 和 redirect_uri）
       const authUrl = adapter.getAuthorizeUrl(state)
-      
-      // 在授權 URL 中加入我們的授權 token（前端需要保存，授權完成後使用）
-      // 注意：這不是 Next Engine 的參數，而是我們自己加在 URL 的 fragment 或 query 中
-      // 但 Next Engine 可能會清除這些參數，所以我們改用其他方式：讓前端保存 token
 
       return reply.send({
         success: true,
-        authUrl,
-        state
+        authUrl
       })
     } catch (error: any) {
       fastify.log.error('Get Next Engine authorize URL error:', error)
