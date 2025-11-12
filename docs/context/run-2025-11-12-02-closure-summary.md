@@ -159,5 +159,21 @@
 
 ---
 
+## 📅 下個 Run 規劃
+
+### 預計處理的 Stories
+- **Story 5.4**: Shopline Platform Adapter 重構
+  - 將 Shopline 授權/API 流程重構為與 Next Engine 一致的 Platform Adapter 架構
+  - 讓所有平台共用同一套 `PlatformServiceFactory` 介面
+  
+- **Story 5.5**: Next Engine 庫存與倉庫 API 補強
+  - 補強 Next Engine 庫存與倉庫相關 API
+  - 查詢庫存、更新庫存、查詢倉庫等功能
+
+### 其他項目
+- 其他遺留項目（Issue、優化項目、設計討論）將在下個 Run 開始前的準備階段討論決定
+
+---
+
 **最後更新**: 2025-11-12
 
