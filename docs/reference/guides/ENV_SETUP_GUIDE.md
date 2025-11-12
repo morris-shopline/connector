@@ -56,11 +56,6 @@
 
 #### Shopline API 設定
 ```
-變數名稱：APP_TYPE
-變數值：public
-```
-
-```
 變數名稱：SHOPLINE_CUSTOM_APP_KEY
 變數值：4c951e966557c8374d9a61753dfe3c52441aba3b
 ```
@@ -79,6 +74,37 @@
 變數名稱：SHOPLINE_PUBLIC_APP_SECRET
 變數值：62589f36ba6e496ae37b00fc75c434a5fece4fb9
 ```
+
+#### Next Engine 平台設定
+> 參考：`docs/reference/design-specs/NEXT_ENGINE_PLATFORM_SPEC.md`  
+> 📋 **完整部署檢查清單**：見 `docs/reference/guides/NEXT_ENGINE_DEPLOYMENT_CHECKLIST.md`
+
+```
+變數名稱：NEXTENGINE_CLIENT_ID
+變數值：v6MP5RkVZD9sEo
+```
+
+```
+變數名稱：NEXTENGINE_CLIENT_SECRET
+變數值：TNeWlyotIYkbSJ5XOVhZU2HMLuR16wB7rDPaj3mF
+```
+
+```
+變數名稱：NEXTENGINE_REDIRECT_URI
+變數值：https://connector-o5hx.onrender.com/api/auth/next-engine/callback
+```
+⚠️ **重要**：使用 Render 提供的實際後端 URL（正式環境：`https://connector-o5hx.onrender.com`）
+
+```
+變數名稱：NEXTENGINE_AUTH_KEY
+變數值：test-auth-key-12345
+```
+⚠️ **注意**：正式環境請改用專屬金鑰
+
+> ⚠️ **重要**：
+> - `NEXTENGINE_REDIRECT_URI` 必須使用 Render 提供的 URL（不是 ngrok）
+> - 部署完成後，必須到 Next Engine Developer 後台設定相同的 Callback URL
+> - 詳細步驟見 `docs/reference/guides/NEXT_ENGINE_DEPLOYMENT_CHECKLIST.md`
 
 #### 重要：Redirect URI（使用您的 Render URL）
 ```
@@ -327,33 +353,4 @@ https://connector-theta.vercel.app/
 ### Q1: Render 服務無法啟動？
 **A:** 檢查：
 - `DATABASE_URL` 是否正確
-- `PORT` 是否設定為 `10000`
-- `NODE_ENV` 是否設定為 `production`
-
-### Q2: 前端無法連接後端？
-**A:** 檢查：
-- `NEXT_PUBLIC_BACKEND_URL` 是否正確設定為 Render URL
-- Render 服務是否正常運行
-- CORS 設定是否正確
-
-### Q3: OAuth 回調失敗？
-**A:** 檢查：
-- Render 的 `SHOPLINE_REDIRECT_URI` 是否正確
-- SHOPLINE App 設定中的 Callback URL 是否已更新
-
-### Q4: Redis 連線失敗？
-**A:** 檢查：
-- `REDIS_URL` 是否正確設定（Render Internal Redis 格式：`redis://red-{id}:6379`）
-- Redis 服務是否已啟動（Render Dashboard → Redis 服務）
-- 後端服務是否已重新部署（環境變數變更需要重新部署）
-- 確認使用的是 Render Internal Redis（不需要密碼，格式為 `redis://red-{id}:6379`）
-
----
-
-## 📞 支援
-
-如有問題，請參考：
-- [Render 文件](https://render.com/docs)
-- [Vercel 文件](https://vercel.com/docs)
-- 專案 README.md
-
+- `

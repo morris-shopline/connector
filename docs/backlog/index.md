@@ -11,7 +11,7 @@
 | [Epic 0: 基礎架構與 OAuth 授權](./epics/epic-0-foundation.md) | ✅ completed | 100% | Phase 0 | Run 1 |
 | [Epic 2: Admin API 測試功能](./epics/epic-2-admin-api-testing.md) | ✅ completed | 100% | Phase 0.6 | Run 3 |
 | [Epic 3: Admin 管理系統](./epics/epic-3-admin-management-system.md) | ✅ completed | 100% | Phase 1.1 | run-2025-11-06-01 |
-| [Epic 4: Connection 管理體驗](./epics/epic-4-multi-store-management.md) | ⏳ planned | 0% | Phase 1.2 | - |
+| [Epic 4: Connection 管理體驗](./epics/epic-4-multi-store-management.md) | ✅ completed | 100% | Phase 1.2 | run-2025-11-12-01 |
 | [Epic 5: Next Engine 多平台 MVP](./epics/epic-5-next-engine-mvp.md) | ⏳ planned | 0% | Phase 1.3 | - |
 | [Epic 6: 多 API 類型支援](./epics/epic-6-multi-api-types.md) | ⏳ planned | 0% | Phase 2.1 | - |
 
@@ -32,6 +32,8 @@
 
 | Issue | 類型 | 狀態 | 優先級 | 相關 Run |
 |-------|------|------|--------|----------|
+| [Issue 2025-11-11-001: 停用 Connection Item 時出現 Network Error](./issues/issue-2025-11-11-001-disable-connection-item-network-error.md) | Bug | 🔍 待調查 | 🟡 中 | - |
+| [Issue 2025-11-12-001: 清理開發過程中的備份檔案](./issues/issue-2025-11-12-001.md) | Technical Debt | ⏳ open | 🟡 Low | - |
 | [Issue 2025-11-10-001: Auth 流程被搞壞（正式環境）](./issues/issue-2025-11-10-001.md) | Bug | ✅ resolved | 🔴 Critical | run-2025-11-11-01 |
 | [Issue 2025-11-06-001: URL 參數與 Zustand Store 同步機制導致閃跳問題](./issues/issue-2025-11-06-001.md) | 架構設計 | ✅ resolved | High | run-2025-11-10-01 |
 | [Issue 2025-11-07-001: OAuth Token 過期時誤觸發 Admin 登出](./issues/issue-2025-11-07-001.md) | Bug | ✅ resolved | High | run-2025-11-10-01 |
@@ -83,9 +85,9 @@
 
 | Story | 類型 | 所屬 | 狀態 | 完成 Run |
 |-------|------|------|------|----------|
-| [Story 4.1: Connection Dashboard 與列表體驗](./stories/story-4-1-connection-dashboard.md) | Feature | Epic 4 | 🛠 planning | - |
-| [Story 4.2: Connection 建立與重新授權工作流](./stories/story-4-2-connection-workflow.md) | Feature | Epic 4 | 🛠 planning | - |
-| [Story 4.3: Connection 層級權限與端點保護](./stories/story-4-3-connection-security.md) | Feature | Epic 4 | 🛠 planning | - |
+| [Story 4.1: Connection Dashboard 與列表體驗](./stories/story-4-1-connection-dashboard.md) | Feature | Epic 4 | ✅ completed | run-2025-11-12-01 |
+| [Story 4.2: Connection 建立與重新授權工作流](./stories/story-4-2-connection-workflow.md) | Feature | Epic 4 | ✅ completed | run-2025-11-12-01 |
+| [Story 4.3: Connection 層級權限與端點保護](./stories/story-4-3-connection-security.md) | Feature | Epic 4 | ✅ completed | run-2025-11-12-01 |
 
 ### Epic 5: Next Engine 多平台 MVP（Phase 1.3）
 
@@ -175,5 +177,5 @@
 
 ---
 
-**最後更新**: 2025-11-11
+**最後更新**: 2025-11-12
 

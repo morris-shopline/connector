@@ -67,6 +67,7 @@
 
 - 內部實作名稱統一使用 `Connection` 與 `ConnectionItem`。
 - UI 顯示仍可依平台語彙（Store、Shop、Account），但皆由 Connection 的 `displayName`/`metadata` 控制。
+- Next Engine 平台映射：`integration_accounts.externalAccountId` 對應 Next Engine 的 `companyId`，`connection_items.externalResourceId` 對應 Next Engine 的 `shopId`。詳細欄位對應與 metadata 規範見 `docs/reference/design-specs/NEXT_ENGINE_PLATFORM_SPEC.md`。
 
 ---
 
@@ -91,6 +92,7 @@
 - 討論紀錄：`docs/archive/discussions/discussion-2025-11-07-multi-store-architecture.md`
 - 長期架構 Backlog：`docs/archive/discussions/discussion-2025-11-07-multi-platform-architecture-backlog.md`
 - Issues：`docs/backlog/issues/issue-2025-11-06-001.md`, `docs/backlog/issues/issue-2025-11-07-001.md`
+- Next Engine 平台規格：`docs/reference/design-specs/NEXT_ENGINE_PLATFORM_SPEC.md`
 
 ---
 

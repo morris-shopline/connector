@@ -47,29 +47,34 @@
 
 ## Stories
 
-### ⏳ Story 5.1: Next Engine OAuth Flow 與 Platform Adapter
-- **描述**: 建立 Next Engine OAuth Flow，包含 Authorize、Callback、Token Refresh 與錯誤碼映射
-- **範圍 / 要點**:
-  - 建立 Next Engine Platform Adapter，整合於 `PlatformServiceFactory`
-  - 實作 `/api/auth/next-engine/install`、`/api/auth/next-engine/callback`、Token Exchange / Refresh
-  - 錯誤碼標準化：對應 R3.2 的 `TOKEN_*`、Session 錯誤；加入必要的 Next Engine 特殊情境
-  - 測試：含 sandbox 授權流程、簽名驗證、錯誤流程 UAT
+| Story | 狀態 | 說明 |
+|-------|------|------|
+| [Story 5.1: Next Engine OAuth Flow 與 Platform Adapter](../stories/story-5-1-next-engine-oauth.md) | 🛠 planning | 建立 Next Engine Adapter、授權 / refresh API、錯誤碼映射 |
+| [Story 5.2: Next Engine Connection Item 與資料讀取 MVP](../stories/story-5-2-next-engine-connection-data.md) | 🛠 planning | 將公司 / 店舖寫入 Connection 模型並提供資料讀取 API |
+| [Story 5.3: 前端 Connection UX 延伸與重新授權整合](../stories/story-5-3-next-engine-ux.md) | 🛠 planning | 前端切換與重新授權體驗、平台文案與錯誤提示 |
+| [Story 5.4: Shopline Platform Adapter 重構](../stories/story-5-4-shopline-adapter-refactor.md) | ⚪ pending | 在 Story 5.1～5.3 通過 User Test 後，將 Shopline 平台也切換到 adapter 架構 |
+| [Story 5.5: Next Engine 庫存與倉庫 API 補強](../stories/story-5-5-next-engine-inventory-apis.md) | ⚪ pending | 待 5.1～5.3 驗收後，再逐步補齊庫存 / 倉庫相關 API |
 
-### ⏳ Story 5.2: Next Engine Connection Item 與資料讀取 MVP
-- **描述**: 將 Next Engine 資料結構納入 Connection / Connection Item 模型，完成最小資料讀取
-- **範圍 / 要點**:
-  - 定義 Next Engine Connection Item 欄位與 metadata 映射（如 shopId, companyId）
-  - 實作至少一個資料讀取 API（例如店鋪列表或訂單列表），前端顯示基礎資訊
-  - 驗證多平台資料隔離與權限控制（沿用 Story 4.3 測試策略）
-  - 補齊 Prisma schema / Migration，更新測試 fixtures
+---
 
-### ⏳ Story 5.3: 前端 Connection UX 延伸與重新授權整合
-- **描述**: 把 Next Engine 納入前端 Connection 選取 / 重新授權流程，確保多平台狀態切換順暢
-- **範圍 / 要點**:
-  - 擴充 Connection Dashboard，顯示平台徽章、授權狀態與平台特定操作（重新授權 / 重新整理）
-  - 驗證 useConnection store 與 URL 初始化策略在多平台情境下運作正常（依 `connection-state-sync` 決策）
-  - 重新授權 UX：共用提示但允許平台差異化文案，測試包含 Token 過期 / revoke
-  - 文件：更新操作手冊與測試指引，納入 sandbox 使用流程
+## Story 相依性與建議開發順序
+
+1. **Story 5.1 → Story 5.2 → Story 5.3**：
+   - 5.1 提供 OAuth / Token 能力，為 5.2 的資料抓取與 5.3 的前端顯示基礎。
+   - 5.2 提供後端 API / 資料模型，前端才能取得 Next Engine 的店舖 / 商品資料。
+   - 5.3 依賴前兩項完成後再串接 UI 與 Activity Dock。
+2. **Story 5.4**：需待 5.1～5.3 開發完成、實機測試與 User Test 通過後再啟動，以確保架構穩定再進行 Shopline 重構。
+3. **Story 5.5**：在上述流程穩定後（或同一 Run 內有餘裕時）再補齊庫存／倉庫 API，避免在架構未確認前實作過多端點。
+4. **共用決策與文件**：所有 Story 按需引用 `NEXT_ENGINE_PLATFORM_SPEC.md`，若在實作過程中新增欄位或錯誤碼，需同步更新並通知其他 Story。
+5. **測試協作**：
+   - 5.1 與 5.2 完成後，提供必要的測試腳本給 5.3 驗證。
+   - 人類夥伴僅於最終 UI 驗收（授權流程與資料瀏覽）進行操作。
+
+---
+
+## 暫緩議題（Phase 2 再檢視）
+- Admin x Connection 綁定策略、Webhook 路由等議題請參考 `docs/backlog/inbox/note-2025-11-11-001-admin-connection-isolation.md`，目前標記為「暫緩至 Phase 2」。
+- 多平台共用抽象與動態路由重構已收錄於 `discussion-2025-11-07-multi-platform-architecture-backlog.md`，Epic 5 不須處理。
 
 ---
 
@@ -88,6 +93,9 @@
 - Token Lifecycle：`docs/memory/decisions/token-lifecycle-handling.md`
 - 多平台架構 backlog：`docs/archive/discussions/discussion-2025-11-07-multi-platform-architecture-backlog.md`
 - 平台設定：`docs/backlog/refactors/refactor-3-connection-foundation.md`
+- Next Engine 串接指南：`docs/reference/guides/NE-OVERVIEW.md`
+- Next Engine 平台規格：`docs/reference/design-specs/NEXT_ENGINE_PLATFORM_SPEC.md`
+- Next Engine API 參考：`docs/reference/platform-apis/NEXTENGINE_API_REFERENCE.md`
 
 ---
 

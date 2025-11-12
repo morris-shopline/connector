@@ -22,11 +22,13 @@ function CallbackPage() {
       const statusParam = urlParams.get('status') || (authSuccess === 'true' ? 'success' : authSuccess === 'false' ? 'error' : null)
       const errorParam = urlParams.get('error')
       const connectionId = urlParams.get('connectionId')
+      const platform = urlParams.get('platform') || sessionStorage.getItem('oauth_platform')
       const handle = sessionStorage.getItem('oauth_handle')
 
       // 清除 sessionStorage
       sessionStorage.removeItem('oauth_return_path')
       sessionStorage.removeItem('oauth_handle')
+      sessionStorage.removeItem('oauth_platform')
 
       if (statusParam === 'success') {
         setStatus('success')

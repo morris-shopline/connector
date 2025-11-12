@@ -134,11 +134,10 @@ export function ConnectionRail() {
             </button>
             <button
               onClick={() => setPlatformFilter('next-engine')}
-              disabled
               className={`flex-1 px-2 py-1 text-xs font-medium rounded transition-colors ${
                 platformFilter === 'next-engine'
                   ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-400 cursor-not-allowed'
+                  : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               Next Engine

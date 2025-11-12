@@ -1,8 +1,10 @@
 # Epic 4: Connection 管理體驗（Phase 1.2）
 
-**狀態**: ⏳ planned（Refactor 3 baseline 已完成，等待 Story 建立）  
+**狀態**: ✅ completed  
 **對應 Roadmap**: Phase 1.2 - 多商店管理  
-**開始日期**: -
+**開始日期**: 2025-11-12  
+**完成日期**: 2025-11-12  
+**完成 Run**: run-2025-11-12-01
 
 ---
 
@@ -22,10 +24,11 @@
 ## 現況摘要
 - ✅ Epic 3 已完成，多租戶 + 單平台多 Connection happy path 可運作
 - ✅ Refactor 3（Connection 基礎重構）R3.0／R3.1／R3.2 已完工
-- ⏳ Story 4.1 ~ 4.3 尚未進入 Story 建立階段，需要整理驗收條件與測試清單
-- 📝 需納入的測試與 UX 背景：
-  - `note-2025-11-06-002`（測試缺口、UX 改善）
-  - `note-2025-11-07-001`（公開端點檢視與保護）
+- ✅ Story 4.1 ~ 4.3 已完成（run-2025-11-12-01）
+  - Story 4.1: Connection Dashboard 與列表體驗 ✅ completed
+  - Story 4.2: Connection 建立與重新授權工作流 ✅ completed
+  - Story 4.3: Connection 層級權限與端點保護 ✅ completed
+- ⏳ User Test 驗收中
 - 🔜 Next Engine（Roadmap Phase 1.3）將由新 Epic 5 追蹤，不在本 Epic 範圍
 
 ---
@@ -34,7 +37,7 @@
 - ✅ Epic 3 完成（Admin 管理系統）
 - ✅ [Refactor 3: Connection 基礎重構](../refactors/refactor-3-connection-foundation.md) 核心 Stories 完成（R3.0, R3.1, R3.2）
 - ✅ Connection 決策文件落地（資料模型 / 狀態同步 / Token lifecycle）
-- ⏳ Story 4.1 ~ 4.3 需進入 Story 建立階段並補齊 UAT 清單
+- ✅ Story 4.1 ~ 4.3 已完成（run-2025-11-12-01）
 
 ---
 
@@ -64,9 +67,9 @@
 
 | Story | 類型 | 所屬 | 狀態 | 完成 Run |
 |-------|------|------|------|----------|
-| [Story 4.1: Connection Dashboard 與列表體驗](../stories/story-4-1-connection-dashboard.md) | Feature | Epic 4 | 🛠 planning | - |
-| [Story 4.2: Connection 建立與重新授權工作流](../stories/story-4-2-connection-workflow.md) | Feature | Epic 4 | 🛠 planning | - |
-| [Story 4.3: Connection 層級權限與端點保護](../stories/story-4-3-connection-security.md) | Feature | Epic 4 | 🛠 planning | - |
+| [Story 4.1: Connection Dashboard 與列表體驗](../stories/story-4-1-connection-dashboard.md) | Feature | Epic 4 | ✅ completed | run-2025-11-12-01 |
+| [Story 4.2: Connection 建立與重新授權工作流](../stories/story-4-2-connection-workflow.md) | Feature | Epic 4 | ✅ completed | run-2025-11-12-01 |
+| [Story 4.3: Connection 層級權限與端點保護](../stories/story-4-3-connection-security.md) | Feature | Epic 4 | ✅ completed | run-2025-11-12-01 |
 
 ---
 
@@ -101,5 +104,5 @@
 
 ---
 
-**最後更新**: 2025-11-11
+**最後更新**: 2025-11-12
 

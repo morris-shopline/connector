@@ -5,6 +5,10 @@ description: 匯總 ne-test MVP 中的 NextEngine 認證、API、在庫連携與
 
 # NextEngine 串接必備摘要
 
+> 📌 對應規格：`docs/reference/design-specs/NEXT_ENGINE_PLATFORM_SPEC.md`  
+> 📋 對應 Epic：`docs/backlog/epics/epic-5-next-engine-mvp.md`  
+> 📚 API 參考：`docs/reference/platform-apis/NEXTENGINE_API_REFERENCE.md`
+
 ## 1. 專案定位與基礎結構
 
 - **目標**：提供 NextEngine OAuth、商店／商品／庫存 API 及在庫連携的端到端 MVP，作為多平台串接器的基準實作。
@@ -104,7 +108,8 @@ description: 匯總 ne-test MVP 中的 NextEngine 認證、API、在庫連携與
    - 建立 Dashboard 檢視 OAuth 狀態、API 回應時間、在庫更新頻率。
 5. **測試策略**：
    - 保留 CSV/XML 範例作為 fixture，撰寫單元測試模擬端到端流程（OAuth→商品建立→庫存更新→Webhook）。
-   - 與其他平台共用測試控制台，確保功能一致性。
+   - 與其他平台共用測試控制台，確保功能一致性。  
+   - 若官方文檔資訊不足或 API 實測失敗，請記錄實際錯誤並回報於當前 Run，避免重複查找。
 
 ## 8. 快速檢查清單（導入新環境）
 

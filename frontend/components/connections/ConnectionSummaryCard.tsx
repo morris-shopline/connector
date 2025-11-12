@@ -4,6 +4,7 @@ import { ConnectionStatusPill } from './ConnectionStatusPill'
 import { ReauthorizeConnectionModal } from './ReauthorizeConnectionModal'
 import { format } from 'date-fns'
 import { zhTW } from 'date-fns/locale/index.js'
+import { nextEnginePlatform } from '../../content/platforms/next-engine'
 
 export function ConnectionSummaryCard() {
   const { connections, selectedConnectionId } = useConnectionStore()
@@ -18,10 +19,17 @@ export function ConnectionSummaryCard() {
     )
   }
 
-  const platformDisplayName = selectedConnection.platform === 'shopline' ? 'Shopline' : selectedConnection.platform
+  const platformDisplayName = selectedConnection.platform === 'shopline' 
+    ? 'Shopline' 
+    : selectedConnection.platform === 'next-engine'
+    ? nextEnginePlatform.displayName
+    : selectedConnection.platform
   const displayName = selectedConnection.displayName || selectedConnection.externalAccountId || '未命名 Connection'
   const handle = selectedConnection.externalAccountId
-  const expiresAt = selectedConnection.authPayload?.expires_at
+  // Next Engine 使用 expiresAt，Shopline 使用 expires_at
+  const expiresAt = selectedConnection.authPayload?.expiresAt
+    ? new Date(selectedConnection.authPayload.expiresAt)
+    : selectedConnection.authPayload?.expires_at
     ? new Date(selectedConnection.authPayload.expires_at)
     : null
   const createdAt = selectedConnection.createdAt instanceof Date 

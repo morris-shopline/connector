@@ -1,5 +1,6 @@
 import { useConnectionStore } from '../../stores/useConnectionStore'
 import { ConnectionStatusPill } from '../connections/ConnectionStatusPill'
+import { nextEnginePlatform } from '../../content/platforms/next-engine'
 
 export function ContextBar() {
   const { connections, selectedConnectionId } = useConnectionStore()
@@ -13,7 +14,11 @@ export function ContextBar() {
     )
   }
 
-  const platformDisplayName = selectedConnection.platform === 'shopline' ? 'Shopline' : selectedConnection.platform
+  const platformDisplayName = selectedConnection.platform === 'shopline' 
+    ? 'Shopline' 
+    : selectedConnection.platform === 'next-engine'
+    ? nextEnginePlatform.displayName
+    : selectedConnection.platform
   const displayName = selectedConnection.displayName || selectedConnection.externalAccountId || '未命名 Connection'
 
   return (

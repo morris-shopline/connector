@@ -5,6 +5,7 @@ import { requireConnectionOwner } from '../middleware/requireConnectionOwner'
 import { filterStoresByUser, verifyStoreOwnership, verifyStoreHandleOwnership } from '../utils/query-filter'
 import { connectionRepository } from '../repositories/connectionRepository'
 import { auditLogRepository } from '../repositories/auditLogRepository'
+import { PlatformServiceFactory } from '../services/platformServiceFactory'
 
 const shoplineService = new ShoplineService()
 
@@ -28,6 +29,140 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
       })
     } catch (error) {
       fastify.log.error('Get connections error:', error)
+      return reply.status(500).send({
+        success: false,
+        code: 'INTERNAL_ERROR',
+        error: 'Internal server error'
+      })
+    }
+  })
+
+  // Story 5.2: 取得 Connection 的 Connection Items
+  fastify.get('/api/connections/:connectionId/items', {
+    preHandler: [authMiddleware, requireConnectionOwner]
+  }, async (request, reply) => {
+    try {
+      if (!request.user) {
+        return reply.status(401).send({
+          success: false,
+          code: 'AUTHENTICATION_REQUIRED',
+          error: 'Authentication required'
+        })
+      }
+
+      const connectionId = (request.params as any).connectionId
+      const connection = await connectionRepository.findConnectionById(connectionId)
+
+      if (!connection) {
+        return reply.status(404).send({
+          success: false,
+          code: 'CONNECTION_NOT_FOUND',
+          error: 'Connection not found'
+        })
+      }
+
+      // 取得 Connection Items
+      const items = await connectionRepository.findConnectionItems(connectionId)
+
+      return reply.send({
+        success: true,
+        data: items
+      })
+    } catch (error) {
+      fastify.log.error('Get connection items error:', error)
+      return reply.status(500).send({
+        success: false,
+        code: 'INTERNAL_ERROR',
+        error: 'Internal server error'
+      })
+    }
+  })
+
+  // Story 5.2: 取得 Connection 的訂單摘要
+  fastify.get('/api/connections/:connectionId/orders/summary', {
+    preHandler: [authMiddleware, requireConnectionOwner]
+  }, async (request, reply) => {
+    try {
+      if (!request.user) {
+        return reply.status(401).send({
+          success: false,
+          code: 'AUTHENTICATION_REQUIRED',
+          error: 'Authentication required'
+        })
+      }
+
+      const connectionId = (request.params as any).connectionId
+      const connection = await connectionRepository.findConnectionById(connectionId)
+
+      if (!connection) {
+        return reply.status(404).send({
+          success: false,
+          code: 'CONNECTION_NOT_FOUND',
+          error: 'Connection not found'
+        })
+      }
+
+      // 根據平台取得訂單摘要
+      if (connection.platform === 'next-engine') {
+        const authPayload = connection.authPayload as any
+        const accessToken = authPayload.accessToken
+
+        if (!accessToken) {
+          return reply.status(400).send({
+            success: false,
+            code: 'TOKEN_NOT_FOUND',
+            error: 'Access token not found'
+          })
+        }
+
+        PlatformServiceFactory.initialize()
+        const adapter = PlatformServiceFactory.getAdapter('next-engine')
+        const orderSummary = await adapter.getOrderSummary(accessToken)
+
+        if (!orderSummary.success) {
+          // 記錄錯誤
+          await auditLogRepository.createAuditLog({
+            userId: request.user.id,
+            connectionId: connection.id,
+            operation: 'connection.orders.summary',
+            result: 'error',
+            errorCode: orderSummary.error.type,
+            errorMessage: orderSummary.error.message,
+            metadata: { platform: 'next-engine', raw: orderSummary.error.raw }
+          })
+
+          return reply.status(400).send({
+            success: false,
+            code: orderSummary.error.type,
+            error: orderSummary.error.message
+          })
+        }
+
+        // 記錄成功
+        await auditLogRepository.createAuditLog({
+          userId: request.user.id,
+          connectionId: connection.id,
+          operation: 'connection.orders.summary',
+          result: 'success',
+          metadata: { platform: 'next-engine', total: orderSummary.data.total }
+        })
+
+        return reply.send({
+          success: true,
+          data: orderSummary.data
+        })
+      } else {
+        // 其他平台（Shopline）暫時回傳空資料
+        return reply.send({
+          success: true,
+          data: {
+            total: 0,
+            lastUpdated: null
+          }
+        })
+      }
+    } catch (error: any) {
+      fastify.log.error('Get order summary error:', error)
       return reply.status(500).send({
         success: false,
         code: 'INTERNAL_ERROR',

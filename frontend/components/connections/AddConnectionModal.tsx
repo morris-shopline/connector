@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { getAuthorizeUrl } from '../../lib/api'
+import { getAuthorizeUrl, getNextEngineAuthorizeUrl } from '../../lib/api'
 import { toast } from '../../hooks/useToast'
+import { nextEnginePlatform } from '../../content/platforms/next-engine'
 
 interface AddConnectionModalProps {
   isOpen: boolean
@@ -19,7 +20,8 @@ export function AddConnectionModal({ isOpen, onClose }: AddConnectionModalProps)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!handle.trim()) {
+    // Next Engine 不需要 handle
+    if (selectedPlatform === 'shopline' && !handle.trim()) {
       toast.error('請輸入商店 Handle')
       return
     }
@@ -27,12 +29,23 @@ export function AddConnectionModal({ isOpen, onClose }: AddConnectionModalProps)
     setIsLoading(true)
     
     try {
-      const response = await getAuthorizeUrl(handle.trim())
+      let response: any
+      
+      if (selectedPlatform === 'next-engine') {
+        // Next Engine 授權流程
+        response = await getNextEngineAuthorizeUrl()
+      } else {
+        // Shopline 授權流程
+        response = await getAuthorizeUrl(handle.trim())
+        if (response.success) {
+          sessionStorage.setItem('oauth_handle', handle.trim())
+        }
+      }
       
       if (response.success && response.authUrl) {
         // 儲存 return path 以便 OAuth 回調後返回
         sessionStorage.setItem('oauth_return_path', '/connections')
-        sessionStorage.setItem('oauth_handle', handle.trim())
+        sessionStorage.setItem('oauth_platform', selectedPlatform)
         
         // 跳轉到 OAuth 授權頁面
         window.location.href = response.authUrl
@@ -84,50 +97,61 @@ export function AddConnectionModal({ isOpen, onClose }: AddConnectionModalProps)
                   <div className="text-xs text-gray-500">電商平台整合</div>
                 </div>
               </label>
-              <label className="flex items-center p-3 border border-gray-300 rounded-md cursor-not-allowed opacity-50">
+              <label className="flex items-center p-3 border border-gray-300 rounded-md cursor-pointer hover:bg-gray-50">
                 <input
                   type="radio"
                   name="platform"
                   value="next-engine"
                   checked={selectedPlatform === 'next-engine'}
-                  onChange={() => {}}
-                  disabled
+                  onChange={() => setSelectedPlatform('next-engine')}
                   className="mr-3"
                 />
                 <div>
-                  <div className="font-medium text-gray-500">Next Engine</div>
-                  <div className="text-xs text-gray-400">即將推出</div>
+                  <div className="font-medium text-gray-900">Next Engine</div>
+                  <div className="text-xs text-gray-500">電商平台整合</div>
                 </div>
               </label>
             </div>
           </div>
 
-          {/* Handle 輸入 */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              商店 Handle
-            </label>
-            <input
-              type="text"
-              value={handle}
-              onChange={(e) => setHandle(e.target.value)}
-              placeholder="例如: paykepoc"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={isLoading}
-            />
-            <p className="mt-1 text-xs text-gray-500">
-              這是您的 Shopline 商店識別碼
-            </p>
-          </div>
+          {/* Handle 輸入（僅 Shopline 需要） */}
+          {selectedPlatform === 'shopline' && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                商店 Handle
+              </label>
+              <input
+                type="text"
+                value={handle}
+                onChange={(e) => setHandle(e.target.value)}
+                placeholder="例如: paykepoc"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isLoading}
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                這是您的 Shopline 商店識別碼
+              </p>
+            </div>
+          )}
 
           {/* 流程說明 */}
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
             <div className="text-sm text-blue-800">
               <div className="font-medium mb-1">授權流程：</div>
               <ol className="list-decimal list-inside space-y-1 text-xs">
-                <li>點擊「前往授權」後將跳轉至 Shopline 授權頁面</li>
-                <li>在 Shopline 頁面確認授權</li>
-                <li>授權完成後將自動返回並建立 Connection</li>
+                {selectedPlatform === 'next-engine' ? (
+                  <>
+                    {nextEnginePlatform.messages.authorize.steps.map((step, index) => (
+                      <li key={index}>{step}</li>
+                    ))}
+                  </>
+                ) : (
+                  <>
+                    <li>點擊「前往授權」後將跳轉至 Shopline 授權頁面</li>
+                    <li>在 Shopline 頁面確認授權</li>
+                    <li>授權完成後將自動返回並建立 Connection</li>
+                  </>
+                )}
               </ol>
             </div>
           </div>
@@ -156,7 +180,7 @@ export function AddConnectionModal({ isOpen, onClose }: AddConnectionModalProps)
                   處理中...
                 </span>
               ) : (
-                '前往授權'
+                selectedPlatform === 'next-engine' ? nextEnginePlatform.messages.authorize.button : '前往授權'
               )}
             </button>
           </div>

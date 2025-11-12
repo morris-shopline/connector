@@ -8,6 +8,9 @@ import { authMiddleware } from '../middleware/auth'
 import { z } from 'zod'
 import { PrismaClient } from '@prisma/client'
 import { ShoplineAuthParams } from '../types'
+import { PlatformServiceFactory } from '../services/platformServiceFactory'
+import { connectionRepository } from '../repositories/connectionRepository'
+import { auditLogRepository } from '../repositories/auditLogRepository'
 
 const shoplineService = new ShoplineService()
 const prisma = new PrismaClient()
@@ -901,6 +904,415 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
       })
     } catch (error: any) {
       fastify.log.error('Get current user error:', error)
+      return reply.status(500).send({
+        success: false,
+        error: 'Internal server error',
+        message: error.message
+      })
+    }
+  })
+
+  // ========== Next Engine OAuth Routes (Story 5.1) ==========
+
+  /**
+   * 取得 Next Engine 授權 URL（需要登入）
+   * GET /api/auth/next-engine/install
+   */
+  fastify.get('/api/auth/next-engine/install', { preHandler: [authMiddleware] }, async (request, reply) => {
+    try {
+      if (!request.user) {
+        return reply.status(401).send({
+          success: false,
+          error: 'Authentication required'
+        })
+      }
+
+      const userId = request.user.id
+
+      // 生成 state 參數（包含 userId 與 nonce）
+      let sessionId: string | null = null
+      if (request.sessionId) {
+        sessionId = request.sessionId
+      } else {
+        const authHeader = request.headers.authorization
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+          const token = authHeader.substring(7)
+          const { decodeToken } = await import('../utils/jwt')
+          const payload = decodeToken(token)
+          if (payload && payload.sessionId) {
+            sessionId = payload.sessionId
+          }
+        }
+      }
+
+      let state: string
+      if (sessionId) {
+        const { encryptState } = await import('../utils/state')
+        state = encryptState(sessionId)
+      } else {
+        // 如果沒有 sessionId，使用 userId + nonce
+        const nonce = generateRandomString()
+        const { encryptState } = await import('../utils/state')
+        state = encryptState(`${userId}:${nonce}`)
+      }
+
+      // 在 Redis 中暫存 state 和 userId 的對應關係
+      const { getRedisClient } = await import('../utils/redis')
+      const redis = getRedisClient()
+      if (redis) {
+        const redisKey = `oauth:next-engine:state:${state}`
+        await redis.setex(redisKey, 600, userId) // 10 分鐘過期
+        fastify.log.info({ msg: '✅ 已在 Redis 暫存 state 和 userId 對應關係', userId })
+      }
+
+      // 取得 Next Engine Adapter
+      PlatformServiceFactory.initialize() // 確保 adapter 已註冊
+      const adapter = PlatformServiceFactory.getAdapter('next-engine')
+
+      // 生成授權 URL
+      const authUrl = adapter.getAuthorizeUrl(state)
+
+      return reply.send({
+        success: true,
+        authUrl,
+        state
+      })
+    } catch (error: any) {
+      fastify.log.error('Get Next Engine authorize URL error:', error)
+      return reply.status(500).send({
+        success: false,
+        error: 'Internal server error',
+        message: error.message
+      })
+    }
+  })
+
+  /**
+   * Next Engine OAuth 回調
+   * GET /api/auth/next-engine/callback
+   * 
+   * Next Engine callback 參數：
+   * - uid: 授權碼（類似 Shopline 的 code）
+   * - state: OAuth state 參數
+   */
+  fastify.get('/api/auth/next-engine/callback', async (request, reply) => {
+    try {
+      const rawQuery = request.query as Record<string, unknown>
+      fastify.log.info('收到 Next Engine 授權回調:', JSON.stringify(rawQuery, null, 2))
+
+      const uid = rawQuery.uid as string | undefined
+      const state = rawQuery.state as string | undefined
+
+      if (!uid || !state) {
+        fastify.log.error('缺少必要參數:', {
+          hasUid: !!uid,
+          hasState: !!state
+        })
+        return reply.status(400).send({
+          success: false,
+          error: 'Missing required parameters',
+          details: {
+            required: ['uid', 'state'],
+            received: Object.keys(rawQuery)
+          }
+        })
+      }
+
+      // 從 state 取得 userId
+      let userId: string | undefined = undefined
+      const { getRedisClient } = await import('../utils/redis')
+      const redis = getRedisClient()
+
+      if (redis) {
+        const redisKey = `oauth:next-engine:state:${state}`
+        const cachedUserId = await redis.get(redisKey)
+        if (cachedUserId) {
+          userId = cachedUserId
+          await redis.del(redisKey) // 一次性使用
+          fastify.log.info('✅ 從 Redis 取得使用者 ID:', userId)
+        }
+      }
+
+      // 如果 Redis 沒有，嘗試解密 state
+      if (!userId) {
+        const { decryptState } = await import('../utils/state')
+        const decrypted = decryptState(state)
+        if (decrypted) {
+          // 格式可能是 "sessionId" 或 "userId:nonce"
+          const parts = decrypted.split(':')
+          if (parts.length === 2) {
+            userId = parts[0]
+          } else {
+            // 嘗試從 session 取得 userId
+            const { getSession } = await import('../utils/session')
+            const session = await getSession(decrypted)
+            if (session) {
+              userId = session.userId
+            }
+          }
+        }
+      }
+
+      if (!userId) {
+        fastify.log.error('❌ 無法取得使用者 ID')
+        return reply.status(401).send({
+          success: false,
+          error: 'Unable to identify user'
+        })
+      }
+
+      // 取得 Next Engine Adapter
+      PlatformServiceFactory.initialize()
+      const adapter = PlatformServiceFactory.getAdapter('next-engine')
+
+      // 交換 token（Next Engine 使用 uid 作為授權碼）
+      const tokenResult = await adapter.exchangeToken(uid, state)
+
+      if (!tokenResult.success) {
+        fastify.log.error('Token exchange failed:', tokenResult.error)
+        
+        // 記錄審計
+        await auditLogRepository.createAuditLog({
+          userId,
+          operation: 'connection.create',
+          result: 'error',
+          errorCode: tokenResult.error.type,
+          errorMessage: tokenResult.error.message,
+          metadata: { platform: 'next-engine', raw: tokenResult.error.raw }
+        })
+
+        return reply.status(400).send({
+          success: false,
+          error: tokenResult.error.type,
+          message: tokenResult.error.message
+        })
+      }
+
+      // 取得公司資訊（用於 displayName）
+      const identityResult = await adapter.getIdentity(tokenResult.data.accessToken)
+
+      if (!identityResult.success) {
+        fastify.log.warn('Get identity failed:', identityResult.error)
+        // 繼續處理，使用 uid 作為 displayName
+      }
+
+      // 建立或更新 Connection
+      const companyId = identityResult.success ? identityResult.data.id : uid
+      const displayName = identityResult.success ? identityResult.data.name : `Next Engine (${uid.substring(0, 8)}...)`
+
+      // 準備 authPayload（儲存為 JSON 字串）
+      const authPayload = {
+        accessToken: tokenResult.data.accessToken,
+        refreshToken: tokenResult.data.refreshToken,
+        expiresAt: tokenResult.data.expiresAt,
+        refreshExpiresAt: tokenResult.data.refreshExpiresAt,
+        uid: uid, // 儲存 uid 供 refresh 使用
+        state: state, // 儲存 state 供 refresh 使用
+      }
+
+      const connection = await connectionRepository.upsertConnection({
+        userId,
+        platform: 'next-engine',
+        externalAccountId: companyId,
+        displayName,
+        authPayload,
+        status: 'active'
+      })
+
+      // 同步店舖資料（Story 5.2）
+      try {
+        const shopsResult = await adapter.getShops(tokenResult.data.accessToken)
+        if (shopsResult.success && shopsResult.data.length > 0) {
+          // 取得現有的 Connection Items（避免重複建立）
+          const existingItems = await connectionRepository.findConnectionItems(connection.id)
+          const existingShopIds = new Set(existingItems.map(item => item.externalResourceId))
+
+          let createdCount = 0
+          for (const shop of shopsResult.data) {
+            const shopId = shop.shop_id || shop.shopId || String(shop.id || '')
+            
+            // 如果已存在，跳過
+            if (existingShopIds.has(shopId)) {
+              continue
+            }
+
+            // 建立新的 Connection Item
+            await connectionRepository.createConnectionItem({
+              integrationAccountId: connection.id,
+              platform: 'next-engine',
+              externalResourceId: shopId,
+              displayName: shop.shop_name || shop.shopName || shop.name || `Shop ${shopId}`,
+              metadata: {
+                shopId: shopId,
+                shopName: shop.shop_name || shop.shopName,
+                shopAbbreviatedName: shop.shop_abbreviated_name || shop.shopAbbreviatedName,
+                shopNote: shop.shop_note || shop.shopNote,
+              },
+              status: 'active'
+            })
+            createdCount++
+          }
+          
+          if (createdCount > 0) {
+            fastify.log.info(`✅ 已同步 ${createdCount} 個新店舖到 Connection ${connection.id}`)
+          }
+        }
+      } catch (error: any) {
+        fastify.log.warn('同步店舖資料失敗（不影響授權流程）:', error.message)
+      }
+
+      // 記錄審計
+      await auditLogRepository.createAuditLog({
+        userId,
+        connectionId: connection.id,
+        operation: 'connection.create',
+        result: 'success',
+        metadata: { platform: 'next-engine', companyId, displayName }
+      })
+
+      fastify.log.info('✅ Next Engine Connection 建立成功:', connection.id)
+
+      // 重導向回前端
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000'
+      const redirectUrl = `${frontendUrl}/connections?platform=next-engine&connectionId=${connection.id}`
+
+      return reply.redirect(302, redirectUrl)
+    } catch (error: any) {
+      fastify.log.error('Next Engine callback error:', error)
+      return reply.status(500).send({
+        success: false,
+        error: 'Internal server error',
+        message: error.message
+      })
+    }
+  })
+
+  /**
+   * Next Engine Token 刷新
+   * POST /api/auth/next-engine/refresh
+   */
+  fastify.post('/api/auth/next-engine/refresh', { preHandler: [authMiddleware] }, async (request, reply) => {
+    try {
+      if (!request.user) {
+        return reply.status(401).send({
+          success: false,
+          error: 'Authentication required'
+        })
+      }
+
+      const userId = request.user.id
+      const { connectionId } = request.body as { connectionId: string }
+
+      if (!connectionId) {
+        return reply.status(400).send({
+          success: false,
+          error: 'Connection ID is required'
+        })
+      }
+
+      // 取得 Connection
+      const connection = await connectionRepository.findConnectionById(connectionId)
+
+      if (!connection) {
+        return reply.status(404).send({
+          success: false,
+          error: 'Connection not found'
+        })
+      }
+
+      // 驗證擁有權
+      if (connection.userId !== userId) {
+        return reply.status(403).send({
+          success: false,
+          error: 'Forbidden'
+        })
+      }
+
+      // 驗證平台
+      if (connection.platform !== 'next-engine') {
+        return reply.status(400).send({
+          success: false,
+          error: 'Invalid platform'
+        })
+      }
+
+      const authPayload = connection.authPayload as any
+      const refreshToken = authPayload.refreshToken
+
+      if (!refreshToken) {
+        return reply.status(400).send({
+          success: false,
+          error: 'Refresh token not found'
+        })
+      }
+
+      // 取得 Next Engine Adapter
+      PlatformServiceFactory.initialize()
+      const adapter = PlatformServiceFactory.getAdapter('next-engine')
+
+      // 刷新 token（需要 uid 和 state）
+      const refreshResult = await adapter.refreshToken(refreshToken, {
+        uid: authPayload.uid,
+        state: authPayload.state
+      })
+
+      if (!refreshResult.success) {
+        fastify.log.error('Token refresh failed:', refreshResult.error)
+
+        // 記錄審計
+        await auditLogRepository.createAuditLog({
+          userId,
+          connectionId: connection.id,
+          operation: 'connection.reauthorize',
+          result: 'error',
+          errorCode: refreshResult.error.type,
+          errorMessage: refreshResult.error.message,
+          metadata: { platform: 'next-engine', raw: refreshResult.error.raw }
+        })
+
+        return reply.status(400).send({
+          success: false,
+          error: refreshResult.error.type,
+          message: refreshResult.error.message
+        })
+      }
+
+      // 更新 Connection 的 authPayload
+      const updatedAuthPayload = {
+        ...authPayload,
+        accessToken: refreshResult.data.accessToken,
+        refreshToken: refreshResult.data.refreshToken,
+        expiresAt: refreshResult.data.expiresAt,
+        refreshExpiresAt: refreshResult.data.refreshExpiresAt,
+      }
+
+      await connectionRepository.upsertConnection({
+        userId,
+        platform: 'next-engine',
+        externalAccountId: connection.externalAccountId,
+        displayName: connection.displayName,
+        authPayload: updatedAuthPayload,
+        status: 'active'
+      })
+
+      // 記錄審計
+      await auditLogRepository.createAuditLog({
+        userId,
+        connectionId: connection.id,
+        operation: 'connection.reauthorize',
+        result: 'success',
+        metadata: { platform: 'next-engine' }
+      })
+
+      return reply.send({
+        success: true,
+        data: {
+          accessToken: refreshResult.data.accessToken,
+          expiresAt: refreshResult.data.expiresAt
+        }
+      })
+    } catch (error: any) {
+      fastify.log.error('Next Engine refresh error:', error)
       return reply.status(500).send({
         success: false,
         error: 'Internal server error',

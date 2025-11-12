@@ -1,8 +1,10 @@
 # Note: Admin x Connection 資料隔離與綁定策略
 
 **建立日期**: 2025-11-11  
-**狀態**: 🔍 待討論  
+**狀態**: ⏸ 暫緩（待 Phase 2）
 **優先級**: 高
+
+> ✅ 決議：暫時保留此討論，待 Epic 5 完成、進入 Phase 2 時再行定奪。
 
 ---
 
@@ -139,7 +141,7 @@
    - 如果不允許：錯誤處理方式（拒絕/轉移/提示）？
    - Webhook 路由策略：如何確保事件路由到正確的 admin？
    - 是否需要 Connection 轉移功能？
-   - **相關文件**: `docs/archive/inbox/note-2025-11-11-001-admin-connection-isolation.md`
+   - **相關文件**: `docs/backlog/inbox/note-2025-11-11-001-admin-connection-isolation.md`
 
 2. **Connection 管理 API 設計**
    - `GET /api/connections/:connectionId` - 是否需要？
@@ -176,7 +178,7 @@
 ### 🐛 後續要解的 Issue
 
 1. **停用 Connection Item 時出現 Network Error**
-   - **Issue**: `docs/archive/inbox/issue-2025-11-11-001-disable-connection-item-network-error.md`
+   - **Issue**: `docs/backlog/issues/issue-2025-11-11-001-disable-connection-item-network-error.md`
    - **狀態**: 🔍 待調查
    - **優先級**: 中
    - **問題**: 點擊「停用」按鈕時出現 Network Error（可能是 CORS 問題）

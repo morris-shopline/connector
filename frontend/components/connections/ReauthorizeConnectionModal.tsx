@@ -1,14 +1,15 @@
 import { useState } from 'react'
-import { getAuthorizeUrl } from '../../lib/api'
+import { getAuthorizeUrl, getNextEngineAuthorizeUrl } from '../../lib/api'
 import { toast } from '../../hooks/useToast'
 import { useConnectionStore } from '../../stores/useConnectionStore'
+import { nextEnginePlatform } from '../../content/platforms/next-engine'
 
 interface ReauthorizeConnectionModalProps {
   isOpen: boolean
   onClose: () => void
   connectionId: string
   connectionName: string
-  errorCode?: 'TOKEN_EXPIRED' | 'TOKEN_REVOKED' | 'TOKEN_SCOPE_MISMATCH'
+  errorCode?: 'TOKEN_EXPIRED' | 'TOKEN_REVOKED' | 'TOKEN_SCOPE_MISMATCH' | 'TOKEN_REFRESH_FAILED' | 'PLATFORM_ERROR' | 'PLATFORM_UNKNOWN'
 }
 
 export function ReauthorizeConnectionModal({
@@ -22,10 +23,16 @@ export function ReauthorizeConnectionModal({
   const { connections } = useConnectionStore()
   const connection = connections.find((c) => c.id === connectionId)
   const handle = connection?.externalAccountId || ''
+  const platform = connection?.platform || 'shopline'
 
   if (!isOpen) return null
 
   const getErrorDescription = () => {
+    if (platform === 'next-engine' && errorCode) {
+      return nextEnginePlatform.messages.errors[errorCode as keyof typeof nextEnginePlatform.messages.errors] || 
+             nextEnginePlatform.messages.errors.PLATFORM_UNKNOWN
+    }
+    
     switch (errorCode) {
       case 'TOKEN_EXPIRED':
         return 'Token 已過期，需要重新授權以繼續使用此 Connection。'
@@ -39,7 +46,8 @@ export function ReauthorizeConnectionModal({
   }
 
   const handleReauthorize = async () => {
-    if (!handle) {
+    // Next Engine 不需要 handle
+    if (platform === 'shopline' && !handle) {
       toast.error('無法取得 Connection Handle')
       return
     }
@@ -50,9 +58,17 @@ export function ReauthorizeConnectionModal({
       // 儲存重新授權的資訊
       sessionStorage.setItem('reauthorize_connection_id', connectionId)
       sessionStorage.setItem('reauthorize_return_path', '/connections')
-      sessionStorage.setItem('reauthorize_handle', handle)
+      sessionStorage.setItem('reauthorize_platform', platform)
+      if (platform === 'shopline') {
+        sessionStorage.setItem('reauthorize_handle', handle)
+      }
 
-      const response = await getAuthorizeUrl(handle)
+      let response: any
+      if (platform === 'next-engine') {
+        response = await getNextEngineAuthorizeUrl()
+      } else {
+        response = await getAuthorizeUrl(handle)
+      }
 
       if (response.success && response.authUrl) {
         // 跳轉到 OAuth 授權頁面
@@ -102,9 +118,19 @@ export function ReauthorizeConnectionModal({
           <div className="text-sm text-blue-800">
             <div className="font-medium mb-1">重新授權流程：</div>
             <ol className="list-decimal list-inside space-y-1 text-xs">
-              <li>點擊「前往授權」後將跳轉至 Shopline 授權頁面</li>
-              <li>在 Shopline 頁面確認授權</li>
-              <li>授權完成後將自動返回並更新 Connection 狀態</li>
+              {platform === 'next-engine' ? (
+                <>
+                  {nextEnginePlatform.messages.reauthorize.steps.map((step, index) => (
+                    <li key={index}>{step}</li>
+                  ))}
+                </>
+              ) : (
+                <>
+                  <li>點擊「前往授權」後將跳轉至 Shopline 授權頁面</li>
+                  <li>在 Shopline 頁面確認授權</li>
+                  <li>授權完成後將自動返回並更新 Connection 狀態</li>
+                </>
+              )}
             </ol>
           </div>
         </div>
@@ -122,7 +148,7 @@ export function ReauthorizeConnectionModal({
             type="button"
             onClick={handleReauthorize}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-            disabled={isLoading || !handle}
+            disabled={isLoading || (platform === 'shopline' && !handle)}
           >
             {isLoading ? (
               <span className="flex items-center gap-2">
@@ -133,7 +159,7 @@ export function ReauthorizeConnectionModal({
                 處理中...
               </span>
             ) : (
-              '前往授權'
+              platform === 'next-engine' ? nextEnginePlatform.messages.reauthorize.button : '前往授權'
             )}
           </button>
         </div>

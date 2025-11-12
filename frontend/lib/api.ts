@@ -144,6 +144,28 @@ export const apiClient = {
     }
   },
 
+  // Story 5.2: 取得 Connection Items
+  async getConnectionItems(connectionId: string): Promise<ApiResponse<any[]>> {
+    try {
+      const response = await api.get(`/api/connections/${connectionId}/items`)
+      return response.data
+    } catch (error: any) {
+      console.error('Get connection items error:', error)
+      throw error
+    }
+  },
+
+  // Story 5.2: 取得訂單摘要
+  async getOrderSummary(connectionId: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await api.get(`/api/connections/${connectionId}/orders/summary`)
+      return response.data
+    } catch (error: any) {
+      console.error('Get order summary error:', error)
+      throw error
+    }
+  },
+
   // 停用/啟用 Connection Item
   async updateConnectionItemStatus(
     itemId: string,
@@ -358,11 +380,30 @@ export async function getCurrentUser() {
 
 /**
  * 取得授權 URL（需要登入）
- * @param handle 商店 handle
+ * @param handle 商店 handle（Shopline 使用）
  * @returns 授權 URL 和 state
  */
 export async function getAuthorizeUrl(handle: string) {
   const response = await api.get(`/api/auth/shopline/authorize?handle=${encodeURIComponent(handle)}`)
+  return response.data
+}
+
+/**
+ * 取得 Next Engine 授權 URL（需要登入）
+ * @returns 授權 URL 和 state
+ */
+export async function getNextEngineAuthorizeUrl() {
+  const response = await api.get('/api/auth/next-engine/install')
+  return response.data
+}
+
+/**
+ * 刷新 Next Engine Token
+ * @param connectionId Connection ID
+ * @returns 新的 Token 資訊
+ */
+export async function refreshNextEngineToken(connectionId: string) {
+  const response = await api.post('/api/auth/next-engine/refresh', { connectionId })
   return response.data
 }
 

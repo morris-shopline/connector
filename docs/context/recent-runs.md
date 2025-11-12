@@ -6,6 +6,86 @@
 
 ## Run 列表
 
+### 🟡 Run 2025-11-12-02: Epic 5 Next Engine 多平台 MVP（草稿）
+
+**Run ID**: run-2025-11-12-02  
+**類型**: Feature Development (Epic 5)  
+**狀態**: 🟡 draft  
+**開始時間**: 2025-11-12  
+
+**Stories**:
+- [Story 5.1: Next Engine OAuth Flow 與 Platform Adapter](../backlog/stories/story-5-1-next-engine-oauth.md) 🟡 draft
+- [Story 5.2: Next Engine Connection Item 與資料讀取 MVP](../backlog/stories/story-5-2-next-engine-connection-data.md) ⚪ pending
+- [Story 5.3: 前端 Connection UX 延伸與重新授權整合](../backlog/stories/story-5-3-next-engine-ux.md) ⚪ pending
+- [Story 5.4: Shopline Platform Adapter 重構](../backlog/stories/story-5-4-shopline-adapter-refactor.md) ⚪ pending
+- [Story 5.5: Next Engine 庫存與倉庫 API 補強](../backlog/stories/story-5-5-next-engine-inventory-apis.md) ⚪ pending
+
+**目前進度**:
+- 完成 Next Engine 平台設計規格、環境變數設定與 sandbox 憑證紀錄（已寫入 `.env` / Render 指引）。
+- Story 規劃已完成，可依序啟動 5.1 → 5.3；5.4 / 5.5 暫緩至第一輪 User Test 後再評估。
+
+**待辦**:
+- Agent 完成 5.1～5.3 的自動化測試並更新錯誤碼映射與 Activity Dock 事件。
+- Human 依 User Test 清單實際走一次 OAuth / 重新授權體驗。
+
+---
+
+### ✅ Run 2025-11-12-01: Epic 4 Connection 管理體驗（Story 4.1-4.3）
+
+**Run ID**: run-2025-11-12-01  
+**類型**: Feature Development (Epic 4)  
+**狀態**: ✅ closed  
+**開始時間**: 2025-11-12  
+**完成時間**: 2025-11-12  
+**User Test 完成時間**: 2025-11-12
+
+**Stories**:
+- [Story 4.1: Connection Dashboard 與列表體驗](../backlog/stories/story-4-1-connection-dashboard.md) ✅ completed
+- [Story 4.2: Connection 建立與重新授權工作流](../backlog/stories/story-4-2-connection-workflow.md) ✅ completed
+- [Story 4.3: Connection 層級權限與端點保護](../backlog/stories/story-4-3-connection-security.md) ✅ completed
+
+**完成內容**:
+- ✅ Story 4.1: Connection Dashboard 與列表體驗
+  - 取代 `pages/index.tsx`，新建 `pages/connections/index.tsx` 搭載 `PrimaryLayout`
+  - 新增 `PrimaryNav`、`ContextBar`、`ActivityDock(空態)`、`ConnectionRail`、`Overview` 元件
+  - 串接 `/api/connections`，顯示狀態徽章、空態、預覽列表
+  - `/` redirect 至 `/connections`，Header 導覽同步
+- ✅ Story 4.2: Connection 建立與重新授權工作流
+  - Flow C2：新增 Connection（平台選擇 → OAuth → 回前端刷新）
+  - Flow C3：重新授權流程（Modal + OAuth + Activity 記錄）
+  - Flow C4：停用 / 啟用 Connection Item
+  - Toast / Activity Dock 事件暫以前端狀態寫入（為 4.3 打底）
+  - UI 層級優化：Primary Nav 圖標式、Global Header 簡化（GA4 風格）
+- ✅ Story 4.3: Connection 層級權限與端點保護
+  - Prisma `integration_audit_logs` model 與 migration
+  - Audit Log Repository 建立
+  - `requireConnectionOwner` middleware 實作
+  - API routes 保護（`/api/connections`, `/api/connection-items/:id`, `/api/connections/:connectionId/logs`）
+  - OAuth callback 寫入審計記錄（connection.create, connection.reauthorize）
+  - Connection Item 狀態更新寫入審計記錄（connection_item.enable, connection_item.disable）
+  - Activity Dock 從後端 `/api/audit-logs` 讀取資料
+  - Webhook 安全驗證加強（connectionItemId 綁定與 userId 驗證）
+  - 編譯測試通過
+
+**測試結果**:
+- ✅ Agent 功能測試：所有 Story 通過
+- ✅ User Test：已完成（2025-11-12）
+  - ✅ 登入後首頁 (`/connections`) 顯示新架構
+  - ✅ 新增 Connection Flow 正常運作
+  - ✅ 重新授權流程正常
+  - ✅ 停用 / 啟用 Connection Item 正常
+  - ✅ 安全驗證正常
+  - ✅ Shopline OAuth Flow Regression 測試通過
+
+**相關文件更新**:
+- `docs/reference/design-specs/ADMIN_APP_UI_ARCHITECTURE.md`（註記 Primary Layout、Activity Dock 實作完成）
+- `docs/reference/design-specs/CONNECTION_MANAGEMENT_UI_DESIGN.md`（補充執行畫面與行為備註）
+- `docs/reference/guides/SHOPLINE_OAUTH_IMPLEMENTATION.md`（新增登入限制與審計流程）
+
+**推上線狀態**: ✅ 已推上線（User Test 通過）
+
+---
+
 ### ✅ Run 2025-11-11-01: Bug Fix + Technical Debt Cleanup + Documentation
 
 **Run ID**: run-2025-11-11-01  
@@ -201,5 +281,5 @@
 
 ---
 
-**最後更新**: 2025-11-11
+**最後更新**: 2025-11-12
 

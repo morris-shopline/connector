@@ -14,6 +14,10 @@ function getAuditLogMessage(log: AuditLog): string {
       return `Connection "${connectionName}" 已成功建立`
     case 'connection.reauthorize':
       return `Connection "${connectionName}" 已成功重新授權`
+    case 'connection.orders.summary':
+      return log.result === 'error'
+        ? `取得訂單摘要失敗: ${log.errorMessage || '未知錯誤'}`
+        : `已成功取得訂單摘要`
     case 'connection_item.enable':
       return itemName 
         ? `Connection Item "${itemName}" 已啟用`
