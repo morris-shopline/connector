@@ -52,7 +52,7 @@
 | [Story 5.1: Next Engine OAuth Flow 與 Platform Adapter](../stories/story-5-1-next-engine-oauth.md) | ✅ completed | 建立 Next Engine Adapter、授權 / refresh API、錯誤碼映射 |
 | [Story 5.2: Next Engine Connection Item 與資料讀取 MVP](../stories/story-5-2-next-engine-connection-data.md) | ✅ completed | 將公司 / 店舖寫入 Connection 模型並提供資料讀取 API |
 | [Story 5.3: 前端 Connection UX 延伸與重新授權整合](../stories/story-5-3-next-engine-ux.md) | ✅ completed | 前端切換與重新授權體驗、平台文案與錯誤提示 |
-| [Story 5.3.1: 多平台測試頁面整合](../stories/story-5-3-1-multi-platform-test-pages.md) | 🛠 planning | 修正 Webhook、Event、API 測試頁面，支援多平台運作並實作 Next Engine API 測試 |
+| [Story 5.3.1: 多平台測試頁面整合](../stories/story-5-3-1-multi-platform-test-pages.md) | ✅ ready-for-user-test | 修正 Webhook、Event、API 測試頁面，支援多平台運作並實作 Next Engine API 測試 |
 | [Story 5.4: Shopline Platform Adapter 重構](../stories/story-5-4-shopline-adapter-refactor.md) | ⚪ pending | 在 Story 5.1～5.3.1 通過 User Test 後，將 Shopline 平台也切換到 adapter 架構 |
 | [Story 5.5: Next Engine 庫存與倉庫 API 補強](../stories/story-5-5-next-engine-inventory-apis.md) | ⚪ pending | 待 5.1～5.3.1 驗收後，再逐步補齊庫存 / 倉庫相關 API |
 

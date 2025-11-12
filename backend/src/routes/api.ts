@@ -976,6 +976,435 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
     }
   })
 
+  // === Story 5.3.1: Next Engine API 代理端點（用於 API 測試） ===
+
+  // 取得店舖列表
+  fastify.post('/api/connections/:connectionId/shops/search', {
+    preHandler: [authMiddleware, requireConnectionOwner]
+  }, async (request, reply) => {
+    try {
+      const { connectionId } = request.params as { connectionId: string }
+      const connection = await connectionRepository.findConnectionById(connectionId)
+
+      if (!connection) {
+        return reply.status(404).send({
+          success: false,
+          code: 'CONNECTION_NOT_FOUND',
+          error: 'Connection not found'
+        })
+      }
+
+      if (connection.platform !== 'next-engine') {
+        return reply.status(400).send({
+          success: false,
+          code: 'INVALID_PLATFORM',
+          error: 'This endpoint is only for Next Engine connections'
+        })
+      }
+
+      const authPayload = connection.authPayload as any
+      const accessToken = authPayload.accessToken
+
+      if (!accessToken) {
+        return reply.status(401).send({
+          success: false,
+          code: 'TOKEN_NOT_FOUND',
+          error: 'Access token not found in connection'
+        })
+      }
+
+      const body = request.body as any
+      const fields = body.fields || 'shop_id,shop_name,shop_abbreviated_name,shop_note'
+
+      const params = new URLSearchParams({
+        access_token: accessToken,
+        fields: fields,
+      })
+
+      const response = await fetch('https://api.next-engine.org/api_v1_master_shop/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString(),
+      })
+
+      const data: any = await response.json()
+
+      // Next Engine API 錯誤檢查：檢查 code 或 result
+      if (data.code && data.code !== '000000') {
+        const errorMessage = data.error_description || data.error || data.message || `Next Engine API error (code: ${data.code})`
+        await auditLogRepository.createAuditLog({
+          userId: request.user!.id,
+          operation: 'next-engine.shops.search',
+          result: 'error',
+          metadata: { connectionId, error: errorMessage, code: data.code }
+        })
+        return reply.status(response.ok ? 200 : response.status).send({
+          success: false,
+          code: 'NEXT_ENGINE_API_ERROR',
+          error: errorMessage
+        })
+      }
+
+      if (data.result !== 'success') {
+        const errorMessage = data.error_description || data.error || data.message || 'Next Engine API error'
+        await auditLogRepository.createAuditLog({
+          userId: request.user!.id,
+          operation: 'next-engine.shops.search',
+          result: 'error',
+          metadata: { connectionId, error: errorMessage, raw: data }
+        })
+        return reply.status(response.ok ? 200 : response.status).send({
+          success: false,
+          code: 'NEXT_ENGINE_API_ERROR',
+          error: errorMessage
+        })
+      }
+
+      await auditLogRepository.createAuditLog({
+        userId: request.user!.id,
+        operation: 'next-engine.shops.search',
+        result: 'success',
+        metadata: { connectionId }
+      })
+
+      return reply.send({ success: true, data: data })
+    } catch (error: any) {
+      fastify.log.error('Next Engine shops/search error:', error)
+      return reply.status(500).send({
+        success: false,
+        code: 'INTERNAL_ERROR',
+        error: error.message || 'Failed to search shops'
+      })
+    }
+  })
+
+  // 建立店舖
+  fastify.post('/api/connections/:connectionId/shops/create', {
+    preHandler: [authMiddleware, requireConnectionOwner]
+  }, async (request, reply) => {
+    try {
+      const { connectionId } = request.params as { connectionId: string }
+      const connection = await connectionRepository.findConnectionById(connectionId)
+
+      if (!connection) {
+        return reply.status(404).send({
+          success: false,
+          code: 'CONNECTION_NOT_FOUND',
+          error: 'Connection not found'
+        })
+      }
+
+      if (connection.platform !== 'next-engine') {
+        return reply.status(400).send({
+          success: false,
+          code: 'INVALID_PLATFORM',
+          error: 'This endpoint is only for Next Engine connections'
+        })
+      }
+
+      const authPayload = connection.authPayload as any
+      const accessToken = authPayload.accessToken
+
+      if (!accessToken) {
+        return reply.status(401).send({
+          success: false,
+          code: 'TOKEN_NOT_FOUND',
+          error: 'Access token not found in connection'
+        })
+      }
+
+      const body = request.body as any
+      const xmlData = body.data
+
+      if (!xmlData) {
+        return reply.status(400).send({
+          success: false,
+          code: 'MISSING_DATA',
+          error: 'XML data is required'
+        })
+      }
+
+      const params = new URLSearchParams({
+        access_token: accessToken,
+        data: xmlData,
+        wait_flag: '1',
+      })
+
+      const response = await fetch('https://api.next-engine.org/api_v1_master_shop/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString(),
+      })
+
+      const data: any = await response.json()
+
+      // Next Engine API 錯誤檢查：檢查 code 或 result
+      if (data.code && data.code !== '000000') {
+        const errorMessage = data.error_description || data.error || data.message || `Next Engine API error (code: ${data.code})`
+        await auditLogRepository.createAuditLog({
+          userId: request.user!.id,
+          operation: 'next-engine.shops.create',
+          result: 'error',
+          metadata: { connectionId, error: errorMessage, code: data.code }
+        })
+        return reply.status(response.ok ? 200 : response.status).send({
+          success: false,
+          code: 'NEXT_ENGINE_API_ERROR',
+          error: errorMessage
+        })
+      }
+
+      if (data.result !== 'success') {
+        const errorMessage = data.error_description || data.error || data.message || 'Next Engine API error'
+        await auditLogRepository.createAuditLog({
+          userId: request.user!.id,
+          operation: 'next-engine.shops.create',
+          result: 'error',
+          metadata: { connectionId, error: errorMessage, raw: data }
+        })
+        return reply.status(response.ok ? 200 : response.status).send({
+          success: false,
+          code: 'NEXT_ENGINE_API_ERROR',
+          error: errorMessage
+        })
+      }
+
+      await auditLogRepository.createAuditLog({
+        userId: request.user!.id,
+        operation: 'next-engine.shops.create',
+        result: 'success',
+        metadata: { connectionId }
+      })
+
+      return reply.send({ success: true, data: data })
+    } catch (error: any) {
+      fastify.log.error('Next Engine shops/create error:', error)
+      return reply.status(500).send({
+        success: false,
+        code: 'INTERNAL_ERROR',
+        error: error.message || 'Failed to create shop'
+      })
+    }
+  })
+
+  // 查詢商品
+  fastify.post('/api/connections/:connectionId/goods/search', {
+    preHandler: [authMiddleware, requireConnectionOwner]
+  }, async (request, reply) => {
+    try {
+      const { connectionId } = request.params as { connectionId: string }
+      const connection = await connectionRepository.findConnectionById(connectionId)
+
+      if (!connection) {
+        return reply.status(404).send({
+          success: false,
+          code: 'CONNECTION_NOT_FOUND',
+          error: 'Connection not found'
+        })
+      }
+
+      if (connection.platform !== 'next-engine') {
+        return reply.status(400).send({
+          success: false,
+          code: 'INVALID_PLATFORM',
+          error: 'This endpoint is only for Next Engine connections'
+        })
+      }
+
+      const authPayload = connection.authPayload as any
+      const accessToken = authPayload.accessToken
+
+      if (!accessToken) {
+        return reply.status(401).send({
+          success: false,
+          code: 'TOKEN_NOT_FOUND',
+          error: 'Access token not found in connection'
+        })
+      }
+
+      const body = request.body as any
+      const fields = body.fields || 'goods_id,goods_name,stock_quantity,supplier_name'
+      const offset = body.offset || '0'
+      const limit = body.limit || '100'
+
+      const params = new URLSearchParams({
+        access_token: accessToken,
+        fields: fields,
+        offset: offset,
+        limit: limit,
+      })
+
+      if (body.goods_id_eq) {
+        params.append('goods_id-eq', body.goods_id_eq)
+      }
+
+      const response = await fetch('https://api.next-engine.org/api_v1_master_goods/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString(),
+      })
+
+      const data: any = await response.json()
+
+      // Next Engine API 錯誤檢查：檢查 code 或 result
+      if (data.code && data.code !== '000000') {
+        const errorMessage = data.error_description || data.error || data.message || `Next Engine API error (code: ${data.code})`
+        await auditLogRepository.createAuditLog({
+          userId: request.user!.id,
+          operation: 'next-engine.goods.search',
+          result: 'error',
+          metadata: { connectionId, error: errorMessage, code: data.code }
+        })
+        return reply.status(response.ok ? 200 : response.status).send({
+          success: false,
+          code: 'NEXT_ENGINE_API_ERROR',
+          error: errorMessage
+        })
+      }
+
+      if (data.result !== 'success') {
+        const errorMessage = data.error_description || data.error || data.message || 'Next Engine API error'
+        await auditLogRepository.createAuditLog({
+          userId: request.user!.id,
+          operation: 'next-engine.goods.search',
+          result: 'error',
+          metadata: { connectionId, error: errorMessage, raw: data }
+        })
+        return reply.status(response.ok ? 200 : response.status).send({
+          success: false,
+          code: 'NEXT_ENGINE_API_ERROR',
+          error: errorMessage
+        })
+      }
+
+      await auditLogRepository.createAuditLog({
+        userId: request.user!.id,
+        operation: 'next-engine.goods.search',
+        result: 'success',
+        metadata: { connectionId }
+      })
+
+      return reply.send({ success: true, data: data })
+    } catch (error: any) {
+      fastify.log.error('Next Engine goods/search error:', error)
+      return reply.status(500).send({
+        success: false,
+        code: 'INTERNAL_ERROR',
+        error: error.message || 'Failed to search goods'
+      })
+    }
+  })
+
+  // 建立商品（上傳 CSV）
+  fastify.post('/api/connections/:connectionId/goods/upload', {
+    preHandler: [authMiddleware, requireConnectionOwner]
+  }, async (request, reply) => {
+    try {
+      const { connectionId } = request.params as { connectionId: string }
+      const connection = await connectionRepository.findConnectionById(connectionId)
+
+      if (!connection) {
+        return reply.status(404).send({
+          success: false,
+          code: 'CONNECTION_NOT_FOUND',
+          error: 'Connection not found'
+        })
+      }
+
+      if (connection.platform !== 'next-engine') {
+        return reply.status(400).send({
+          success: false,
+          code: 'INVALID_PLATFORM',
+          error: 'This endpoint is only for Next Engine connections'
+        })
+      }
+
+      const authPayload = connection.authPayload as any
+      const accessToken = authPayload.accessToken
+
+      if (!accessToken) {
+        return reply.status(401).send({
+          success: false,
+          code: 'TOKEN_NOT_FOUND',
+          error: 'Access token not found in connection'
+        })
+      }
+
+      const body = request.body as any
+      const csvData = body.data
+
+      if (!csvData) {
+        return reply.status(400).send({
+          success: false,
+          code: 'MISSING_DATA',
+          error: 'CSV data is required'
+        })
+      }
+
+      const params = new URLSearchParams({
+        access_token: accessToken,
+        data_type: 'csv',
+        data: csvData,
+        wait_flag: '1',
+      })
+
+      const response = await fetch('https://api.next-engine.org/api_v1_master_goods/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString(),
+      })
+
+      const data: any = await response.json()
+
+      // Next Engine API 錯誤檢查：檢查 code 或 result
+      if (data.code && data.code !== '000000') {
+        const errorMessage = data.error_description || data.error || data.message || `Next Engine API error (code: ${data.code})`
+        await auditLogRepository.createAuditLog({
+          userId: request.user!.id,
+          operation: 'next-engine.goods.upload',
+          result: 'error',
+          metadata: { connectionId, error: errorMessage, code: data.code }
+        })
+        return reply.status(response.ok ? 200 : response.status).send({
+          success: false,
+          code: 'NEXT_ENGINE_API_ERROR',
+          error: errorMessage
+        })
+      }
+
+      if (data.result !== 'success') {
+        const errorMessage = data.error_description || data.error || data.message || 'Next Engine API error'
+        await auditLogRepository.createAuditLog({
+          userId: request.user!.id,
+          operation: 'next-engine.goods.upload',
+          result: 'error',
+          metadata: { connectionId, error: errorMessage, raw: data }
+        })
+        return reply.status(response.ok ? 200 : response.status).send({
+          success: false,
+          code: 'NEXT_ENGINE_API_ERROR',
+          error: errorMessage
+        })
+      }
+
+      await auditLogRepository.createAuditLog({
+        userId: request.user!.id,
+        operation: 'next-engine.goods.upload',
+        result: 'success',
+        metadata: { connectionId }
+      })
+
+      return reply.send({ success: true, data: data })
+    } catch (error: any) {
+      fastify.log.error('Next Engine goods/upload error:', error)
+      return reply.status(500).send({
+        success: false,
+        code: 'INTERNAL_ERROR',
+        error: error.message || 'Failed to upload goods'
+      })
+    }
+  })
+
   // 健康檢查
   fastify.get('/api/health', async (request, reply) => {
     const startTime = Date.now()

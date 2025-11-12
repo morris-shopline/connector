@@ -6,9 +6,12 @@ import { PrimaryLayout } from '../components/layout/PrimaryLayout'
 import { ProtectedRoute } from '../components/ProtectedRoute'
 import { useSelectedConnection } from '../hooks/useSelectedConnection'
 import { useConnectionStore } from '../stores/useConnectionStore'
+import { ConnectionSelectorDropdown } from '../components/connections/ConnectionSelectorDropdown'
+import { getPlatformApiConfig, type PlatformApiConfig, type ApiGroup, type ApiFunction as ConfigApiFunction } from '../content/platforms/api-configs'
+import { getBackendUrl } from '../lib/api'
 
-// API 功能定義
-type ApiFunction = {
+// 舊的 API 功能定義（保留用於 Shopline，待遷移）
+type LegacyApiFunction = {
   name: string
   group: string
   method: string
@@ -18,7 +21,8 @@ type ApiFunction = {
   bodyDescription?: string
 }
 
-const API_FUNCTIONS: Record<string, ApiFunction> = {
+// Shopline API 功能（舊版，待遷移到設定檔）
+const SHOPLINE_API_FUNCTIONS: Record<string, LegacyApiFunction> = {
   // 商家
   getStoreInfo: {
     name: 'Get Store Info',
@@ -77,6 +81,7 @@ const API_FUNCTIONS: Record<string, ApiFunction> = {
   }
 }
 
+// 舊的 FUNCTION_GROUPS（保留用於 Shopline fallback）
 const FUNCTION_GROUPS = {
   store: '商家',
   products: '商品',
@@ -88,41 +93,54 @@ function AdminAPITest() {
   const router = useRouter()
   const lockedConnectionItemId = useStoreStore((state) => state.lockedConnectionItemId)
   const [selectedFunction, setSelectedFunction] = useState<string | null>(null)
-  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set(['store', 'products', 'orders', 'inventory']))
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set())
   const [response, setResponse] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
   const [isBodyOpen, setIsBodyOpen] = useState<boolean>(false)
   const [isErrorOpen, setIsErrorOpen] = useState<boolean>(false)
   const [paramValues, setParamValues] = useState<Record<string, string>>({})
+  const [isLoading, setIsLoading] = useState<boolean>(false)
 
-  // Use shared connection state from useConnectionStore
-  const { handle: selectedHandle, connectionItemId: selectedConnectionItemId } = useSelectedConnection()
-  const { connections, setSelectedConnection } = useConnectionStore()
+  // Story 5.3.1: 跟隨 Context Bar 的 selectedConnectionId
+  const { selectedConnection, connectionId, handle: selectedHandle, connectionItemId: selectedConnectionItemId } = useSelectedConnection()
 
   const activeHandle = selectedHandle || null
   const activeConnectionItemId = selectedConnectionItemId || null
 
-  // When handle changes in dropdown, update the connection store
-  const handleStoreChange = useCallback(async (newHandle: string | null) => {
-    if (!newHandle) {
-          setResponse(null)
-          setError(null)
-          setSelectedFunction(null)
-      return
+  // 根據 platform 選擇 API 設定檔
+  const apiConfig: PlatformApiConfig | null = useMemo(() => {
+    const platform = selectedConnection?.platform as 'shopline' | 'next-engine' | undefined
+    const config = getPlatformApiConfig(platform)
+    // 自動展開所有 groups
+    if (config && openGroups.size === 0) {
+      setOpenGroups(new Set(config.groups.map(g => g.id)))
+    }
+    return config
+  }, [selectedConnection?.platform, openGroups.size])
+
+  // 將設定檔轉換為舊格式（暫時相容）
+  const API_FUNCTIONS = useMemo(() => {
+    if (!apiConfig) {
+      return SHOPLINE_API_FUNCTIONS // fallback
     }
 
-    // Find the connection that matches this handle
-    const targetConnection = connections.find(
-      (c) => c.externalAccountId === newHandle
-    )
-    
-    if (targetConnection) {
-      setSelectedConnection(targetConnection.id)
-    setResponse(null)
-    setError(null)
-    setSelectedFunction(null)
-  }
-  }, [connections, setSelectedConnection])
+    // 將設定檔轉換為舊格式
+    const functions: Record<string, any> = {}
+    apiConfig.groups.forEach((group: ApiGroup) => {
+      group.functions.forEach((func: ConfigApiFunction) => {
+        functions[func.id] = {
+          name: func.name,
+          group: func.group,
+          method: func.method,
+          endpoint: func.endpoint,
+          hasBody: func.hasBody,
+          requiresParam: func.requiresParam,
+          bodyDescription: func.bodyDescription
+        }
+      })
+    })
+    return functions
+  }, [apiConfig])
 
   const adminAPI = useAdminAPI({
     handle: activeHandle,
@@ -148,17 +166,134 @@ function AdminAPITest() {
   }
 
   const handleSubmit = async () => {
-    if (!activeHandle || !selectedFunction) return
+    if (!selectedConnection || !selectedFunction) return
 
     setError(null)
     setResponse(null)
     setIsErrorOpen(false)
+    setIsLoading(true)
 
     const func = API_FUNCTIONS[selectedFunction]
-    if (!func) return
+    if (!func) {
+      setError('未知的功能')
+      setIsLoading(false)
+      return
+    }
 
     try {
       let result: any
+
+      // Next Engine API 呼叫
+      if (selectedConnection.platform === 'next-engine') {
+        if (!connectionId) {
+          setError('請先選擇一個 Connection')
+          setIsLoading(false)
+          return
+        }
+
+        const endpoint = func.endpoint(connectionId)
+        const backendUrl = getBackendUrl()
+        const fullUrl = `${backendUrl}${endpoint}`
+        const token = localStorage.getItem('auth_token')
+
+        switch (selectedFunction) {
+          case 'neSearchShops': {
+            const body = {
+              fields: paramValues.fields || 'shop_id,shop_name,shop_abbreviated_name,shop_note'
+            }
+            const response = await fetch(fullUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify(body)
+            })
+            const responseData = await response.json()
+            if (!response.ok || !responseData.success) {
+              throw new Error(responseData.error || responseData.message || 'API 呼叫失敗')
+            }
+            result = responseData
+            break
+          }
+          case 'neCreateShop': {
+            if (!paramValues.xmlData) {
+              setError('請輸入 XML 資料')
+              setIsLoading(false)
+              return
+            }
+            const response = await fetch(fullUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({ data: paramValues.xmlData })
+            })
+            const responseData = await response.json()
+            if (!response.ok || !responseData.success) {
+              throw new Error(responseData.error || responseData.message || 'API 呼叫失敗')
+            }
+            result = responseData
+            break
+          }
+          case 'neSearchGoods': {
+            const body: any = {
+              fields: paramValues.fields || 'goods_id,goods_name,stock_quantity,supplier_name',
+              offset: paramValues.offset || '0',
+              limit: paramValues.limit || '100'
+            }
+            if (paramValues.goods_id_eq) {
+              body.goods_id_eq = paramValues.goods_id_eq
+            }
+            const response = await fetch(fullUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify(body)
+            })
+            const responseData = await response.json()
+            if (!response.ok || !responseData.success) {
+              throw new Error(responseData.error || responseData.message || 'API 呼叫失敗')
+            }
+            result = responseData
+            break
+          }
+          case 'neUploadGoods': {
+            if (!paramValues.csvData) {
+              setError('請輸入 CSV 資料')
+              setIsLoading(false)
+              return
+            }
+            const response = await fetch(fullUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({ data: paramValues.csvData })
+            })
+            const responseData = await response.json()
+            if (!response.ok || !responseData.success) {
+              throw new Error(responseData.error || responseData.message || 'API 呼叫失敗')
+            }
+            result = responseData
+            break
+          }
+          default:
+            setError('未知的 Next Engine API 功能')
+            setIsLoading(false)
+            return
+        }
+      } else {
+        // Shopline API 呼叫（原有邏輯）
+        if (!activeHandle) {
+          setError('請先選擇商店')
+          setIsLoading(false)
+          return
+        }
 
       switch (selectedFunction) {
         case 'getStoreInfo':
@@ -170,6 +305,7 @@ function AdminAPITest() {
         case 'getProduct':
           if (!paramValues.productId) {
             setError('請輸入 Product ID')
+              setIsLoading(false)
             return
           }
           result = await adminAPI.getProduct(paramValues.productId)
@@ -188,7 +324,9 @@ function AdminAPITest() {
           break
         default:
           setError('未知的功能')
+            setIsLoading(false)
           return
+        }
       }
 
       setResponse(result)
@@ -196,13 +334,21 @@ function AdminAPITest() {
       const errorMessage = err.response?.data?.error || err.message || 'API 呼叫失敗'
       setError(errorMessage)
       setIsErrorOpen(true)
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const currentFunction = selectedFunction ? API_FUNCTIONS[selectedFunction as keyof typeof API_FUNCTIONS] : null
-  const endpoint = currentFunction && activeHandle
-    ? currentFunction.endpoint(activeHandle).replace(':id', paramValues.productId || ':id')
-    : ''
+  const endpoint = useMemo(() => {
+    if (!currentFunction) return ''
+    
+    if (selectedConnection?.platform === 'next-engine') {
+      return connectionId ? currentFunction.endpoint(connectionId) : ''
+    } else {
+      return activeHandle ? currentFunction.endpoint(activeHandle).replace(':id', paramValues.productId || ':id') : ''
+    }
+  }, [currentFunction, selectedConnection?.platform, connectionId, activeHandle, paramValues.productId])
 
   return (
     <PrimaryLayout>
@@ -213,28 +359,46 @@ function AdminAPITest() {
           <div className="lg:col-span-1 space-y-4">
             {/* Story 5.3.1: 連線選擇（跟隨 Context Bar） */}
             <div className="bg-white p-4 rounded-lg shadow">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                連線選擇
-              </label>
-              {selectedConnection ? (
-                <div className="px-3 py-2 border border-gray-300 rounded-md bg-gray-50">
-                  <div className="text-sm font-medium text-gray-900">
-                    {selectedConnection.displayName || selectedConnection.externalAccountId}
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {selectedConnection.platform === 'shopline' ? 'Shopline' : selectedConnection.platform === 'next-engine' ? 'Next Engine' : selectedConnection.platform}
-                  </div>
-                </div>
-              ) : (
-                <div className="px-3 py-2 border border-gray-300 rounded-md bg-yellow-50">
-                  <p className="text-sm text-yellow-800">請先在 Connection Dashboard 選擇一個 Connection</p>
-                </div>
-              )}
+              <ConnectionSelectorDropdown />
             </div>
 
-            {/* Toggle Menu */}
+            {/* Toggle Menu - 使用設定檔 */}
             <div className="bg-white rounded-lg shadow p-4 space-y-2">
-              {Object.entries(FUNCTION_GROUPS).map(([groupKey, groupName]) => {
+              {apiConfig ? (
+                apiConfig.groups.map((group: ApiGroup) => {
+                  const isOpen = openGroups.has(group.id)
+                  return (
+                    <div key={group.id}>
+                      <button
+                        onClick={() => toggleGroup(group.id)}
+                        className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-md"
+                      >
+                        <span>{group.name}</span>
+                        <span>{isOpen ? '▼' : '▶'}</span>
+                      </button>
+                      {isOpen && (
+                        <div className="pl-4 space-y-1 mt-1">
+                          {group.functions.map((func: ConfigApiFunction) => (
+                            <button
+                              key={func.id}
+                              onClick={() => selectFunction(func.id)}
+                              className={`w-full text-left px-3 py-2 text-sm rounded-md ${
+                                selectedFunction === func.id
+                                  ? 'bg-blue-50 text-blue-700 font-medium'
+                                  : 'text-gray-600 hover:bg-gray-50'
+                              }`}
+                            >
+                              • {func.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })
+              ) : (
+                // Fallback: 使用舊的 FUNCTION_GROUPS（Shopline）
+                Object.entries(FUNCTION_GROUPS).map(([groupKey, groupName]) => {
                 const groupFunctions = Object.entries(API_FUNCTIONS).filter(
                   ([_, func]) => func.group === groupKey
                 )
@@ -268,7 +432,8 @@ function AdminAPITest() {
                     )}
                   </div>
                 )
-              })}
+                })
+              )}
             </div>
           </div>
 
@@ -278,18 +443,11 @@ function AdminAPITest() {
               <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
                 <p className="text-sm text-yellow-800">請先在 Connection Dashboard 選擇一個 Connection</p>
               </div>
-            ) : selectedConnection.platform === 'next-engine' ? (
-              <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-                <p className="text-sm text-blue-800 mb-2">Next Engine API 測試功能開發中</p>
-                <p className="text-xs text-blue-600">將實作以下 API 測試功能：</p>
-                <ul className="text-xs text-blue-600 mt-2 list-disc list-inside">
-                  <li>取得店舖列表</li>
-                  <li>建立店舖</li>
-                  <li>建立商品</li>
-                  <li>查詢商品</li>
-                </ul>
+            ) : selectedConnection.platform === 'next-engine' && !connectionId ? (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+                <p className="text-sm text-yellow-800">請先選擇一個 Next Engine Connection</p>
               </div>
-            ) : !activeHandle ? (
+            ) : selectedConnection.platform === 'shopline' && !activeHandle ? (
               <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
                 <p className="text-sm text-yellow-800">請先選擇商店</p>
               </div>
@@ -335,8 +493,122 @@ function AdminAPITest() {
                       </div>
                     )}
 
-                    {/* Body (Toggle) */}
-                    {currentFunction?.hasBody && (
+                    {/* Next Engine API 參數輸入 */}
+                    {selectedConnection?.platform === 'next-engine' && selectedFunction && (
+                      <>
+                        {selectedFunction === 'neSearchShops' && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Fields（選填）
+                            </label>
+                            <input
+                              type="text"
+                              value={paramValues.fields || 'shop_id,shop_name,shop_abbreviated_name,shop_note'}
+                              onChange={(e) => setParamValues({ ...paramValues, fields: e.target.value })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="shop_id,shop_name,shop_abbreviated_name,shop_note"
+                            />
+                          </div>
+                        )}
+                        {selectedFunction === 'neCreateShop' && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              XML 資料（必填）
+                            </label>
+                            <textarea
+                              value={paramValues.xmlData || ''}
+                              onChange={(e) => setParamValues({ ...paramValues, xmlData: e.target.value })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs"
+                              rows={10}
+                              placeholder={`<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <shop>
+    <shop_mall_id>90</shop_mall_id>
+    <shop_note>店舖備註</shop_note>
+    <shop_name>店舖名稱</shop_name>
+    <shop_abbreviated_name>SL</shop_abbreviated_name>
+    <shop_tax_id>0</shop_tax_id>
+    <shop_tax_calculation_sequence_id>0</shop_tax_calculation_sequence_id>
+    <shop_currency_unit_id>1</shop_currency_unit_id>
+  </shop>
+</root>`}
+                            />
+                          </div>
+                        )}
+                        {selectedFunction === 'neSearchGoods' && (
+                          <>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Fields（選填）
+                              </label>
+                              <input
+                                type="text"
+                                value={paramValues.fields || 'goods_id,goods_name,stock_quantity,supplier_name'}
+                                onChange={(e) => setParamValues({ ...paramValues, fields: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="goods_id,goods_name,stock_quantity,supplier_name"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Goods ID（選填，用於精確查詢）
+                              </label>
+                              <input
+                                type="text"
+                                value={paramValues.goods_id_eq || ''}
+                                onChange={(e) => setParamValues({ ...paramValues, goods_id_eq: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="例如：TestP001"
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Offset（選填）
+                                </label>
+                                <input
+                                  type="text"
+                                  value={paramValues.offset || '0'}
+                                  onChange={(e) => setParamValues({ ...paramValues, offset: e.target.value })}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  placeholder="0"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Limit（選填）
+                                </label>
+                                <input
+                                  type="text"
+                                  value={paramValues.limit || '100'}
+                                  onChange={(e) => setParamValues({ ...paramValues, limit: e.target.value })}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  placeholder="100"
+                                />
+                              </div>
+                            </div>
+                          </>
+                        )}
+                        {selectedFunction === 'neUploadGoods' && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              CSV 資料（必填）
+                            </label>
+                            <textarea
+                              value={paramValues.csvData || ''}
+                              onChange={(e) => setParamValues({ ...paramValues, csvData: e.target.value })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs"
+                              rows={10}
+                              placeholder={`syohin_code,sire_code,jan_code,maker_name,maker_kana,maker_jyusyo,maker_yubin_bangou,kataban,iro,syohin_name,gaikoku_syohin_name,syohin_kbn,toriatukai_kbn,genka_tnk,hyoji_tnk,baika_tnk,gaikoku_baika_tnk,kake_ritu,omosa,haba,okuyuki,takasa,yusou_kbn,syohin_status_kbn,hatubai_bi,zaiko_teisu,hachu_ten,lot,keisai_tantou,keisai_bi,bikou,daihyo_syohin_code,visible_flg,mail_tag,tag,location,mail_send_flg,mail_send_num,gift_ok_flg,size,org_select1,org_select2,org_select3,org_select4,org_select5,org_select6,org_select7,org_select8,org_select9,org_select10,org1,org2,org3,org4,org5,org6,org7,org8,org9,org10,org11,org12,org13,org14,org15,org16,org17,org18,org19,org20,maker_kataban,zaiko_threshold,orosi_threshold,hasou_houhou_kbn,hasoumoto_code,zaiko_su,yoyaku_zaiko_su,nyusyukko_riyu,hit_syohin_alert_quantity,nouki_kbn,nouki_sitei_bi,syohin_setumei_html,syohin_setumei_text,spec_html,spec_text,chui_jiko_html,chui_jiko_text,syohin_jyotai_kbn,syohin_jyotai_setumei,category_code_yauc,category_text,image_url_http,image_alt
+TestP001,9999,,,,,,,,登録時必須,,0,0,120000,,150000,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,`}
+                            />
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* Body (Toggle) - 僅 Shopline API 顯示 */}
+                    {currentFunction?.hasBody && selectedConnection?.platform !== 'next-engine' && (
                       <div>
                         <button
                           onClick={() => setIsBodyOpen(!isBodyOpen)}
@@ -396,10 +668,18 @@ function AdminAPITest() {
                     {/* 送出測試按鈕 */}
                     <button
                       onClick={handleSubmit}
-                      disabled={!activeHandle || adminAPI.isLoading || (currentFunction.requiresParam && !paramValues[currentFunction.requiresParam.name])}
+                      disabled={
+                        !selectedConnection ||
+                        (selectedConnection.platform === 'shopline' && !activeHandle) ||
+                        (selectedConnection.platform === 'next-engine' && !connectionId) ||
+                        isLoading ||
+                        (currentFunction?.requiresParam && !paramValues[currentFunction.requiresParam.name]) ||
+                        (selectedFunction === 'neCreateShop' && !paramValues.xmlData) ||
+                        (selectedFunction === 'neUploadGoods' && !paramValues.csvData)
+                      }
                       className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {adminAPI.isLoading ? '執行中...' : '送出測試'}
+                      {isLoading ? '執行中...' : '送出測試'}
                     </button>
                   </div>
                 </div>

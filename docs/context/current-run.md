@@ -22,7 +22,7 @@
 | [Story 5.1: Next Engine OAuth Flow 與 Platform Adapter](../backlog/stories/story-5-1-next-engine-oauth.md) | ✅ completed | 後端實作完成，已通過自動化測試 | 
 | [Story 5.2: Next Engine Connection Item 與資料讀取 MVP](../backlog/stories/story-5-2-next-engine-connection-data.md) | ✅ completed | 後端 API 完成，已通過自動化測試 |
 | [Story 5.3: 前端 Connection UX 延伸與重新授權整合](../backlog/stories/story-5-3-next-engine-ux.md) | ✅ completed | 前端整合完成，User Test 通過 |
-| [Story 5.3.1: 多平台測試頁面整合](../backlog/stories/story-5-3-1-multi-platform-test-pages.md) | 🛠 in-development | 修正 Webhook、Event、API 測試頁面，支援多平台運作 |
+| [Story 5.3.1: 多平台測試頁面整合](../backlog/stories/story-5-3-1-multi-platform-test-pages.md) | ✅ completed | 後端代理 API 與前端整合已完成 |
 | [Story 5.4: Shopline Platform Adapter 重構](../backlog/stories/story-5-4-shopline-adapter-refactor.md) | ⚪ 待前置 | 待 5.1～5.3.1 完成並通過 User Test 後啟動 |
 | [Story 5.5: Next Engine 庫存與倉庫 API 補強](../backlog/stories/story-5-5-next-engine-inventory-apis.md) | ⚪ 待前置 | 待 5.1～5.3 確認穩定後、視情況啟動 |
 
@@ -218,24 +218,126 @@
 
 ---
 
+## Story 5.3.1 開發進度（2025-11-12）
+
+### ⚠️ 重要說明：功能恢復記錄（2025-11-12 晚間）
+
+**背景**：由於開發過程中進行了過度重構（將 sidebar 拆分成獨立組件），導致功能被破壞。用戶要求恢復到「根據不同平台呈現不同的 API 內容」的狀態，並明確指示**不要恢復** sidebar 拆分的大改動。
+
+**恢復內容**：
+- ✅ 恢復 `ConnectionSelectorDropdown` 組件（`frontend/components/connections/ConnectionSelectorDropdown.tsx`）
+- ✅ 恢復 `api-configs.ts` 平台 API 配置檔案（`frontend/content/platforms/api-configs.ts`）
+- ✅ 恢復後端 Next Engine API 代理端點（4 個端點）
+- ✅ 恢復前端 `admin-api-test.tsx` 的動態平台 API 功能顯示
+- ❌ **未恢復**：sidebar 拆分成 `FunctionSidebar` 和 `WorkspaceLayout` 的大改動
+
+### ✅ 已完成項目
+
+#### 1. 連線選擇器組件開發（2025-11-12 恢復）
+- **建立 `ConnectionSelectorDropdown` 組件**（`frontend/components/connections/ConnectionSelectorDropdown.tsx`）
+  - 提供下拉選單介面，可在任何頁面切換連線
+  - 顯示連線名稱、平台、狀態資訊
+  - 選取後自動更新 `useConnectionStore`，與 ContextBar 同步
+  - 包含 `id="connection-selector-dropdown"` 和 `className="connection-selector-dropdown"` 屬性，方便 DevTools 檢查
+
+#### 2. 平台 API 配置系統（2025-11-12 恢復）
+- **建立 `api-configs.ts` 設定檔**（`frontend/content/platforms/api-configs.ts`）
+  - 定義 `PlatformApiConfig`、`ApiGroup`、`ApiFunction` 類型
+  - 實作 `shoplineApiConfig`：包含商家、商品、訂單、庫存 4 個群組
+  - 實作 `nextEngineApiConfig`：包含店舖、商品 2 個群組，4 個 API 功能
+  - 提供 `getPlatformApiConfig()` 函數，根據 platform 動態取得對應配置
+
+#### 3. 頁面連線選擇功能更新（2025-11-12 恢復）
+- **`admin-api-test.tsx`**：
+  - 整合 `ConnectionSelectorDropdown` 組件
+  - 根據 `selectedConnection.platform` 動態載入對應的 API 配置
+  - 使用 `getPlatformApiConfig()` 取得平台專屬的 API 功能列表
+  - 自動展開所有 API 群組
+
+- **`webhook-test.tsx`**：將靜態連線顯示改為可切換的下拉選單（已於先前完成）
+- **`events.tsx`**：新增連線選擇器，保持頁面一致性（已於先前完成）
+
+#### 4. ContextBar 共享機制確認
+- 所有頁面使用 `PrimaryLayout`，已包含 `ContextBar`
+- `ContextBar` 透過 `useConnectionStore` 取得選取的連線
+- 在任何頁面切換連線時，`ContextBar` 會自動更新顯示
+
+#### 5. Next Engine API 測試功能實作（2025-11-12 恢復）
+
+**後端代理 API 端點**（`backend/src/routes/api.ts`）：
+- `POST /api/connections/:connectionId/shops/search` - 取得店舖列表
+- `POST /api/connections/:connectionId/shops/create` - 建立店舖
+- `POST /api/connections/:connectionId/goods/search` - 查詢商品
+- `POST /api/connections/:connectionId/goods/upload` - 建立商品（上傳 CSV）
+
+**後端實作細節**：
+- 所有端點都使用 `authMiddleware` 和 `requireConnectionOwner` middleware
+- 從 Connection 的 `authPayload.accessToken` 取得 access token
+- 錯誤處理：正確檢查 Next Engine API 回應格式（`data.code !== '000000'` 或 `data.result !== 'success'`）
+- 錯誤訊息優先順序：`error_description` → `error` → `message` → 預設訊息
+- 記錄審計日誌（成功/失敗），operation 名稱：`next-engine.shops.search`、`next-engine.shops.create`、`next-engine.goods.search`、`next-engine.goods.upload`
+
+**前端 API 測試功能**（`frontend/pages/admin-api-test.tsx`）：
+- 根據 `selectedConnection.platform` 動態選擇 API 功能列表
+- 使用 `getPlatformApiConfig()` 取得平台專屬配置
+- 將設定檔轉換為舊格式以相容現有邏輯
+- Next Engine API 參數輸入 UI：
+  - 取得店舖列表：Fields 參數輸入（預設值：`shop_id,shop_name,shop_abbreviated_name,shop_note`）
+  - 建立店舖：XML 資料輸入（含 XML 範本）
+  - 查詢商品：Fields、Goods ID、Offset、Limit 參數輸入
+  - 建立商品：CSV 資料輸入（含 CSV 範本）
+- Next Engine API 呼叫邏輯：
+  - 使用 `getBackendUrl()` 取得後端 URL
+  - 透過 `fetch` API 呼叫後端代理端點
+  - 正確處理 Next Engine API 回應格式（`{ success: true, data: { ... } }`）
+- 錯誤處理：正確處理 HTTP 錯誤和 JSON 回應
+- 回應顯示：顯示 Next Engine API 的完整回應資料
+
+**前端實作細節**：
+- 使用 `useSelectedConnection` hook 取得當前選取的 Connection
+- 根據 platform 動態計算 endpoint（Next Engine 使用 `connectionId`，Shopline 使用 `handle`）
+- 按鈕 disabled 狀態正確處理 Next Engine 的特殊參數驗證（XML、CSV）
+
+### 📝 技術實作細節
+
+**連線選擇器特性**：
+- 使用 `useConnectionStore` 和 `useConnections` hook 取得連線列表
+- 下拉選單顯示連線名稱、平台名稱、狀態標籤
+- 選取後呼叫 `setSelectedConnection` 更新 store
+- 所有使用 `useConnectionStore` 的組件會自動響應變更
+
+**平台 API 配置系統**：
+- 集中管理不同平台的 API 功能定義
+- 支援動態載入，根據 platform 自動切換
+- 保留 Shopline 舊格式的 fallback，確保向後相容
+
+**後端 API 錯誤處理**：
+- Next Engine API 回應格式：`{ result: 'success', code: '000000', data: { ... } }`
+- 錯誤檢查：先檢查 `code`，再檢查 `result`
+- 錯誤訊息優先順序確保使用者能看到最詳細的錯誤資訊
+
+### ✅ Story 5.3.1 已完成（2025-11-12 晚間恢復）
+
+所有待完成項目已完成，Story 5.3.1 已可進行 User Test。
+
+---
+
 ## 🚨 發現的問題與待補事項
 
 ### Story 遺漏問題
 
-#### 1. Webhook、Event、API 測試頁面未跟隨 Context Bar
+#### 1. ✅ Webhook、Event、API 測試頁面未跟隨 Context Bar（已解決）
 **問題描述**：
 - `webhook-test.tsx`、`admin-api-test.tsx`、`events.tsx` 三個頁面都顯示「商店選擇」而非「連線選擇」
 - 這些頁面沒有跟隨 Context Bar 所選的 `connectionId` 進行操作
 - 目前不管怎麼選，都是當作 Shopline 在處理，沒有因應 `platform` 做異動
 
-**影響**：
-- 無法接續處理 Next Engine 平台授權後的行為（webhook、API 測試、事件查看）
-- 使用者體驗不一致（Connection Dashboard 用 Connection，其他頁面用 Store）
-
-**需要修正**：
-- 將「商店選擇」改為「連線選擇」
-- 讓這些頁面跟隨 `useConnectionStore` 的 `selectedConnectionId`
-- 根據 `selectedConnection.platform` 動態調整 API 端點和邏輯
+**解決方案**（2025-11-12 完成）：
+- ✅ 建立 `ConnectionSelectorDropdown` 組件，提供統一的連線選擇介面
+- ✅ 將三個頁面的「商店選擇」改為「連線選擇」
+- ✅ 讓這些頁面跟隨 `useConnectionStore` 的 `selectedConnectionId`
+- ✅ ContextBar 自動同步顯示當前選取的連線
+- ⏳ 根據 `selectedConnection.platform` 動態調整 API 端點和邏輯（Next Engine API 測試功能待實作）
 
 #### 2. Token 到期時間顯示問題
 **問題描述**：

@@ -3,7 +3,7 @@ import { ApiResponse, StoreInfo, StoreInfoResponse, ProductListParams, ProductLi
 
 // 生產環境必須設定 NEXT_PUBLIC_BACKEND_URL
 // 開發環境可以使用 NEXT_PUBLIC_NGROK_URL（ngrok）或 NEXT_PUBLIC_API_URL
-const getBackendUrl = () => {
+export const getBackendUrl = () => {
   if (process.env.NEXT_PUBLIC_BACKEND_URL) {
     return process.env.NEXT_PUBLIC_BACKEND_URL
   }
