@@ -39,19 +39,53 @@ description: 匯總 ne-test MVP 中的 NextEngine 認證、API、在庫連携與
 
 ## 3. OAuth 與 Token 管理
 
+> 📌 **重要**：前後端分離架構下的 OAuth 流程請參考：[Next Engine OAuth 流程指南](./NEXT_ENGINE_OAUTH_GUIDE.md)
+
 ### 3.1 授權流程
 
+**前後端分離架構（本專案）：**
+1. 前端呼叫 `GET /api/auth/next-engine/install`（需要登入）
+2. 後端返回 Next Engine 授權 URL（只包含 `client_id` 和 `redirect_uri`）
+3. 前端跳轉到 Next Engine 登入頁
+4. Next Engine 回呼 `GET /api/auth/next-engine/callback`，返回 `uid` 與 `state`
+5. 後端交換 token，暫存到 Redis（使用 `uid` 作為 key）
+6. 後端重導向到前端 callback 頁面
+7. 前端調用 `POST /api/auth/next-engine/complete` 完成 Connection 建立
+
+**單體架構（ne-test 專案）：**
 1. 前端呼叫 `/auth/ne` 導向 NextEngine 登入。
 2. NextEngine 回呼 `/auth/callback`，返回 `uid` 與 `state`。
 3. `NextEngineClient.getAccessToken()` 使用 `client_id/client_secret/uid/state` 交換取得 `access_token` 與 `refresh_token`。
 
 ### 3.2 Token 儲存策略
 
+**本專案（前後端分離）：**
+- OAuth callback 時將 token 暫存到 Redis（10 分鐘過期，使用 `uid` 作為 key）
+- 前端完成 Connection 建立後，token 儲存到資料庫（`integration_accounts.authPayload`）
+- Token、`uid`、`state` 只在後端，前端不碰
+- 所有 Next Engine API 呼叫由後端代理
+
+**ne-test 專案（單體架構）：**
 - 使用 `services/database.js` 將 Token 寫入 SQLite（`tokens` 表），欄位包含有效期限，且維持字串型別避免誤轉數值。
 - 啟動時會自動載入已保存的 Token（`NextEngineClient.initialize()`）。
 - `apiExecute()` 對 `002002` 過期錯誤觸發自動刷新並重送請求。
 
-### 3.3 建議
+### 3.3 重要注意事項
+
+1. **不對 Next Engine 丟 state**
+   - Next Engine 授權 URL 只接受 `client_id` 和 `redirect_uri`
+   - `state` 是 Next Engine 自己產生的，我們只需要保存它
+
+2. **Token 只在後端**
+   - 前端不持有 Next Engine 的 token
+   - 所有 Next Engine API 呼叫由後端代理
+
+3. **用戶識別方式**
+   - Callback 時無法使用 session cookie（跨域限制）
+   - 前端在 callback 時主動調用完成 API（帶上 JWT token）
+   - 後端透過 `authMiddleware` 識別當前登入的使用者
+
+### 3.4 建議
 
 - 在多平台架構中，將 Token 流程抽象為共用 `AuthProvider`（支援 SQLite、Postgres、雲端 KMS）。
 - 加入集中式審計與告警（含 requestId/timestamp）以便追蹤授權問題。
