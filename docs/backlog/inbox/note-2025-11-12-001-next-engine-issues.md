@@ -117,8 +117,8 @@
 - [ ] 根據 platform 動態調整 API 端點和邏輯
 
 ### 優先級 2（影響使用者體驗）
-- [ ] 驗證 Token 到期時間顯示是否正確
-- [ ] 確認 Next Engine API 回傳的日期時間格式
+- [x] ✅ Token 到期時間計算邏輯已實作
+- [x] ✅ 完整記錄 Next Engine API response 以便追查
 
 ### 優先級 3（設計討論）
 - [ ] 討論 Next Engine Store 建立邏輯和同步機制
