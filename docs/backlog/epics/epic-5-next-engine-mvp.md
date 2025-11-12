@@ -49,25 +49,28 @@
 
 | Story | 狀態 | 說明 |
 |-------|------|------|
-| [Story 5.1: Next Engine OAuth Flow 與 Platform Adapter](../stories/story-5-1-next-engine-oauth.md) | 🛠 planning | 建立 Next Engine Adapter、授權 / refresh API、錯誤碼映射 |
-| [Story 5.2: Next Engine Connection Item 與資料讀取 MVP](../stories/story-5-2-next-engine-connection-data.md) | 🛠 planning | 將公司 / 店舖寫入 Connection 模型並提供資料讀取 API |
-| [Story 5.3: 前端 Connection UX 延伸與重新授權整合](../stories/story-5-3-next-engine-ux.md) | 🛠 planning | 前端切換與重新授權體驗、平台文案與錯誤提示 |
-| [Story 5.4: Shopline Platform Adapter 重構](../stories/story-5-4-shopline-adapter-refactor.md) | ⚪ pending | 在 Story 5.1～5.3 通過 User Test 後，將 Shopline 平台也切換到 adapter 架構 |
-| [Story 5.5: Next Engine 庫存與倉庫 API 補強](../stories/story-5-5-next-engine-inventory-apis.md) | ⚪ pending | 待 5.1～5.3 驗收後，再逐步補齊庫存 / 倉庫相關 API |
+| [Story 5.1: Next Engine OAuth Flow 與 Platform Adapter](../stories/story-5-1-next-engine-oauth.md) | ✅ completed | 建立 Next Engine Adapter、授權 / refresh API、錯誤碼映射 |
+| [Story 5.2: Next Engine Connection Item 與資料讀取 MVP](../stories/story-5-2-next-engine-connection-data.md) | ✅ completed | 將公司 / 店舖寫入 Connection 模型並提供資料讀取 API |
+| [Story 5.3: 前端 Connection UX 延伸與重新授權整合](../stories/story-5-3-next-engine-ux.md) | ✅ completed | 前端切換與重新授權體驗、平台文案與錯誤提示 |
+| [Story 5.3.5: 多平台測試頁面整合](../stories/story-5-3-5-multi-platform-test-pages.md) | 🛠 planning | 修正 Webhook、Event、API 測試頁面，支援多平台運作並實作 Next Engine API 測試 |
+| [Story 5.4: Shopline Platform Adapter 重構](../stories/story-5-4-shopline-adapter-refactor.md) | ⚪ pending | 在 Story 5.1～5.3.5 通過 User Test 後，將 Shopline 平台也切換到 adapter 架構 |
+| [Story 5.5: Next Engine 庫存與倉庫 API 補強](../stories/story-5-5-next-engine-inventory-apis.md) | ⚪ pending | 待 5.1～5.3.5 驗收後，再逐步補齊庫存 / 倉庫相關 API |
 
 ---
 
 ## Story 相依性與建議開發順序
 
-1. **Story 5.1 → Story 5.2 → Story 5.3**：
+1. **Story 5.1 → Story 5.2 → Story 5.3 → Story 5.3.5**：
    - 5.1 提供 OAuth / Token 能力，為 5.2 的資料抓取與 5.3 的前端顯示基礎。
    - 5.2 提供後端 API / 資料模型，前端才能取得 Next Engine 的店舖 / 商品資料。
    - 5.3 依賴前兩項完成後再串接 UI 與 Activity Dock。
-2. **Story 5.4**：需待 5.1～5.3 開發完成、實機測試與 User Test 通過後再啟動，以確保架構穩定再進行 Shopline 重構。
+   - 5.3.5 修正測試頁面，讓它們能夠配合多平台運作，並實作 Next Engine API 測試功能。
+2. **Story 5.4**：需待 5.1～5.3.5 開發完成、實機測試與 User Test 通過後再啟動，以確保架構穩定再進行 Shopline 重構。
 3. **Story 5.5**：在上述流程穩定後（或同一 Run 內有餘裕時）再補齊庫存／倉庫 API，避免在架構未確認前實作過多端點。
 4. **共用決策與文件**：所有 Story 按需引用 `NEXT_ENGINE_PLATFORM_SPEC.md`，若在實作過程中新增欄位或錯誤碼，需同步更新並通知其他 Story。
 5. **測試協作**：
    - 5.1 與 5.2 完成後，提供必要的測試腳本給 5.3 驗證。
+   - 5.3.5 需要修正現有測試頁面的問題，確保多平台運作正常。
    - 人類夥伴僅於最終 UI 驗收（授權流程與資料瀏覽）進行操作。
 
 ---
