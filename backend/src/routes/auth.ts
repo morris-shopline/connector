@@ -1005,12 +1005,13 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
       fastify.log.info('收到 Next Engine 授權回調:', JSON.stringify(rawQuery, null, 2))
 
       const uid = rawQuery.uid as string | undefined
-      const state = rawQuery.state as string | undefined
+      const neState = rawQuery.state as string | undefined // Next Engine 自己生成的 state
+      const redirectUri = rawQuery.redirect_uri as string | undefined
 
-      if (!uid || !state) {
+      if (!uid || !neState) {
         fastify.log.error('缺少必要參數:', {
           hasUid: !!uid,
-          hasState: !!state
+          hasNeState: !!neState
         })
         return reply.status(400).send({
           success: false,
@@ -1022,66 +1023,74 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         })
       }
 
-      // 從 state 取得 userId
+      // 從 redirect_uri 參數中解析出我們加入的 state（用於識別用戶）
       let userId: string | undefined = undefined
-      const { getRedisClient } = await import('../utils/redis')
-      const redis = getRedisClient()
-
-      // 記錄除錯資訊
-      fastify.log.info('🔍 Next Engine callback 除錯資訊:', {
-        state,
-        stateLength: state.length,
-        stateFormat: state.includes(':') ? 'encrypted' : 'plain',
-        hasRedis: !!redis,
-      })
-
-      if (redis) {
+      let ourState: string | undefined = undefined
+      
+      if (redirectUri) {
         try {
-          const redisKey = `oauth:next-engine:state:${state}`
-          const cachedUserId = await redis.get(redisKey)
-          fastify.log.info('🔍 Redis 查詢結果:', {
-            redisKey,
-            cachedUserId: cachedUserId ? 'found' : 'not found',
+          const redirectUrl = new URL(decodeURIComponent(redirectUri))
+          ourState = redirectUrl.searchParams.get('state') || undefined
+          fastify.log.info('🔍 從 redirect_uri 解析出我們的 state:', {
+            ourState: ourState ? 'found' : 'not found',
+            redirectUriLength: redirectUri.length,
           })
-          if (cachedUserId) {
-            userId = cachedUserId
-            await redis.del(redisKey) // 一次性使用
-            fastify.log.info('✅ 從 Redis 取得使用者 ID:', userId)
-          }
-        } catch (redisError: any) {
-          fastify.log.error('❌ Redis 查詢錯誤:', redisError.message)
+        } catch (error: any) {
+          fastify.log.warn('⚠️ 無法解析 redirect_uri:', error.message)
         }
-      } else {
-        fastify.log.warn('⚠️ Redis 客戶端不可用，嘗試解密 state')
       }
 
-      // 如果 Redis 沒有，嘗試解密 state
-      if (!userId) {
-        const { decryptState } = await import('../utils/state')
-        const decrypted = decryptState(state)
-        fastify.log.info('🔍 State 解密結果:', {
-          decrypted: decrypted ? 'success' : 'failed',
-          decryptedLength: decrypted?.length || 0,
-        })
-        if (decrypted) {
-          // 格式可能是 "sessionId" 或 "userId:nonce"
-          const parts = decrypted.split(':')
-          if (parts.length === 2) {
-            userId = parts[0]
-            fastify.log.info('✅ 從解密 state 取得 userId (格式: userId:nonce):', userId)
-          } else {
-            // 嘗試從 session 取得 userId
-            const { getSession } = await import('../utils/session')
-            const session = await getSession(decrypted)
-            if (session) {
-              userId = session.userId
-              fastify.log.info('✅ 從 session 取得 userId:', userId)
-            } else {
-              fastify.log.warn('⚠️ 無法從 session 取得 userId，sessionId:', decrypted)
+      // 使用我們的 state 來識別用戶
+      if (ourState) {
+        const { getRedisClient } = await import('../utils/redis')
+        const redis = getRedisClient()
+
+        if (redis) {
+          try {
+            const redisKey = `oauth:next-engine:state:${ourState}`
+            const cachedUserId = await redis.get(redisKey)
+            fastify.log.info('🔍 Redis 查詢結果:', {
+              redisKey,
+              cachedUserId: cachedUserId ? 'found' : 'not found',
+            })
+            if (cachedUserId) {
+              userId = cachedUserId
+              await redis.del(redisKey) // 一次性使用
+              fastify.log.info('✅ 從 Redis 取得使用者 ID:', userId)
             }
+          } catch (redisError: any) {
+            fastify.log.error('❌ Redis 查詢錯誤:', redisError.message)
           }
-        } else {
-          fastify.log.warn('⚠️ State 解密失敗，state 格式不符合預期')
+        }
+
+        // 如果 Redis 沒有，嘗試解密我們的 state
+        if (!userId) {
+          const { decryptState } = await import('../utils/state')
+          const decrypted = decryptState(ourState)
+          fastify.log.info('🔍 State 解密結果:', {
+            decrypted: decrypted ? 'success' : 'failed',
+            decryptedLength: decrypted?.length || 0,
+          })
+          if (decrypted) {
+            // 格式可能是 "sessionId" 或 "userId:nonce"
+            const parts = decrypted.split(':')
+            if (parts.length === 2) {
+              userId = parts[0]
+              fastify.log.info('✅ 從解密 state 取得 userId (格式: userId:nonce):', userId)
+            } else {
+              // 嘗試從 session 取得 userId
+              const { getSession } = await import('../utils/session')
+              const session = await getSession(decrypted)
+              if (session) {
+                userId = session.userId
+                fastify.log.info('✅ 從 session 取得 userId:', userId)
+              } else {
+                fastify.log.warn('⚠️ 無法從 session 取得 userId，sessionId:', decrypted)
+              }
+            }
+          } else {
+            fastify.log.warn('⚠️ State 解密失敗，state 格式不符合預期')
+          }
         }
       }
 
@@ -1102,8 +1111,8 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
       PlatformServiceFactory.initialize()
       const adapter = PlatformServiceFactory.getAdapter('next-engine')
 
-      // 交換 token（Next Engine 使用 uid 作為授權碼）
-      const tokenResult = await adapter.exchangeToken(uid, state)
+      // 交換 token（Next Engine 使用 uid 作為授權碼，使用 Next Engine 回傳的 state）
+      const tokenResult = await adapter.exchangeToken(uid, neState)
 
       if (!tokenResult.success) {
         fastify.log.error('Token exchange failed:', tokenResult.error)
@@ -1144,7 +1153,7 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         expiresAt: tokenResult.data.expiresAt,
         refreshExpiresAt: tokenResult.data.refreshExpiresAt,
         uid: uid, // 儲存 uid 供 refresh 使用
-        state: state, // 儲存 state 供 refresh 使用
+        state: neState, // 儲存 Next Engine 回傳的 state 供 refresh 使用
       }
 
       const connection = await connectionRepository.upsertConnection({
