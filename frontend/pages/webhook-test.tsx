@@ -126,19 +126,17 @@ function WebhookTest() {
   }
 
   const handleQuickTest = async () => {
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_NGROK_URL
-    if (!backendUrl) {
-      console.error('❌ 錯誤：請設定 NEXT_PUBLIC_BACKEND_URL 環境變數')
-      return
-    }
     if (!activeHandle) {
       alert('請先選擇商店')
       return
     }
+    // 使用統一的 getBackendUrl 函數
+    const { getBackendUrl } = await import('../lib/api')
+    const backendUrl = getBackendUrl()
     await handleSubscribe({
       handle: activeHandle,
       topic: 'products/update',
-      webhookUrl: `${backendUrl.replace(/\/+$/, '')}/webhook/shopline`,
+      webhookUrl: `${backendUrl}/webhook/shopline`,
       apiVersion: 'v20250601'
     })
   }

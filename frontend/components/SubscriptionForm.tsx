@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getBackendUrl } from '../lib/api'
 
 interface SubscriptionFormProps {
   isOpen: boolean
@@ -27,30 +28,26 @@ export function SubscriptionForm({ isOpen, onClose, onSubmit, defaultHandle }: S
   }
 
   useEffect(() => {
-    if (webhookUrlMode === 'test') {
-      // 測試站：使用 ngrok URL（僅本地開發）
-      const testUrl = process.env.NEXT_PUBLIC_NGROK_URL
-      if (testUrl) {
-        setWebhookUrl(normalizeUrl(testUrl, 'webhook/shopline'))
-      } else {
-        // 沒有 ngrok URL，使用正式站 URL
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL
-        if (backendUrl) {
-          setWebhookUrl(normalizeUrl(backendUrl, 'webhook/shopline'))
+    try {
+      if (webhookUrlMode === 'test') {
+        // 測試站：優先使用 ngrok URL（僅本地開發）
+        const testUrl = process.env.NEXT_PUBLIC_NGROK_URL
+        if (testUrl) {
+          setWebhookUrl(normalizeUrl(testUrl, 'webhook/shopline'))
         } else {
-          alert('⚠️ 請設定 NEXT_PUBLIC_BACKEND_URL 或 NEXT_PUBLIC_NGROK_URL 環境變數')
-          setWebhookUrl('')
+          // 沒有 ngrok URL，使用統一的 getBackendUrl
+          const backendUrl = getBackendUrl()
+          setWebhookUrl(normalizeUrl(backendUrl, 'webhook/shopline'))
         }
-      }
-    } else {
-      // 正式站：使用後端 URL
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL
-      if (backendUrl) {
-        setWebhookUrl(normalizeUrl(backendUrl, 'webhook/shopline'))
       } else {
-        alert('⚠️ 請設定 NEXT_PUBLIC_BACKEND_URL 環境變數')
-        setWebhookUrl('')
+        // 正式站：使用統一的 getBackendUrl
+        const backendUrl = getBackendUrl()
+        setWebhookUrl(normalizeUrl(backendUrl, 'webhook/shopline'))
       }
+    } catch (error: any) {
+      console.error('取得後端 URL 失敗:', error)
+      alert('⚠️ 請設定 NEXT_PUBLIC_BACKEND_URL 環境變數')
+      setWebhookUrl('')
     }
   }, [webhookUrlMode])
 
