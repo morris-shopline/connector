@@ -70,7 +70,74 @@ description: 匯總 ne-test MVP 中的 NextEngine 認證、API、在庫連携與
 - 啟動時會自動載入已保存的 Token（`NextEngineClient.initialize()`）。
 - `apiExecute()` 對 `002002` 過期錯誤觸發自動刷新並重送請求。
 
-### 3.3 重要注意事項
+### 3.3 Token 到期時間與 Refresh Token 機制
+
+#### Refresh Token 的必要性
+
+**僅使用 access_token 的情況：**
+- 僅使用 `access_token` 也可以呼叫 Next Engine API
+- 但當 `access_token` 的有效期限到期時，需要使用者重新認證（重新導向）
+- 應用程式側需要考慮處理過程中 `access_token` 過期的情況
+- 例如：在「受注更新 → 出荷確定」的流程中，如果在受注更新後 `access_token` 過期，需要重新導向到 Next Engine 伺服器，然後從出荷確定處理繼續執行
+
+**併用 refresh_token 的情況：**
+- 同時使用 `access_token` 和 `refresh_token` 呼叫 Next Engine API
+- 當 `access_token` 的有效期限到期時，如果 `refresh_token` 仍在有效期限內，該次 API 呼叫會**正常完成**，並回傳新的 `access_token` 和 `refresh_token`
+- 之後使用新的 `access_token` 和 `refresh_token`，只需初次使用者認證即可持續使用 API
+- 處理過程中即使 `access_token` 過期，應用程式的一連串處理也能正常完成，因此不需要考慮處理中途過期的情況
+- **建議**：除非有安全性考量，否則建議使用 `refresh_token` 來呼叫 Next Engine API
+
+**安全性注意事項：**
+- 如果惡意攻擊者取得使用者的 `access_token` 和 `refresh_token`，使用者的資料可能會持續外洩
+- `access_token` 和 `refresh_token` 必須小心保管，避免洩漏
+
+#### Token 有效期限規則
+
+**有效期限長度：**
+- `access_token` 的有效期限：**1 天**
+- `refresh_token` 的有效期限：**3 天**
+
+**有效期限計算基準：**
+- 有效期限是從「**最初發行 `access_token` 的日期時間**」或「**最後 `access_token` 過期並更新 `access_token` 的日期時間**」開始計算的日數
+- **重要**：如果 Next Engine API 回傳的 `access_token_end_date` 和 `refresh_token_end_date` 不包含完整的日期時間資訊，我們需要：
+  1. **記錄首次授權完成的時間**（`createdAt`）
+  2. **記錄每次 token 更新的時間**（`updatedAt`）
+  3. **根據這些時間點計算到期時間**（首次授權時間 + 1 天 = access_token 到期時間，首次授權時間 + 3 天 = refresh_token 到期時間）
+
+**批次處理建議：**
+- 對於批次處理等無需認證即可定期使用 API 的情況，建議在 2 天內定期執行 API，避免有效期限過期
+- 如果 `refresh_token` 的有效期限也過期，會產生與 `access_token` 過期相同的 `002004` 錯誤
+- 即使已發行新的 `access_token`，如果仍使用舊的 `access_token` 執行，會產生 `002002` 錯誤
+
+**多執行緒注意事項：**
+- 不建議對同一使用者使用多執行緒呼叫 API
+- 當 `access_token` 和 `refresh_token` 更新時，需要將同一使用者的所有執行緒的 `access_token` 和 `refresh_token` 都更新為新值
+- 這會使應用程式側的 `access_token` 和 `refresh_token` 管理變得困難
+
+**Token 更新時機：**
+- `access_token` 和 `refresh_token` 的更新，即使在請求發生錯誤時也會更新
+- 在應用程式中保存 `access_token` 和 `refresh_token` 時，**錯誤時也必須保存**（更新後的值）
+
+#### 實作建議
+
+**Token 到期時間計算：**
+1. **首次授權時**：
+   - 記錄 `createdAt`（Connection 建立時間）
+   - 如果 Next Engine API 回傳 `access_token_end_date` 和 `refresh_token_end_date`，記錄原始值
+   - 如果回傳值不完整或格式不正確，使用 `createdAt + 1 天` 作為 `access_token` 到期時間，`createdAt + 3 天` 作為 `refresh_token` 到期時間
+
+2. **Token 更新時**：
+   - 記錄 `updatedAt`（Connection 更新時間）
+   - 如果 Next Engine API 回傳新的 `access_token_end_date` 和 `refresh_token_end_date`，記錄原始值
+   - 如果回傳值不完整或格式不正確，使用 `updatedAt + 1 天` 作為 `access_token` 到期時間，`updatedAt + 3 天` 作為 `refresh_token` 到期時間
+
+3. **完整記錄 Response**：
+   - **開發階段**：完整記錄 Next Engine API 的原始 response，包括所有欄位
+   - 記錄位置：`authPayload.rawResponse` 或 `auditLog.metadata.raw`
+   - 目的：方便後續追查和除錯，確認 Next Engine 實際回傳的格式
+   - **Production 階段**：視需要移除不必要的 log 機制
+
+### 3.4 重要注意事項
 
 1. **不對 Next Engine 丟 state**
    - Next Engine 授權 URL 只接受 `client_id` 和 `redirect_uri`

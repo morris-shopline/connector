@@ -11,7 +11,7 @@
 1. Story 5.1：導入 Next Engine OAuth Flow 與 Platform Adapter，完成授權 / refresh / 錯誤碼映射。
 2. Story 5.2：將 Next Engine 資料寫入 Connection 模型，提供店舖與訂單資料讀取 API。
 3. Story 5.3：前端整合 Next Engine 平台，完成多平台切換、重新授權 UX 與錯誤提示。
-4. Story 5.3.5：修正 Webhook、Event、API 測試頁面，讓它們能夠配合多平台運作，並實作 Next Engine API 測試功能。
+4. Story 5.3.1：修正 Webhook、Event、API 測試頁面，讓它們能夠配合多平台運作，並實作 Next Engine API 測試功能。
 
 ---
 
@@ -22,8 +22,8 @@
 | [Story 5.1: Next Engine OAuth Flow 與 Platform Adapter](../backlog/stories/story-5-1-next-engine-oauth.md) | ✅ completed | 後端實作完成，已通過自動化測試 | 
 | [Story 5.2: Next Engine Connection Item 與資料讀取 MVP](../backlog/stories/story-5-2-next-engine-connection-data.md) | ✅ completed | 後端 API 完成，已通過自動化測試 |
 | [Story 5.3: 前端 Connection UX 延伸與重新授權整合](../backlog/stories/story-5-3-next-engine-ux.md) | ✅ completed | 前端整合完成，User Test 通過 |
-| [Story 5.3.5: 多平台測試頁面整合](../backlog/stories/story-5-3-5-multi-platform-test-pages.md) | 🛠 planning | 修正 Webhook、Event、API 測試頁面，支援多平台運作 |
-| [Story 5.4: Shopline Platform Adapter 重構](../backlog/stories/story-5-4-shopline-adapter-refactor.md) | ⚪ 待前置 | 待 5.1～5.3.5 完成並通過 User Test 後啟動 |
+| [Story 5.3.1: 多平台測試頁面整合](../backlog/stories/story-5-3-1-multi-platform-test-pages.md) | 🛠 planning | 修正 Webhook、Event、API 測試頁面，支援多平台運作 |
+| [Story 5.4: Shopline Platform Adapter 重構](../backlog/stories/story-5-4-shopline-adapter-refactor.md) | ⚪ 待前置 | 待 5.1～5.3.1 完成並通過 User Test 後啟動 |
 | [Story 5.5: Next Engine 庫存與倉庫 API 補強](../backlog/stories/story-5-5-next-engine-inventory-apis.md) | ⚪ 待前置 | 待 5.1～5.3 確認穩定後、視情況啟動 |
 
 ---

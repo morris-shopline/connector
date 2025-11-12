@@ -868,14 +868,33 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
       const displayName = identityResult.success ? identityResult.data.name : `Next Engine (${uid.substring(0, 8)}...)`
 
       // 準備 authPayload（儲存為 JSON 字串）
+      // 注意：如果 Next Engine 回傳的 expiresAt 不完整，我們需要根據首次授權時間（現在）計算
+      // access_token 有效期限：1 天（從首次授權時間開始計算）
+      // refresh_token 有效期限：3 天（從首次授權時間開始計算）
+      const now = new Date()
+      const accessTokenExpiresAt = tokenData.expiresAt || new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString() // +1 天
+      const refreshTokenExpiresAt = tokenData.refreshExpiresAt || new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString() // +3 天
+      
       const authPayload = {
         accessToken: tokenData.accessToken,
         refreshToken: tokenData.refreshToken,
-        expiresAt: tokenData.expiresAt,
-        refreshExpiresAt: tokenData.refreshExpiresAt,
+        expiresAt: accessTokenExpiresAt,
+        refreshExpiresAt: refreshTokenExpiresAt,
         uid: uid,
         state: state,
+        // 保留原始 response 以便追查（開發階段）
+        rawResponse: tokenData.rawResponse || null,
+        // 記錄首次授權時間（用於計算到期時間）
+        firstAuthorizedAt: now.toISOString(),
       }
+      
+      // 完整記錄 token 資訊（開發階段，方便追查）
+      fastify.log.info('Next Engine token data:', {
+        expiresAt: accessTokenExpiresAt,
+        refreshExpiresAt: refreshTokenExpiresAt,
+        rawResponse: tokenData.rawResponse,
+        firstAuthorizedAt: now.toISOString(),
+      })
 
       const connection = await connectionRepository.upsertConnection({
         userId,
