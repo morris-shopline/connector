@@ -956,16 +956,24 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         state = encryptState(`${userId}:${nonce}`)
       }
 
-      // Next Engine 會自己生成 state，我們無法自訂
-      // 授權 URL 只接受 client_id 和 redirect_uri，不接受 state 參數
-      // 用戶識別應該使用 session cookie（已在 authMiddleware 中處理）
-      // 參考：ne-test 專案的實作方式
+      // 前後端分離架構：OAuth callback 時 session cookie 無法跨域傳遞
+      // 解決方案：在 redirect_uri 中加入我們的 state 參數（Next Engine 會保留它）
+      // 這樣在 callback 時可以從 redirect_uri 參數中解析出我們的 state 來識別用戶
+      
+      // 將 state 和 userId 的對應關係存入 Redis（作為備用識別方式）
+      const { getRedisClient } = await import('../utils/redis')
+      const redis = getRedisClient()
+      if (redis) {
+        const redisKey = `oauth:next-engine:state:${state}`
+        await redis.setex(redisKey, 600, userId) // 10 分鐘過期
+        fastify.log.info({ msg: '✅ 已在 Redis 暫存 state 和 userId 對應關係', userId, state })
+      }
       
       // 取得 Next Engine Adapter
       PlatformServiceFactory.initialize() // 確保 adapter 已註冊
       const adapter = PlatformServiceFactory.getAdapter('next-engine')
 
-      // 生成授權 URL（不包含 state，Next Engine 會自己生成）
+      // 生成授權 URL（在 redirect_uri 中加入我們的 state 參數）
       const authUrl = adapter.getAuthorizeUrl(state)
 
       return reply.send({
