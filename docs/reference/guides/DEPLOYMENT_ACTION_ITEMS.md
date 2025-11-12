@@ -6,6 +6,23 @@
 
 ## ⚠️ 必須手動完成（部署前）
 
+### 0. 檢查 Redis 設定（重要！）
+
+**如果遇到 "Unable to identify user" 錯誤，優先檢查 Redis**：
+
+前往 [Render Dashboard](https://dashboard.render.com/) → **connector** 專案 → **Environment**
+
+**確認 `REDIS_URL` 環境變數**：
+```
+變數名稱：REDIS_URL
+變數值：redis://red-d406i56uk2gs739qn8ig:6379
+```
+
+⚠️ **重要**：
+- 必須使用 **Internal URL**（`redis://` 開頭，不需要密碼）
+- 不要使用 External URL（`rediss://` 開頭，那是給地端開發用的）
+- 詳細排除步驟見：`docs/reference/guides/NEXT_ENGINE_REDIS_TROUBLESHOOTING.md`
+
 ### 1. Render（後端）環境變數設定
 
 前往 [Render Dashboard](https://dashboard.render.com/) → **connector** 專案 → **Environment**
