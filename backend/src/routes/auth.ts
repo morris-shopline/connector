@@ -1077,7 +1077,7 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
             }
           }
         } else {
-          fastify.log.warn('⚠️ State 解密失敗，可能 Next Engine 生成了自己的 state')
+          fastify.log.warn('⚠️ State 解密失敗，state 格式不符合預期')
         }
       }
 
@@ -1090,7 +1090,7 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         return reply.status(401).send({
           success: false,
           error: 'Unable to identify user',
-          details: '無法從 state 或 Redis 取得使用者資訊。請確認 Redis 已正確設定，或 Next Engine 是否保留我們傳入的 state 參數。'
+          details: '無法從 Redis 或 state 解密取得使用者資訊。請確認 Redis 已正確設定並連線。'
         })
       }
 
