@@ -1096,14 +1096,14 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
 
       if (!userId) {
         fastify.log.error('❌ 無法取得使用者 ID', {
-          state,
-          redisAvailable: !!redis,
-          stateDecryptable: state.includes(':'),
+          ourState: ourState ? 'present' : 'missing',
+          neState: neState ? 'present' : 'missing',
+          redirectUri: redirectUri ? 'present' : 'missing',
         })
         return reply.status(401).send({
           success: false,
           error: 'Unable to identify user',
-          details: '無法從 Redis 或 state 解密取得使用者資訊。請確認 Redis 已正確設定並連線。'
+          details: '無法從 redirect_uri 中的 state 參數取得使用者資訊。請確認授權流程正確執行。'
         })
       }
 
