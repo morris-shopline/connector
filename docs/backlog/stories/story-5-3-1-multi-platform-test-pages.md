@@ -52,13 +52,22 @@
 #### 3. API 測試頁面修正與 Next Engine API 實作
 - 將「商店選擇」改為「連線選擇」，跟隨 `useConnectionStore` 的 `selectedConnectionId`
 - 根據 `selectedConnection.platform` 動態調整 API 端點和邏輯
-- **實作 Next Engine API 測試功能**：
-  - 取得 Connection Items（`GET /api/connections/:id/items`）
-  - 取得訂單摘要（`GET /api/connections/:id/orders/summary`）
-  - 取得公司資訊（透過 `getIdentity`，可新增後端 API 或直接使用現有邏輯）
-  - 取得店舖列表（透過 `getShops`，可新增後端 API 或直接使用現有邏輯）
+- **實作 Next Engine API 測試功能**（對應 Story 5.2 的 API 操作摘要）：
+  - **取得店舖列表**：`POST https://api.next-engine.org/api_v1_master_shop/search`
+    - 參數：`access_token`, `fields=shop_id,shop_name,...`
+    - 用途：查詢 Next Engine 店舖清單
+  - **建立店舖**：`POST https://api.next-engine.org/api_v1_master_shop/create`
+    - 參數：`access_token`, `data=<XML>`, `wait_flag=1`
+    - 用途：建立新的 Next Engine 店舖
+  - **建立商品**：`POST https://api.next-engine.org/api_v1_master_goods/upload`
+    - 參數：`access_token`, `data_type=csv`, `data=<CSV>`, `wait_flag=1`
+    - 用途：上傳 CSV 格式的商品資料
+  - **查詢商品**：`POST https://api.next-engine.org/api_v1_master_goods/search`
+    - 參數：`access_token`, `fields=goods_id,goods_name,...`, `goods_id-eq`
+    - 用途：查詢 Next Engine 商品資料
 - 當 platform 為 `next-engine` 時，顯示 Next Engine 專屬的 API 測試選項
 - 當 platform 為 `shopline` 時，保持現有的 Shopline API 測試功能
+- **注意**：這些 API 測試功能需要透過後端代理呼叫 Next Engine API（使用 Connection 的 `accessToken`）
 
 ### ❌ 不包含
 
@@ -107,29 +116,39 @@
 
 ### 4. Next Engine API 測試實作
 
-**需要實作的 API 測試**：
-1. **取得 Connection Items**
-   - 端點：`GET /api/connections/:id/items`
-   - 用途：顯示 Next Engine 店舖列表
+**需要實作的 API 測試**（對應 Story 5.2 的 API 操作摘要）：
 
-2. **取得訂單摘要**
-   - 端點：`GET /api/connections/:id/orders/summary`
-   - 用途：顯示訂單總數和最近更新時間
+1. **取得店舖列表**
+   - Next Engine API：`POST https://api.next-engine.org/api_v1_master_shop/search`
+   - 參數：`access_token`, `fields=shop_id,shop_name,shop_abbreviated_name,shop_note`
+   - 實作方式：透過後端代理 API（例如 `POST /api/connections/:id/test/shops/search`）
+   - 用途：查詢 Next Engine 店舖清單
 
-3. **取得公司資訊**（可選，視後端 API 是否已實作）
-   - 端點：可新增 `GET /api/connections/:id/identity` 或使用現有邏輯
-   - 用途：顯示公司名稱和 ID
+2. **建立店舖**
+   - Next Engine API：`POST https://api.next-engine.org/api_v1_master_shop/create`
+   - 參數：`access_token`, `data=<XML>`, `wait_flag=1`
+   - 實作方式：透過後端代理 API（例如 `POST /api/connections/:id/test/shops/create`）
+   - 用途：建立新的 Next Engine 店舖（測試用）
+   - 注意：需要提供 XML 格式的店舖資料範本
 
-4. **取得店舖列表**（可選，視後端 API 是否已實作）
-   - 端點：可新增 `GET /api/connections/:id/shops` 或使用現有邏輯
-   - 用途：顯示詳細店舖資訊
+3. **建立商品**
+   - Next Engine API：`POST https://api.next-engine.org/api_v1_master_goods/upload`
+   - 參數：`access_token`, `data_type=csv`, `data=<CSV>`, `wait_flag=1`
+   - 實作方式：透過後端代理 API（例如 `POST /api/connections/:id/test/goods/upload`）
+   - 用途：上傳 CSV 格式的商品資料（測試用）
+   - 注意：需要提供 CSV 格式的商品資料範本
 
-**空態設計**：
-- 當 platform 為 `next-engine` 且沒有明確的 API 定義時，顯示空態
-- 空態應包含：
-  - 基本架構（標題、說明）
-  - 提示訊息：「Next Engine API 測試功能開發中」
-  - 保留未來擴充的空間
+4. **查詢商品**
+   - Next Engine API：`POST https://api.next-engine.org/api_v1_master_goods/search`
+   - 參數：`access_token`, `fields=goods_id,goods_name,...`, `goods_id-eq`（可選）
+   - 實作方式：透過後端代理 API（例如 `POST /api/connections/:id/test/goods/search`）
+   - 用途：查詢 Next Engine 商品資料
+
+**實作要點**：
+- 所有 Next Engine API 呼叫都需要透過後端代理（使用 Connection 的 `accessToken`）
+- 後端需要新增對應的代理 API 端點（例如 `/api/connections/:id/test/*`）
+- 前端 API 測試頁面提供 UI 讓使用者輸入參數並查看結果
+- 參考 Story 5.2 的 API 操作摘要和 `NEXTENGINE_API_REFERENCE.md` 的格式要求
 
 ---
 
@@ -152,11 +171,12 @@
 #### API 測試頁面
 - [ ] 頁面跟隨 `useConnectionStore` 的 `selectedConnectionId`
 - [ ] 當 platform 為 `next-engine` 時，顯示 Next Engine API 測試選項
-- [ ] Next Engine API 測試功能實作完成：
-  - [ ] 取得 Connection Items
-  - [ ] 取得訂單摘要
-  - [ ] 取得公司資訊（如已實作）
-  - [ ] 取得店舖列表（如已實作）
+- [ ] Next Engine API 測試功能實作完成（對應 Story 5.2 的 4 個 API）：
+  - [ ] 取得店舖列表（`api_v1_master_shop/search`）
+  - [ ] 建立店舖（`api_v1_master_shop/create`）
+  - [ ] 建立商品（`api_v1_master_goods/upload`）
+  - [ ] 查詢商品（`api_v1_master_goods/search`）
+- [ ] 後端代理 API 端點實作完成（透過 Connection 的 `accessToken` 呼叫 Next Engine API）
 - [ ] 當 platform 為 `shopline` 時，保持現有的 Shopline API 測試功能
 
 ### User Test
