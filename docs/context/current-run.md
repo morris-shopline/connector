@@ -2,8 +2,9 @@
 
 **Run ID**: run-2025-11-12-02  
 **Run 類型**: Feature Development (Epic 5)  
-**狀態**: 🟢 in-progress  
+**狀態**: ✅ ready-for-review  
 **開始時間**: 2025-11-12  
+**完成時間**: 2025-11-12（晚間）  
 
 ---
 
@@ -337,7 +338,10 @@
 - ✅ 將三個頁面的「商店選擇」改為「連線選擇」
 - ✅ 讓這些頁面跟隨 `useConnectionStore` 的 `selectedConnectionId`
 - ✅ ContextBar 自動同步顯示當前選取的連線
-- ⏳ 根據 `selectedConnection.platform` 動態調整 API 端點和邏輯（Next Engine API 測試功能待實作）
+- ✅ 根據 `selectedConnection.platform` 動態調整 API 端點和邏輯（Next Engine API 測試功能已完成）
+- ✅ 統一 API 呼叫架構（使用 apiClient，與 Shopline 一致）
+- ✅ 統一 URL 處理（使用 getBackendUrl）
+- ✅ 修復 CORS 問題（加強後端 CORS 設定）
 
 #### 2. Token 到期時間顯示問題
 **問題描述**：
