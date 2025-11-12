@@ -1023,41 +1023,74 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
       const { getRedisClient } = await import('../utils/redis')
       const redis = getRedisClient()
 
+      // 記錄除錯資訊
+      fastify.log.info('🔍 Next Engine callback 除錯資訊:', {
+        state,
+        stateLength: state.length,
+        stateFormat: state.includes(':') ? 'encrypted' : 'plain',
+        hasRedis: !!redis,
+      })
+
       if (redis) {
-        const redisKey = `oauth:next-engine:state:${state}`
-        const cachedUserId = await redis.get(redisKey)
-        if (cachedUserId) {
-          userId = cachedUserId
-          await redis.del(redisKey) // 一次性使用
-          fastify.log.info('✅ 從 Redis 取得使用者 ID:', userId)
+        try {
+          const redisKey = `oauth:next-engine:state:${state}`
+          const cachedUserId = await redis.get(redisKey)
+          fastify.log.info('🔍 Redis 查詢結果:', {
+            redisKey,
+            cachedUserId: cachedUserId ? 'found' : 'not found',
+          })
+          if (cachedUserId) {
+            userId = cachedUserId
+            await redis.del(redisKey) // 一次性使用
+            fastify.log.info('✅ 從 Redis 取得使用者 ID:', userId)
+          }
+        } catch (redisError: any) {
+          fastify.log.error('❌ Redis 查詢錯誤:', redisError.message)
         }
+      } else {
+        fastify.log.warn('⚠️ Redis 客戶端不可用，嘗試解密 state')
       }
 
       // 如果 Redis 沒有，嘗試解密 state
       if (!userId) {
         const { decryptState } = await import('../utils/state')
         const decrypted = decryptState(state)
+        fastify.log.info('🔍 State 解密結果:', {
+          decrypted: decrypted ? 'success' : 'failed',
+          decryptedLength: decrypted?.length || 0,
+        })
         if (decrypted) {
           // 格式可能是 "sessionId" 或 "userId:nonce"
           const parts = decrypted.split(':')
           if (parts.length === 2) {
             userId = parts[0]
+            fastify.log.info('✅ 從解密 state 取得 userId (格式: userId:nonce):', userId)
           } else {
             // 嘗試從 session 取得 userId
             const { getSession } = await import('../utils/session')
             const session = await getSession(decrypted)
             if (session) {
               userId = session.userId
+              fastify.log.info('✅ 從 session 取得 userId:', userId)
+            } else {
+              fastify.log.warn('⚠️ 無法從 session 取得 userId，sessionId:', decrypted)
             }
           }
+        } else {
+          fastify.log.warn('⚠️ State 解密失敗，可能 Next Engine 生成了自己的 state')
         }
       }
 
       if (!userId) {
-        fastify.log.error('❌ 無法取得使用者 ID')
+        fastify.log.error('❌ 無法取得使用者 ID', {
+          state,
+          redisAvailable: !!redis,
+          stateDecryptable: state.includes(':'),
+        })
         return reply.status(401).send({
           success: false,
-          error: 'Unable to identify user'
+          error: 'Unable to identify user',
+          details: '無法從 state 或 Redis 取得使用者資訊。請確認 Redis 已正確設定，或 Next Engine 是否保留我們傳入的 state 參數。'
         })
       }
 
