@@ -75,10 +75,20 @@ docs/backlog/index.md
 
 ## 🚨 核心原則（必須遵守）
 
-1. **Story 自包含**：Story 文件包含所有開發所需資訊，開發時不需要再查閱 memory/
-2. **記憶優先**：重要決策、架構改變必須記錄到 `memory/decisions/` 或 `memory/architecture/`
-3. **Run 完成標準**：完成所有 Agent 可測試項目，列出 User Test 步驟，告知無法自動測試的項目
-4. **🚨 文件位置規範（嚴格禁止違反）**：
+1. **🚨 Story 文件是唯一權威來源（絕對禁止違反）**：
+   - **開發前必須仔細閱讀 Story 文件**，特別是「技術重點與實作要點」和「API 操作摘要」區段
+   - **嚴格按照 Story 文件中的 API 操作摘要、參數列表、端點格式實作**
+   - **禁止憑經驗或參考其他平台的實作方式**，每個平台都有自己的 API 規範
+   - **禁止假設外部平台會配合我們的架構**，必須遵守外部平台的 API 規範
+   - **如果 Story 文件中的 API 操作摘要沒有列出某個參數，就不要加入該參數**
+   - **如果 Story 文件中的 API 操作摘要明確列出參數，就必須使用這些參數**
+   - **實作前必須確認**：Story 文件中的 API 規範、參考文件（如 `NEXTENGINE_API_REFERENCE.md`）是否一致
+   - **違反此規範會導致實作不符合外部平台規範，造成無法運作的後果，請務必遵守！**
+
+2. **Story 自包含**：Story 文件包含所有開發所需資訊，開發時不需要再查閱 memory/
+3. **記憶優先**：重要決策、架構改變必須記錄到 `memory/decisions/` 或 `memory/architecture/`
+4. **Run 完成標準**：完成所有 Agent 可測試項目，列出 User Test 步驟，告知無法自動測試的項目
+5. **🚨 文件位置規範（嚴格禁止違反）**：
    - **絕對禁止**在 `docs/` root 層級創建任何文件
    - 所有文件必須放在對應的目錄下：
      - 討論留底 → `archive/discussions/`
@@ -172,4 +182,56 @@ docs/backlog/index.md
 
 ---
 
-**最後更新**: 2025-11-11
+---
+
+## 🚨 開發流程強制規範（2025-11-12 新增）
+
+### 開發前必做檢查清單
+
+在開始實作任何 Story 之前，**必須完成以下檢查**：
+
+1. **仔細閱讀 Story 文件**：
+   - [ ] 閱讀 Story 文件的「技術重點與實作要點」區段
+   - [ ] 閱讀 Story 文件的「API 操作摘要」區段（如果有的話）
+   - [ ] 閱讀 Story 文件引用的參考文件（如 `NEXTENGINE_API_REFERENCE.md`）
+   - [ ] 確認 API 端點、方法、必填參數都已理解
+
+2. **確認 API 規範**：
+   - [ ] Story 文件中的 API 操作摘要是否明確列出參數？
+   - [ ] 參考文件中的 API 規範是否與 Story 文件一致？
+   - [ ] **如果 Story 文件沒有列出某個參數，就不要加入該參數**
+   - [ ] **如果 Story 文件明確列出參數，就必須使用這些參數**
+
+3. **禁止事項**：
+   - [ ] **禁止參考其他平台的實作方式**（例如：Shopline 支援 state，不代表 Next Engine 也支援）
+   - [ ] **禁止假設外部平台會配合我們的架構**
+   - [ ] **禁止憑經驗或 OAuth 2.0 標準假設外部平台的行為**
+   - [ ] **禁止在 Story 文件沒有明確說明的情況下，自行加入參數或修改 API 格式**
+
+### 實作範例
+
+**❌ 錯誤做法**：
+```typescript
+// 錯誤：Story 文件明確顯示授權 URL 只支援 client_id 和 redirect_uri
+// 但我參考 Shopline 的實作，加入了 state 參數
+const params = new URLSearchParams({
+  client_id: this.clientId,
+  redirect_uri: this.redirectUri,
+  state: state,  // ❌ Story 文件沒有列出這個參數！
+})
+```
+
+**✅ 正確做法**：
+```typescript
+// 正確：嚴格按照 Story 文件的 API 操作摘要實作
+// Story 文件第 63 行明確列出：必填參數只有 client_id 和 redirect_uri
+const params = new URLSearchParams({
+  client_id: this.clientId,
+  redirect_uri: this.redirectUri,
+  // ✅ 不加入 state，因為 Story 文件沒有列出
+})
+```
+
+---
+
+**最後更新**: 2025-11-12
