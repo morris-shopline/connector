@@ -1,9 +1,10 @@
 # Story 5.5: Next Engine 商品建立改進與庫存 API 補強
 
 **所屬 Epic**: [Epic 5: Next Engine 多平台 MVP（Phase 1.3）](../epics/epic-5-next-engine-mvp.md)  
-**狀態**: 🔴 in-dev  
+**狀態**: ✅ completed  
 **對應 Roadmap**: Phase 1.3（多平台 MVP）  
-**預估工期**: 2-3 個工作天（包含前端整合）
+**預估工期**: 2-3 個工作天（包含前端整合）  
+**實際完成時間**: 2025-11-13（地端測試通過 + 正式機測試通過）
 
 ---
 
@@ -153,65 +154,84 @@
 ### Agent 自動化 / 測試
 
 #### Phase 1: 改進商品建立 API
-- [ ] 建立商品 API 支援動態產生測試資料（無需提供 CSV）
-- [ ] 保留原有功能：提供完整 CSV 時仍可使用
-- [ ] 前端 API 客戶端支援動態參數模式
-- [ ] 前端 API 配置正確顯示動態參數輸入選項
-- [ ] 前端測試頁面可正確處理動態參數模式
-- [ ] 測試腳本驗證兩種模式（動態產生 vs 手動提供）
+- [x] 建立商品 API 支援動態產生測試資料（無需提供 CSV）✅
+- [x] 保留原有功能：提供完整 CSV 時仍可使用✅
+- [x] 前端 API 客戶端支援動態參數模式✅
+- [x] 前端 API 配置正確顯示動態參數輸入選項✅
+- [x] 前端測試頁面可正確處理動態參數模式✅
+- [x] 測試腳本驗證兩種模式（動態產生 vs 手動提供）✅
 
 #### Phase 2: 庫存與倉庫 API
-- [ ] 查詢主倉庫存 API 可正確查詢庫存資訊
-- [ ] 查詢分倉庫存 API 支援 `warehouseKey`（預設 `default` → `基本拠点`）與 `productCode`
-- [ ] 查詢倉庫列表 API 回傳 `warehouse_id` 與 `warehouse_name`，並於後端快取映射
-- [ ] 更新庫存 API 可正確計算差異並更新（先查詢 → 計算 → 上傳），回應中帶回 `warehouseKey` 與對應的 `warehouseName`
-- [ ] 前端 API 客戶端方法可正確呼叫後端 API，並自動處理 `warehouseKey` → 倉庫名稱的對照
-- [ ] 前端 API 配置正確顯示在 admin-api-test 頁面，並對 `warehouseKey` 欄位提供預設 `default`
-- [ ] 前端測試頁面可正確處理庫存相關 API 呼叫，並顯示倉庫列表讓使用者複製 `warehouse_id`
-- [ ] 測試腳本驗證所有庫存相關 API 的成功與錯誤情境（含 `warehouseKey` 不存在時的錯誤訊息）
-- [ ] 審計或 log 記錄所有操作（含 `warehouseKey` / `warehouseName`）供除錯追蹤
+- [x] 查詢主倉庫存 API 可正確查詢庫存資訊✅
+- [x] 查詢分倉庫存 API 支援 `warehouseKey`（預設 `default` → `基本拠点`）與 `productCode`✅
+- [x] 查詢倉庫列表 API 回傳 `warehouse_id` 與 `warehouse_name`，並於後端快取映射✅
+- [x] 更新庫存 API 可正確計算差異並更新（先查詢 → 計算 → 上傳），回應中帶回 `warehouseKey` 與對應的 `warehouseName`✅
+- [x] 前端 API 客戶端方法可正確呼叫後端 API，並自動處理 `warehouseKey` → 倉庫名稱的對照✅
+- [x] 前端 API 配置正確顯示在 admin-api-test 頁面，並對 `warehouseKey` 欄位提供預設 `default`✅
+- [x] 前端測試頁面可正確處理庫存相關 API 呼叫，並顯示倉庫列表讓使用者複製 `warehouse_id`✅
+- [x] 測試腳本驗證所有庫存相關 API 的成功與錯誤情境（含 `warehouseKey` 不存在時的錯誤訊息）✅
+- [x] 審計或 log 記錄所有操作（含 `warehouseKey` / `warehouseName`）供除錯追蹤✅
 
 ### User Test
 
 #### 便利性測試
-- [ ] Admin 在 admin-api-test 頁面選擇 Next Engine Connection
-- [ ] Admin 可以**不提供任何參數**建立測試商品，系統自動產生 CSV
-- [ ] Admin 可以**只提供部分參數**（如 `productName`）建立商品，系統自動補齊其他欄位
-- [ ] Admin 確認「庫存」群組顯示四個 API 功能（查詢主倉、查詢分倉、查詢倉庫列表、更新庫存）
-- [ ] Admin 可在表單上看到 `warehouseKey` 欄位提示（預設輸入 `default`），並能從倉庫列表結果複製 `warehouse_id`
+- [x] Admin 在 admin-api-test 頁面選擇 Next Engine Connection✅
+- [x] Admin 可以**不提供任何參數**建立測試商品，系統自動產生 CSV✅
+- [x] Admin 可以**只提供部分參數**（如 `productName`）建立商品，系統自動補齊其他欄位✅
+- [x] Admin 確認「庫存」群組顯示四個 API 功能（查詢主倉、查詢分倉、查詢倉庫列表、更新庫存）✅
+- [x] Admin 可在表單上看到 `warehouseKey` 欄位提示（預設輸入 `default`），並能從倉庫列表結果複製 `warehouse_id`✅
 
 #### 功能測試
-- [ ] Human 在 admin-api-test 頁面測試動態建立商品功能
-- [ ] Human 確認在 Next Engine 後台可看到動態建立的商品
-- [ ] Human 在 admin-api-test 頁面測試庫存查詢 API（主倉、分倉、倉庫列表）
-- [ ] Human 確認庫存查詢 API 可正確查詢庫存資訊
-- [ ] Human 在 admin-api-test 頁面測試更新庫存功能
-- [ ] Human 確認庫存更新可在 Next Engine 後台看到對應的變化
-- [ ] Human 驗證使用 `default` 與指定 `warehouseKey` 均能成功更新，審計 log 含倉庫資訊
-- [ ] **User Test 通過後推上正式站**
+- [x] Human 在 admin-api-test 頁面測試動態建立商品功能✅
+- [x] Human 確認在 Next Engine 後台可看到動態建立的商品✅
+- [x] Human 在 admin-api-test 頁面測試庫存查詢 API（主倉、分倉、倉庫列表）✅
+- [x] Human 確認庫存查詢 API 可正確查詢庫存資訊✅
+- [x] Human 在 admin-api-test 頁面測試更新庫存功能✅
+- [x] Human 確認庫存更新可在 Next Engine 後台看到對應的變化✅
+- [x] Human 驗證使用 `default` 與指定 `warehouseKey` 均能成功更新，審計 log 含倉庫資訊✅
+- [x] **User Test 通過後推上正式站**✅ **正式機測試通過**✅
 
 ---
 
 ## 交付與文件更新
 
 ### 程式碼交付
-- [ ] `NextEngineAdapter` 新增庫存相關方法
-- [ ] `backend/src/routes/api.ts` 新增庫存與倉庫 API 路由
-- [ ] `frontend/lib/api.ts` 更新商品建立 API 並新增庫存 API 客戶端方法
-- [ ] `frontend/content/platforms/api-configs.ts` 更新商品建立配置並新增 inventory 群組配置
-- [ ] `frontend/pages/admin-api-test.tsx` 整合商品建立改進與庫存 API 處理邏輯
-- [ ] 測試腳本 `backend/scripts/test-next-engine-apis.ts`
+- [x] `NextEngineAdapter` 新增庫存相關方法✅
+- [x] `backend/src/routes/api.ts` 新增庫存與倉庫 API 路由✅
+- [x] `frontend/lib/api.ts` 更新商品建立 API 並新增庫存 API 客戶端方法✅
+- [x] `frontend/content/platforms/api-configs.ts` 更新商品建立配置並新增 inventory 群組配置✅
+- [x] `frontend/pages/admin-api-test.tsx` 整合商品建立改進與庫存 API 處理邏輯✅
+- [x] 測試腳本 `backend/scripts/test-next-engine-apis.ts`✅
 
 ### 文件更新
-- [ ] 更新 `NEXT_ENGINE_PLATFORM_SPEC.md`：
-  - 補充商品動態資料產生邏輯說明
-  - 補充庫存與倉庫 API 規格
-- [ ] 更新 `NE-OVERVIEW.md`：
-  - 補充商品建立與庫存 API 測試操作步驟
-  - 補充商品動態資料產生使用範例
-  - 補充庫存更新流程說明
-- [ ] 更新 `NEXTENGINE_API_REFERENCE.md`：
-  - 補充商品動態資料產生參數說明
+- [x] 更新 `NEXT_ENGINE_PLATFORM_SPEC.md`：✅
+  - 補充商品動態資料產生邏輯說明✅
+  - 補充庫存與倉庫 API 規格✅
+- [x] 更新 `NE-OVERVIEW.md`：✅
+  - 補充商品建立與庫存 API 測試操作步驟✅
+  - 補充商品動態資料產生使用範例✅
+  - 補充庫存更新流程說明✅
+- [x] 更新 `NEXTENGINE_API_REFERENCE.md`：✅
+  - 補充商品動態資料產生參數說明✅
+  - 補充完整的官方 CSV 格式規格與欄位說明✅
+
+---
+
+## Story 完成總結
+
+**完成日期**: 2025-11-13  
+**測試狀態**: ✅ 地端測試通過 + ✅ 正式機測試通過
+
+### 關鍵修正
+1. **CSV 格式修正**：使用官方英文欄位名稱（`kyoten_mei`, `syohin_code`, `kasan_su`, `gensan_su`, `kyoten_syohin_sakujyo`, `nyusyukko_riyu`）
+2. **佇列狀態處理**：`que_status_id = -1` 時返回 `success: true`（API 呼叫成功，但佇列處理失敗）
+3. **錯誤處理改進**：從多個欄位提取錯誤訊息，記錄完整錯誤資訊
+4. **佇列查詢增強**：返回完整欄位資訊（`que_method_name`, `que_upload_name`, `que_file_name`, `que_message`）
+
+### 測試結果
+- ✅ 地端測試：所有功能正常運作
+- ✅ 正式機測試：所有功能正常運作
+- ✅ User Test：通過
 
 ---
 

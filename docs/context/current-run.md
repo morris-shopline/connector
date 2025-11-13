@@ -2,10 +2,11 @@
 
 **Run ID**: run-2025-11-13-01  
 **Run 類型**: Refactor + Bug Fix + Feature Development (Epic 5)  
-**狀態**: 🔴 in-dev（Story 5.5 開發中）  
+**狀態**: 🟡 in-progress（Story 5.5 已完成，Story 5.6 待啟動）  
 **開始時間**: 2025-11-13  
 **達到 ready-for-acceptance 時間**: 2025-11-13  
 **開始驗收時間**: 2025-11-13（推上正式站）  
+**Story 5.5 完成時間**: 2025-11-13（地端 + 正式機測試通過）  
 
 ---
 
@@ -25,8 +26,8 @@
 |------|------|------|
 | [Story 5.4: Shopline Platform Adapter 重構](../backlog/stories/story-5-4-shopline-adapter-refactor.md) | ✅ completed | ✅ User Test 完成，Story 已關閉 |
 | [Issue 2025-11-11-001: 停用 Connection Item 時出現 Network Error](../backlog/issues/issue-2025-11-11-001-disable-connection-item-network-error.md) | ⏸ pending | ⏸ 不在此 run 處理，待之後適當時機處理 |
-| [Story 5.5: Next Engine 商品建立改進與庫存 API 補強](../backlog/stories/story-5-5-next-engine-inventory-apis.md) | 🔴 in-dev | 🔴 開發中 |
-| [Story 5.6: Next Engine 訂單 API 補強](../backlog/stories/story-5-6-next-engine-order-apis.md) | ⏸ pending | ⏳ 待 Story 5.5 完成後啟動 |
+| [Story 5.5: Next Engine 商品建立改進與庫存 API 補強](../backlog/stories/story-5-5-next-engine-inventory-apis.md) | ✅ completed | ✅ 地端測試通過 + 正式機測試通過，Story 已結案 |
+| [Story 5.6: Next Engine 訂單 API 補強](../backlog/stories/story-5-6-next-engine-order-apis.md) | ⏸ pending | ⏳ 待下週繼續開發 |
 | [Story 5.7: Next Engine 店舖建立改進與在庫連携接收端點](../backlog/stories/story-5-7-next-engine-shop-creation-and-stock-webhook.md) | ⏸ pending | ⏳ 待 Story 5.6 完成後啟動 |
 
 ---
@@ -147,26 +148,37 @@
 
 ---
 
-### 階段 3：Story 5.5 - Next Engine 商品建立改進與庫存 API 補強（🔴 開發中）
+### 階段 3：Story 5.5 - Next Engine 商品建立改進與庫存 API 補強（✅ 已完成）
 
 **目標**：改進商品建立 API 並補強庫存與倉庫相關 API
 
-**狀態**：🔴 **開發中**
+**狀態**：✅ **已完成**（地端測試通過 + 正式機測試通過）
+
+**完成時間**：2025-11-13
 
 **前置條件**：
 - ✅ Story 5.1～5.3 已完成並通過 User Test
 - ✅ Story 文件已更新完成
 
 **實作重點**：
-1. 改進建立商品 API，支援動態產生測試資料
-2. 實作庫存與倉庫 API（查詢主倉、分倉、倉庫列表、更新庫存）
-3. 在 `NextEngineAdapter` 中新增庫存相關方法
-4. 撰寫測試腳本驗證功能
+1. ✅ 改進建立商品 API，支援動態產生測試資料
+2. ✅ 實作庫存與倉庫 API（查詢主倉、分倉、倉庫列表、更新庫存）
+3. ✅ 在 `NextEngineAdapter` 中新增庫存相關方法
+4. ✅ 撰寫測試腳本驗證功能
+
+**關鍵修正**：
+1. ✅ 修正 CSV 格式：使用官方英文欄位名稱（`kyoten_mei`, `syohin_code`, `kasan_su`, `gensan_su`, `kyoten_syohin_sakujyo`, `nyusyukko_riyu`）
+2. ✅ 修正佇列狀態處理：`que_status_id = -1` 時返回 `success: true`（API 呼叫成功，但佇列處理失敗）
+3. ✅ 改進錯誤處理：從多個欄位提取錯誤訊息，記錄完整錯誤資訊
+4. ✅ 增強佇列查詢：返回完整欄位資訊
 
 **驗收標準**：
-- [ ] 建立商品 API 支援動態產生測試資料
-- [ ] 所有庫存相關 API 可正確運作
-- [ ] User Test 通過後推上正式站
+- [x] 建立商品 API 支援動態產生測試資料✅
+- [x] 所有庫存相關 API 可正確運作✅
+- [x] User Test 通過後推上正式站✅
+- [x] 正式機測試通過✅
+
+**備註**：今天花了比較久時間在修正 CSV 格式和錯誤處理邏輯，但最終成功完成並通過測試。
 
 ---
 
@@ -174,10 +186,10 @@
 
 **目標**：補強 Next Engine 訂單相關 API
 
-**狀態**：⏸ 待 Story 5.5 完成後啟動
+**狀態**：⏸ 待下週繼續開發
 
 **前置條件**：
-- ⏳ Story 5.5 已完成並通過 User Test
+- ✅ Story 5.5 已完成並通過 User Test
 
 **實作重點**：
 1. 實作查詢訂單 base API
