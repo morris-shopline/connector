@@ -27,7 +27,7 @@
 | [Story 5.4: Shopline Platform Adapter 重構](../backlog/stories/story-5-4-shopline-adapter-refactor.md) | ⏳ 待檢視 | ✅ User Test 完成，但需回頭檢視架構是否徹底移除雙軌痕跡 |
 | [Issue 2025-11-11-001: 停用 Connection Item 時出現 Network Error](../backlog/issues/issue-2025-11-11-001-disable-connection-item-network-error.md) | ⏸ pending | ⏸ 不在此 run 處理，待之後適當時機處理 |
 | [Story 5.5: Next Engine 商品建立改進與庫存 API 補強](../backlog/stories/story-5-5-next-engine-inventory-apis.md) | ✅ completed | ✅ 地端測試通過 + 正式機測試通過，Story 已結案 |
-| [Story 5.6: Next Engine 訂單 API 補強](../backlog/stories/story-5-6-next-engine-order-apis.md) | ⏸ pending | ⏳ 待下週繼續開發 |
+| [Story 5.6: Next Engine 訂單 API 補強](../backlog/stories/story-5-6-next-engine-order-apis.md) | 🟡 in-progress | ✅ 查詢相關 API 已完成並測試通過，⏳ 建立訂單待實作 |
 | [Story 5.7: Next Engine 店舖建立改進與在庫連携接收端點](../backlog/stories/story-5-7-next-engine-shop-creation-and-stock-webhook.md) | ⏸ pending | ⏳ 待 Story 5.6 完成後啟動 |
 
 ---
@@ -182,20 +182,31 @@
 
 ---
 
-### 階段 4：Story 5.6 - Next Engine 訂單 API 補強（待啟動）
+### 階段 4：Story 5.6 - Next Engine 訂單 API 補強（🟡 進行中）
 
 **目標**：補強 Next Engine 訂單相關 API
 
-**狀態**：⏸ 待下週繼續開發
+**狀態**：🟡 **進行中** - 查詢相關 API 已完成並測試通過
 
 **前置條件**：
 - ✅ Story 5.5 已完成並通過 User Test
 
-**實作重點**：
-1. 實作查詢訂單 base API
-2. 實作查詢訂單 rows（明細）API
-3. 實作扣庫分析 API
-4. 在 `NextEngineAdapter` 中新增訂單相關方法
+**已完成項目**：
+1. ✅ 實作查詢訂單 base API - 已完成並測試通過
+2. ✅ 實作查詢訂單 rows（明細）API - 已完成並測試通過
+3. ✅ 實作扣庫分析 API - 已完成並測試通過
+4. ✅ 在 `NextEngineAdapter` 中新增訂單相關方法 - 已完成
+5. ✅ 前端 API 客戶端方法整合 - 已完成
+6. ✅ 前端 API 配置整合 - 已完成
+7. ✅ 前端測試頁面整合 - 已完成
+
+**待完成項目**：
+- ⏳ 建立訂單功能（需確認是否在 Story 5.6 範圍內）
+- ⏳ 更新測試腳本 `backend/scripts/test-next-engine-apis.ts`
+- ⏳ 更新相關文件
+
+**備註**：
+- ⚠️ **建立訂單功能**：Story 5.6 原始範圍不包含建立訂單功能（Next Engine 訂單通常由外部系統建立），但用戶提到「剩下建立訂單還沒做」，需確認是否要新增到 Story 5.6 範圍內，或另外開一個 Story
 
 ---
 
@@ -469,11 +480,12 @@
 
 **2025-11-13 進度更新**：
 - ✅ Story 5.5 已完成並通過地端 + 正式機測試
-- ⏸ Story 5.6 待下週繼續開發
+- 🟡 Story 5.6 進行中 - 查詢相關 API 已完成並測試通過，建立訂單待實作
 - ⏳ Story 5.4 需要回頭檢視架構是否徹底移除雙軌痕跡（待 Run 最後階段執行）
 - 📝 今天花了比較久時間在修正 CSV 格式和錯誤處理邏輯，但最終成功完成並通過測試
 - 📝 此 Run 將繼續進行，下週繼續完成剩餘的 Story
 - 📝 **重要**：Story 5.4 雖然已完成 User Test，但代碼架構面仍可能存在雙軌痕跡，需要在 Run 最後階段（等 Next Engine 相關 Story 都調整完成後）回頭檢視並徹底重構
+- ⚠️ **Story 5.6 建立訂單**：需確認是否要新增建立訂單功能到 Story 5.6 範圍內，或另外開一個 Story
 
 ---
 

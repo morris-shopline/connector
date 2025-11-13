@@ -1,9 +1,9 @@
 # Story 5.6: Next Engine 訂單 API 補強
 
 **所屬 Epic**: [Epic 5: Next Engine 多平台 MVP（Phase 1.3）](../epics/epic-5-next-engine-mvp.md)  
-**狀態**: ⚪ pending  
+**狀態**: 🟡 in-progress  
 **對應 Roadmap**: Phase 1.3（多平台 MVP）  
-**預估工期**: 2 個工作天
+**預估工期**: 2-3 個工作天（包含前端整合）
 
 ---
 
@@ -91,30 +91,53 @@
      - `getOrderRows(accessToken, options?)` - 查詢訂單 rows
      - `analyzeStockAllocation(accessToken, productCode)` - 扣庫分析
 
-5. **測試腳本與文件**
+5. **前端 API 客戶端整合**（`frontend/lib/api.ts`）
+   - 新增 `getOrderBase(connectionId, params?)` - 查詢訂單 base
+   - 新增 `getOrderRows(connectionId, params?)` - 查詢訂單 rows
+   - 新增 `analyzeStockAllocation(connectionId, productCode)` - 扣庫分析
+
+6. **前端 API 配置整合**（`frontend/content/platforms/api-configs.ts`）
+   - 在 `nextEngineApiConfig` 中新增 `orders` 群組：
+     - `neGetOrderBase` - 查詢訂單 Base
+     - `neGetOrderRows` - 查詢訂單 Rows（明細）
+     - `neAnalyzeStockAllocation` - 扣庫分析
+   - 配置查詢參數（shopId, orderId, dateFrom, dateTo, productCode 等）
+
+7. **前端測試頁面整合**（`frontend/pages/admin-api-test.tsx`）
+   - 在 Next Engine API 的 switch case 中加入訂單相關 API 的處理邏輯
+   - 支援查詢參數輸入（shopId, orderId, dateFrom, dateTo, productCode 等）
+   - 顯示查詢結果和扣庫分析結果
+
+8. **測試腳本與文件**
    - 更新測試腳本 `backend/scripts/test-next-engine-apis.ts`
    - 提供 CLI 命令測試訂單相關 API
    - 記錄測試結果到 audit log
    - 更新 `NE-OVERVIEW.md` 補充訂單 API 測試操作步驟
 
 ### ❌ 不包含
-- 前端呈現或 UX 調整（預留後續 Story 規劃）
 - 訂單建立或更新功能（Next Engine 訂單通常由外部系統建立）
+- 複雜的前端 UI/UX 調整（僅在 admin-api-test 頁面整合，follow 既有架構）
 
 ---
 
 ## 驗收標準
 
 ### Agent 自動化 / 測試
-- [ ] 查詢訂單 base API 可正確查詢訂單資訊
-- [ ] 查詢訂單 rows API 可正確查詢訂單明細
-- [ ] 扣庫分析 API 可正確分析扣庫狀態
-- [ ] 測試腳本驗證所有訂單相關 API 的成功與錯誤情境
-- [ ] 將結果記錄於審計或 log，供除錯追蹤
+- [x] 查詢訂單 base API 可正確查詢訂單資訊 ✅ 已完成並測試通過
+- [x] 查詢訂單 rows API 可正確查詢訂單明細 ✅ 已完成並測試通過
+- [x] 扣庫分析 API 可正確分析扣庫狀態 ✅ 已完成並測試通過
+- [x] 前端 API 客戶端方法可正確呼叫後端 API ✅ 已完成並測試通過
+- [x] 前端 API 配置正確顯示在 admin-api-test 頁面 ✅ 已完成並測試通過
+- [x] 前端測試頁面可正確處理訂單相關 API 呼叫 ✅ 已完成並測試通過
+- [ ] 測試腳本驗證所有訂單相關 API 的成功與錯誤情境 ⏳ 待完成
+- [ ] 將結果記錄於審計或 log，供除錯追蹤 ⏳ 待完成
 
 ### User Test
-- [ ] Human 確認訂單查詢 API 可正確取得訂單資料
-- [ ] Human 確認扣庫分析可正確分類訂單狀態
+- [ ] Human 在 admin-api-test 頁面選擇 Next Engine Connection
+- [ ] Human 確認「訂單」群組顯示三個 API 功能（查詢 Base、查詢 Rows、扣庫分析）
+- [ ] Human 確認查詢訂單 base API 可正確取得訂單資料
+- [ ] Human 確認查詢訂單 rows API 可正確取得訂單明細
+- [ ] Human 確認扣庫分析可正確分類訂單狀態並顯示結果
 - [ ] Human 確認在 Next Engine 後台可驗證查詢結果
 
 ---
@@ -122,9 +145,12 @@
 ## 交付與文件更新
 
 ### 程式碼交付
-- [ ] `NextEngineAdapter` 新增訂單相關方法
-- [ ] `api.ts` 新增訂單 API 路由
-- [ ] 更新測試腳本 `backend/scripts/test-next-engine-apis.ts`
+- [x] `NextEngineAdapter` 新增訂單相關方法 ✅ 已完成（`getOrderBase`, `getOrderRows`, `analyzeStockAllocation`）
+- [x] `backend/src/routes/api.ts` 新增訂單 API 路由 ✅ 已完成（`/orders/base`, `/orders/rows`, `/orders/analyze-allocation`）
+- [x] `frontend/lib/api.ts` 新增訂單 API 客戶端方法 ✅ 已完成（`getOrderBase`, `getOrderRows`, `analyzeStockAllocation`）
+- [x] `frontend/content/platforms/api-configs.ts` 新增 Next Engine orders 群組配置 ✅ 已完成
+- [x] `frontend/pages/admin-api-test.tsx` 整合訂單 API 處理邏輯 ✅ 已完成
+- [ ] 更新測試腳本 `backend/scripts/test-next-engine-apis.ts` ⏳ 待完成
 
 ### 文件更新
 - [ ] 更新 `NEXT_ENGINE_PLATFORM_SPEC.md`：
@@ -139,7 +165,9 @@
 
 ## 實作重點與技術細節
 
-### 訂單查詢流程
+### 後端實作
+
+#### 訂單查詢流程
 
 1. **查詢訂單 Base**：
    - 使用 `/api_v1_receiveorder_base/search`
@@ -156,11 +184,132 @@
    - 分析每筆訂單的扣庫狀態
    - 分類並統計結果
 
-### 錯誤處理
+#### 錯誤處理
 
 - **查詢條件為空**：自動刪除空值避免 Next Engine API 400 錯誤
 - **訂單不存在**：回傳空陣列而非錯誤
 - **API 錯誤**：統一轉換為 `PLATFORM_ERROR` 並記錄
+
+### 前端實作
+
+#### API 客戶端方法（`frontend/lib/api.ts`）
+
+參考現有的 Next Engine API 方法（如 `searchGoods`, `uploadGoods`），新增：
+
+```typescript
+async getOrderBase(connectionId: string, params?: {
+  shopId?: string
+  orderId?: string
+  dateFrom?: string
+  dateTo?: string
+  offset?: number
+  limit?: number
+}): Promise<ApiResponse<any>>
+
+async getOrderRows(connectionId: string, params?: {
+  orderId?: string
+  productCode?: string
+  shopId?: string
+  offset?: number
+  limit?: number
+}): Promise<ApiResponse<any>>
+
+async analyzeStockAllocation(connectionId: string, productCode: string): Promise<ApiResponse<any>>
+```
+
+#### API 配置（`frontend/content/platforms/api-configs.ts`）
+
+在 `nextEngineApiConfig.groups` 中新增 orders 群組：
+
+```typescript
+{
+  id: 'orders',
+  name: '訂單',
+  functions: [
+    {
+      id: 'neGetOrderBase',
+      name: '查詢訂單 Base',
+      group: 'orders',
+      method: 'POST',
+      endpoint: (connectionId: string) => `/api/connections/${connectionId}/orders/base`,
+      hasBody: true,
+      paramConfig: [
+        { id: 'shopId', label: 'Shop ID（選填）', type: 'text' },
+        { id: 'orderId', label: 'Order ID（選填）', type: 'text' },
+        { id: 'dateFrom', label: '開始日期（選填）', type: 'text', placeholder: 'YYYY-MM-DD' },
+        { id: 'dateTo', label: '結束日期（選填）', type: 'text', placeholder: 'YYYY-MM-DD' },
+        { id: 'offset', label: 'Offset（選填）', type: 'text', defaultValue: '0' },
+        { id: 'limit', label: 'Limit（選填）', type: 'text', defaultValue: '100' }
+      ]
+    },
+    {
+      id: 'neGetOrderRows',
+      name: '查詢訂單 Rows（明細）',
+      group: 'orders',
+      method: 'POST',
+      endpoint: (connectionId: string) => `/api/connections/${connectionId}/orders/rows`,
+      hasBody: true,
+      paramConfig: [
+        { id: 'orderId', label: 'Order ID（選填）', type: 'text' },
+        { id: 'productCode', label: 'Product Code（選填）', type: 'text' },
+        { id: 'shopId', label: 'Shop ID（選填）', type: 'text' },
+        { id: 'offset', label: 'Offset（選填）', type: 'text', defaultValue: '0' },
+        { id: 'limit', label: 'Limit（選填）', type: 'text', defaultValue: '100' }
+      ]
+    },
+    {
+      id: 'neAnalyzeStockAllocation',
+      name: '扣庫分析',
+      group: 'orders',
+      method: 'POST',
+      endpoint: (connectionId: string) => `/api/connections/${connectionId}/orders/analyze-allocation`,
+      hasBody: true,
+      paramConfig: [
+        { id: 'productCode', label: 'Product Code（必填）', type: 'text' }
+      ]
+    }
+  ]
+}
+```
+
+#### 測試頁面整合（`frontend/pages/admin-api-test.tsx`）
+
+在 Next Engine API 的 switch case 中新增處理邏輯：
+
+```typescript
+case 'neGetOrderBase': {
+  result = await apiClient.getOrderBase(connectionId, {
+    shopId: paramValues.shopId,
+    orderId: paramValues.orderId,
+    dateFrom: paramValues.dateFrom,
+    dateTo: paramValues.dateTo,
+    offset: paramValues.offset ? parseInt(paramValues.offset) : undefined,
+    limit: paramValues.limit ? parseInt(paramValues.limit) : undefined
+  })
+  break
+}
+case 'neGetOrderRows': {
+  result = await apiClient.getOrderRows(connectionId, {
+    orderId: paramValues.orderId,
+    productCode: paramValues.productCode,
+    shopId: paramValues.shopId,
+    offset: paramValues.offset ? parseInt(paramValues.offset) : undefined,
+    limit: paramValues.limit ? parseInt(paramValues.limit) : undefined
+  })
+  break
+}
+case 'neAnalyzeStockAllocation': {
+  if (!paramValues.productCode) {
+    setError('請輸入 Product Code')
+    setIsLoading(false)
+    return
+  }
+  result = await apiClient.analyzeStockAllocation(connectionId, paramValues.productCode)
+  break
+}
+```
+
+**注意**：前端實作需 follow 既有架構，參考現有的 Next Engine API 整合方式（如 `neSearchGoods`, `neUploadGoods`）。
 
 ---
 
