@@ -174,7 +174,8 @@ https://api.next-engine.org/api_v1_master_goods/search
 - **參數**:
   - `fields`: 要查詢的欄位
   - `warehouse_stock_goods_id-eq`: 商品代碼（等於）
-  - `warehouse_stock_warehouse_id-eq`: 倉庫ID（等於）
+  - `warehouse_stock_warehouse_id-eq`: 倉庫識別（等於）
+    - ⚠️ **實測結果**：欄位名稱雖為「倉庫ID」，實際值為倉庫名稱字串（多為日文，例如 `基本拠点`）。請以 `/api_v1_warehouse_base/search` 取得的 `warehouse_id` 原值帶入。
   - `offset`: 偏移量
   - `limit`: 限制數量
 
@@ -205,7 +206,7 @@ https://api.next-engine.org/api_v1_master_goods/search
 #### 分倉庫在庫マスタ欄位說明
 | 項目名 | フィールド名 | データ型 | 備考 |
 |--------|-------------|----------|------|
-| 倉庫ID | warehouse_stock_warehouse_id | 文字列型 | |
+| 倉庫識別 | warehouse_stock_warehouse_id | 文字列型 | 回傳值為倉庫名稱（例如：`基本拠点`） |
 | 商品コード | warehouse_stock_goods_id | 文字列型 | |
 | 在庫数 | warehouse_stock_quantity | 数値型 | |
 | 引当数 | warehouse_stock_allocation_quantity | 数値型 | |
@@ -272,24 +273,51 @@ wait_flag=1
 ```
 
 **重要說明：**
-- NextEngine 的在庫更新使用**拠点在庫マスタアップロード**方式
-- **必須使用倉庫名稱**（`kyoten_mei`），不是倉庫ID
-- 使用加算/減算方式，不是直接設定數值
-- 需要先查詢分倉庫當前在庫數，計算與目標值的差異
+- 在庫更新必須走「拠点在庫マスタアップロード」流程，分成以下步驟：
+  1. **查現況**：先呼叫 `/api_v1_warehouse_stock/search` 帶 `warehouse_stock_goods_id-eq=<商品碼>`、`warehouse_stock_warehouse_id-eq=<倉庫ID>`；倉庫 ID 使用 `/api_v1_warehouse_base/search` 回傳的值（例 `0`）。若查不到再退回 `/api_v1_master_stock/search`。
+  2. **算差值**：`diff = newStock - 現況`，為 0 時直接結束並回傳訊息「在庫數無需更新」。
+  3. **產 CSV**：僅能設定加減欄位，**必須使用官方英文欄位名稱**，格式 `kyoten_mei,syohin_code,kasan_su,gensan_su,kyoten_syohin_sakujyo,nyusyukko_riyu`。  
+     - `diff > 0`：填 `kasan_su = diff`（1以上の整数），`gensan_su` 和 `kyoten_syohin_sakujyo` 留空，`nyusyukko_riyu` 填理由。  
+     - `diff < 0`：填 `gensan_su = |diff|`（1以上の整数），`kasan_su` 和 `kyoten_syohin_sakujyo` 留空，且檢查不可大於現況庫存，`nyusyukko_riyu` 填理由。  
+     - 理由預設 `在庫数調整のため`。
+     - **重要**：「加算数量」「減算数量」「拠点商品削除」いずれかの入力が必須
+  4. **送上傳**：呼叫 `/api_v1_warehouse_stock/upload`，表單欄位：
+     ```
+     wait_flag=1
+     data_type=csv
+     data=kyoten_mei,syohin_code,kasan_su,gensan_su,kyoten_syohin_sakujyo,nyusyukko_riyu\n基本拠点,TEST001,50,,,在庫数調整のため
+     ```
+     成功會回傳 `que_id`，可用 `/api_v1_system_que/search` 查看處理狀態。
+  5. **倉庫名稱**：CSV 需要填入拠点名（例 `基本拠点`），不是 ID。後端可透過 `/api_v1_warehouse_base/search` 取得映射；以預設倉庫 `0` 對應 `基本拠点` 為例，查詢時帶 `0`，產 CSV 時換成 `基本拠点`。
+- 使用加算/減算方式，無法直接設定絕對值。
+- 建議在完成更新後再呼叫 `/api_v1_warehouse_stock/search` 確認結果。
 
-**CSV 格式範例：**
+**CSV 格式範例（官方格式）：**
 ```csv
-拠点名,商品コード,加算数量,減算数量,理由
-基本拠点,TEST001,50,,在庫数調整のため
-基本拠点,TEST002,,30,在庫数調整のため
+kyoten_mei,syohin_code,kasan_su,gensan_su,kyoten_syohin_sakujyo,nyusyukko_riyu
+基本拠点,TEST001,50,,,在庫数調整のため
+基本拠点,TEST002,,30,,在庫数調整のため
 ```
 
+**完整欄位說明（官方規格）：**
+
+| No | CSV項目名 | 内容 | 入力制限 | 補足 / 説明 |
+|----|----------|------|----------|------------|
+| 1 | `kyoten_mei` | 拠点名 | 文字(255) | [設定]→[拠点]→[拠点管理]に登録されている拠点名を入力。空白の場合「基本拠点」として取り扱います。商品に追加されていない拠点名を入力した場合、商品に拠点が追加されます。拠点商品削除を行う場合、入力が必須です。 |
+| 2 | `syohin_code` | 商品コード | 文字(30) | ※新規登録時必須、※更新時必須 |
+| 3 | `kasan_su` | 加算数量 | 数値(11) | 現在の在庫数に加算する数量を、1以上の整数で入力。※「加算数量」「減算数量」「拠点商品削除」いずれかの入力が必須です。 |
+| 4 | `gensan_su` | 減算数量 | 数値(11) | 現在の在庫数に減算する数量を、1以上の整数で入力。拠点のフリー在庫数よりも多く減算することはできません。※「加算数量」「減算数量」「拠点商品削除」いずれかの入力が必須です。 |
+| 5 | `kyoten_syohin_sakujyo` | 拠点商品削除 | 半角「d」 | 「d」を入力することで、商品に紐付く拠点を解除し、拠点在庫数を削除します。※「加算数量」「減算数量」「拠点商品削除」いずれかの入力が必須です。 |
+| 6 | `nyusyukko_riyu` | 理由 | 文字(50) | 拠点在庫数を加算/減算する場合のみ登録可能です。 |
+
 **重要規則：**
-- **加算数量**（`kasan_su`）：1以上的整數，用於增加庫存
-- **減算数量**（`gensan_su`）：1以上的整數，用於減少庫存
-- **不能使用負數的加算数量**，必須使用減算数量欄位
-- 加算和減算不能同時使用，只能選擇其中一種
-- 減算数量不能超過當前フリー在庫数
+- **必須使用官方英文欄位名稱**：`kyoten_mei`, `syohin_code`, `kasan_su`, `gensan_su`, `kyoten_syohin_sakujyo`, `nyusyukko_riyu`
+- **「加算数量」「減算数量」「拠点商品削除」いずれかの入力が必須**：必須填寫其中一個欄位
+- **`kyoten_mei`**：空白の場合「基本拠点」として取り扱います
+- **`kasan_su`**：1以上の整数で入力（必須是 1 以上的整數）
+- **`gensan_su`**：1以上の整数で入力，且不能超過拠点のフリー在庫数
+- **`nyusyukko_riyu`**：加算/減算する場合のみ登録可能（只有加算或減算時才能填寫理由）
+- **入力制限欄の(○○)は文字数制限**：半角・全角関係なく1文字ずつカウントします
 
 **更新流程：**
 1. 查詢分倉庫當前在庫數：`/api_v1_warehouse_stock/search`
@@ -298,10 +326,80 @@ wait_flag=1
 4. 上傳 CSV：`/api_v1_warehouse_stock/upload`
 5. 檢查處理狀態：`/api_v1_system_que/search`
 
+### 在庫更新佇列查詢（System Queue / アップロードキュー）
+```
+POST https://api.next-engine.org/api_v1_system_que/search
+Content-Type: application/x-www-form-urlencoded
+
+access_token={ACCESS_TOKEN}
+wait_flag=1
+fields=que_id,que_status_id,que_method_name,que_upload_name,que_file_name,que_message,que_creation_date
+que_id-eq={QUE_ID}
+limit=1
+```
+
+**關鍵欄位（API 會返回的欄位）：**
+- `que_id`：アップロードキューID（数値型）
+- `que_status_id`：ステータス（数値型）
+  - `2`：全て処理成功
+  - `1`：処理中
+  - `0`：処理待ち
+  - `-1`：処理失敗
+- `que_method_name`：機能名（文字列型，直接顯示值）
+  - `SYOHIN_KIHON_CSV`：商品マスタCSVアップロード
+  - `MALL_SYOHIN_CSV_TO_MASTER`：商品情報一括登録
+- `que_upload_name`：アップロード名（文字列型，直接顯示值）
+  - `SYOHIN_KIHON_QUE`：商品マスタ予約アップロード
+  - `TENPO_SYOHIN`：商品情報一括登録（モール商品履歴表示用）
+  - `SYOHIN_KIHON`：商品情報一括登録（商品マスタ履歴表示用）
+  - `MALL_SYOHIN_CSV_TO_MASTER_SYOHIN_KIHON`：商品情報一括登録（商品マスタ取込用）
+  - `PAGE_SYOHIN`：商品情報一括登録（ページ管理履歴表示用）
+  - `NE_API`：ネクストエンジンAPI
+- `que_file_name`：ファイル名（文字列型，直接顯示值）
+- `que_message`：メッセージ（文字列型，直接顯示值）
+  - 処理中の場合：進捗状況
+  - 処理失敗の場合：エラーになった理由（メイン機能のアップロード履歴と同じ）
+- `que_creation_date`：作成日（日時型）
+
+**完整欄位列表（アップロードキュー）：**
+
+| 項目名 | フィールド名 | データ型 | 備考 |
+|--------|-------------|----------|------|
+| アップロードキューID | `que_id` | 数値型 | |
+| 機能名 | `que_method_name` | 文字列型 | SYOHIN_KIHON_CSV:商品マスタCSVアップロード<br>MALL_SYOHIN_CSV_TO_MASTER:商品情報一括登録 |
+| 店舗ID | `que_shop_id` | 文字列型 | |
+| アップロード名 | `que_upload_name` | 文字列型 | SYOHIN_KIHON_QUE:商品マスタ予約アップロード<br>TENPO_SYOHIN:商品情報一括登録（モール商品履歴表示用）<br>SYOHIN_KIHON:商品情報一括登録（商品マスタ履歴表示用）<br>MALL_SYOHIN_CSV_TO_MASTER_SYOHIN_KIHON:商品情報一括登録（商品マスタ取込用）<br>PAGE_SYOHIN:商品情報一括登録（ページ管理履歴表示用）<br>NE_API:ネクストエンジンAPI |
+| クライアントファイル名 | `que_client_file_name` | 文字列型 | ユーザーがアップロードした時のファイル名 |
+| ファイル名 | `que_file_name` | 文字列型 | 商品マスタCSV、モール商品CSV等 |
+| ステータス | `que_status_id` | 数値型 | **2**: 全て処理成功<br>**1**: 処理中<br>**0**: 処理待ち<br>**-1**: 処理失敗 |
+| メッセージ | `que_message` | 文字列型 | 処理中の場合進捗状況、処理失敗の場合はエラーになった理由 |
+| 削除フラグ | `que_deleted_flag` | 文字列型 | |
+| 作成日 | `que_creation_date` | 日時型 | |
+| 最終更新日 | `que_last_modified_date` | 日時型 | |
+| 最終更新日 | `que_last_modified_null_safe_date` | 日時型 | NULLの場合作成日 |
+| 作成担当者ID | `que_creator_id` | 数値型 | |
+| 作成担当者名 | `que_creator_name` | 文字列型 | |
+| 最終更新者ID | `que_last_modified_by_id` | 数値型 | |
+| 最終更新者ID | `que_last_modified_by_null_safe_id` | 数値型 | NULLの場合作成者ID |
+| 最終更新者名 | `que_last_modified_by_name` | 文字列型 | |
+| 最終更新者名 | `que_last_modified_by_null_safe_name` | 文字列型 | NULLの場合作成者名 |
+
+**回傳結果判讀：**
+- **成功完成**：`result` 為 `success` 且 `data` 陣列內 `que_status_id` 顯示 `2`（全て処理成功）才算完成
+- **處理中**：若是 `0`（処理待ち）或 `1`（処理中）表示還在跑，需稍後重查
+- **錯誤**：`que_status_id=-1`（処理失敗）則需查看 `que_message` 了解錯誤原因
+
+**實務建議：**
+- 上傳後必須記錄 `que_id`，並以輪詢或手動查詢方式確認狀態
+- 使用 `fields=que_id,que_status_id,que_method_name,que_upload_name,que_file_name,que_message,que_creation_date` 以取得完整資訊並快速辨識問題
+- API 會返回所有請求的欄位，包括 `que_method_name`、`que_upload_name`、`que_file_name`、`que_message` 等，直接顯示值即可
+- 若 `que_status_id=-1`，請依 `que_message` 錯誤訊息修正 CSV（常見錯誤包含欄位缺失、倉庫名稱不正確、減算量大於可用庫存）
+- 建議和 `/api_v1_warehouse_stock/search` 結果比對，確認庫存已更新
+
 **關鍵概念：**
 - **主倉庫**：`/api_v1_master_stock/search` - 查詢總庫存
 - **分倉庫**：`/api_v1_warehouse_stock/search` - 查詢特定倉庫庫存
-- **庫存更新**：必須使用分倉庫概念，使用倉庫名稱而非ID
+- **庫存更新**：必須使用分倉庫概念，並透過 `warehouseId` → `拠点名` 映射後產生 CSV。路由 `/api/connections/:connectionId/inventory/warehouse/:warehouseId` 允許 `warehouseId=default` 代表「基本拠点」。
 
 ### 拠点マスタ検索
 ```

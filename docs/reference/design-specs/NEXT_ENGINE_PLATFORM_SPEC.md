@@ -104,6 +104,49 @@
 - 需檢查回傳結果 `code` 是否 `000000` 成功，否則轉換為 `PLATFORM_ERROR`。
 - 權限檢查沿用 Story 4.3 的 middleware（必須驗證 connection owner）。
 
+### 6.1 Story 5.5 rev1：商品建立與庫存 API 更新
+
+- **建立商品（`POST /api/connections/:connectionId/goods/upload`）**
+  - Adapter 內建動態測試資料：未指定 `productCode` / `productName` 時，自動產出 `TEST_<timestamp>` 與 `Test Product <timestamp>`。
+  - 預設價格欄位：`cost = 1000`、`price = 1500`，可由前端覆寫。
+  - 若傳入完整 CSV (`csvData`)，仍可沿用原本流程。
+  - 審計 log 透過 `next-engine.goods.upload` 記錄操作與 productCode。
+
+- **庫存 / 倉庫相關路由**
+
+  | 後端路由 | 說明 | 核心實作備註 |
+  | --- | --- | --- |
+  | `POST /api/connections/:connectionId/inventory` | 主倉庫存查詢（`/api_v1_master_stock/search`） | 可透過 `productCode` 選填條件過濾。 |
+  | `POST /api/connections/:connectionId/inventory/warehouse/:warehouseId` | 分倉庫存查詢（`/api_v1_warehouse_stock/search`） | **查詢時一定使用倉庫 ID（例如 `0`）**；若 URL 帶 `default` 仍會在 adapter 端轉回 `0`。 |
+  | `POST /api/connections/:connectionId/warehouses` | 倉庫列表（`/api_v1_warehouse_base/search`） | 回傳 `warehouse_id` / `warehouse_name`，結果會同步進記憶體快取，供更新流程取得拠点名。 |
+  | `POST /api/connections/:connectionId/inventory/warehouse` | 分倉庫存更新（`/api_v1_warehouse_stock/upload`） | Body 需提供 `productCode`, `newStock`, `warehouseId`（可填 `0` 或 `default`）；後端會依流程產生 CSV 並送審。 |
+  | `GET /api/connections/:connectionId/inventory/queue/:queueId` | 上傳佇列狀態（`/api_v1_system_que/search`） | 透過 `que_id` 查詢 `que_status_id`（0=処理待ち, 1=処理中, 2=全て処理成功, -1=処理失敗）、`que_message` 錯誤訊息，供上傳後追蹤。回傳結果需判讀：`result=success` 且 `que_status_id=2` 才算完成。 |
+
+- **倉庫映射快取**
+  - `NextEngineAdapter` 以 in-memory Map 快取 `warehouse_id ↔ warehouse_name`（TTL 5 分鐘）。
+  - `warehouseId = 0` 或 `default` 皆代表「基本拠点」，查詢時使用 ID，產生 CSV 時才換成拠点名。
+  - 若快取未命中會自動重新抓取倉庫列表。
+
+- **庫存更新五步驟**
+  1. **查現況**：先打 `/api_v1_warehouse_stock/search` 帶 `warehouse_stock_goods_id-eq` 與倉庫 **ID**。若查不到，再回退 `/api_v1_master_stock/search`。
+  2. **算差值**：`diff = newStock - currentStock`。若 `diff === 0` 直接回「庫存無需更新」。
+  3. **組 CSV**：格式固定 `拠点名,商品コード,加算数量,減算数量,理由`。  
+     - `diff > 0` → `加算数量 = diff`，`減算数量` 留空。  
+     - `diff < 0` → `減算数量 = |diff|`，`加算数量` 留空，且檢查不得大於現況庫存。  
+     - 理由預設 `在庫数調整のため`。
+  4. **送上傳**：呼叫 `/api_v1_warehouse_stock/upload`，`wait_flag=1`、`data_type=csv`、`data=<CSV>`。成功會回 `que_id`，立即記錄於審計 log 與前端訊息。
+  5. **追蹤佇列**：後端提供 `GET /api/connections/:connectionId/inventory/queue/:queueId` 封裝 `/api_v1_system_que/search`，前端或 CLI 可輪詢 `que_status_id`。
+     - **回傳結果判讀**：`result` 為 `success` 且 `data` 陣列內 `que_status_id` 顯示 `2`（全て処理成功）才算完成
+     - **狀態值**：`0`（処理待ち）或 `1`（処理中）代表排隊或處理中，需稍後重查；`2` 成功；`-1`（処理失敗）表示失敗並伴隨 `que_message` 錯誤訊息
+     - **欄位**：使用 `fields=que_id,que_status_id,que_message,que_creation_date` 以減少資料量並快速辨識問題
+     - **注意**：正確的欄位名稱是 `que_status_id`（数値型），不是 `que_status`
+  6. **結果回饋**：庫存更新 API 原地回傳 `currentStock`、`newStock`、`diff`、`warehouseId`（原始 ID）、`warehouseName`（拠点名）以及 `queueId`。審計 log (`next-engine.inventory.update`) 會保存 queue 資訊，方便後續追蹤。
+
+- **腳本支援**
+  - `backend/scripts/test-next-engine-apis.ts` 提供 `update-stock`、`warehouse-stock` 等模式，可帶 `--dry-run`、`--warehouse-id`、`--product-code` 快速驗證整段流程。
+- **文件同步**
+  - `NEXTENGINE_API_REFERENCE.md` 與 `NE-OVERVIEW.md` 已補上上述步驟與 CSV 範例，確保後續實作人員不再混淆倉庫 ID 與拠点名。
+
 ---
 
 ## 7. 測試與驗收指引

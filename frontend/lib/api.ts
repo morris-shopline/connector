@@ -410,14 +410,172 @@ export const apiClient = {
     }
   },
 
-  async uploadGoods(connectionId: string, csvData: string): Promise<ApiResponse<any>> {
+  // Story 5.5: 建立商品（支援動態參數）
+  async uploadGoods(
+    connectionId: string,
+    options?: {
+      productCode?: string
+      productName?: string
+      price?: number
+      cost?: number
+      csvData?: string
+    }
+  ): Promise<ApiResponse<any>> {
     try {
-      const response = await api.post(`/api/connections/${connectionId}/goods/upload`, {
-        data: csvData
-      })
+      const body: any = {}
+      if (options?.productCode) body.productCode = options.productCode
+      if (options?.productName) body.productName = options.productName
+      if (options?.price !== undefined) body.price = options.price
+      if (options?.cost !== undefined) body.cost = options.cost
+      if (options?.csvData) body.csvData = options.csvData
+
+      const response = await api.post(`/api/connections/${connectionId}/goods/upload`, body)
       return response.data
     } catch (error: any) {
       console.error('Upload goods error:', error)
+      throw error
+    }
+  },
+
+  // Story 5.5: 查詢主倉庫存
+  async getMasterStock(connectionId: string, productCode?: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await api.post(`/api/connections/${connectionId}/inventory`, {
+        productCode
+      })
+      return response.data
+    } catch (error: any) {
+      console.error('Get master stock error:', error)
+      throw error
+    }
+  },
+
+  // Story 5.5: 查詢分倉庫存
+  async getWarehouseStock(
+    connectionId: string,
+    warehouseId?: string,
+    productCode?: string
+  ): Promise<ApiResponse<any>> {
+    try {
+      const targetWarehouseId = warehouseId && warehouseId.trim().length > 0 ? warehouseId : '0'
+      const payload: Record<string, any> = {}
+      if (productCode) {
+        payload.productCode = productCode
+      }
+
+      const response = await api.post(
+        `/api/connections/${connectionId}/inventory/warehouse/${encodeURIComponent(targetWarehouseId)}`,
+        payload
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('Get warehouse stock error:', error)
+      throw error
+    }
+  },
+
+  // Story 5.5: 查詢倉庫列表
+  async getWarehouses(connectionId: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await api.post(`/api/connections/${connectionId}/warehouses`)
+      return response.data
+    } catch (error: any) {
+      console.error('Get warehouses error:', error)
+      throw error
+    }
+  },
+
+  // Story 5.5: 更新分倉庫存
+  async updateWarehouseStock(
+    connectionId: string,
+    productCode: string,
+    newStock: number,
+    warehouseId: string,
+    warehouseName?: string
+  ): Promise<ApiResponse<any>> {
+    try {
+      const body: Record<string, any> = {
+        productCode,
+        newStock,
+        warehouseId: warehouseId && warehouseId.trim().length > 0 ? warehouseId : '0'
+      }
+
+      if (warehouseName) {
+        body.warehouseName = warehouseName
+      }
+
+      const response = await api.post(`/api/connections/${connectionId}/inventory/warehouse`, body)
+      return response.data
+    } catch (error: any) {
+      console.error('Update warehouse stock error:', error)
+      throw error
+    }
+  },
+
+  // Story 5.5: 查詢庫存更新佇列狀態
+  async getInventoryQueueStatus(
+    connectionId: string,
+    queueId: string
+  ): Promise<ApiResponse<any>> {
+    try {
+      const response = await api.get(`/api/connections/${connectionId}/inventory/queue/${encodeURIComponent(queueId)}`)
+      return response.data
+    } catch (error: any) {
+      console.error('Get inventory queue status error:', error)
+      throw error
+    }
+  },
+
+  // Story 5.6: 查詢訂單 Base
+  async getOrderBase(
+    connectionId: string,
+    params?: {
+      shopId?: string
+      orderId?: string
+      dateFrom?: string
+      dateTo?: string
+      offset?: number
+      limit?: number
+    }
+  ): Promise<ApiResponse<any>> {
+    try {
+      const response = await api.post(`/api/connections/${connectionId}/orders/base`, params || {})
+      return response.data
+    } catch (error: any) {
+      console.error('Get order base error:', error)
+      throw error
+    }
+  },
+
+  // Story 5.6: 查詢訂單 Rows（明細）
+  async getOrderRows(
+    connectionId: string,
+    params?: {
+      orderId?: string
+      productCode?: string
+      shopId?: string
+      offset?: number
+      limit?: number
+    }
+  ): Promise<ApiResponse<any>> {
+    try {
+      const response = await api.post(`/api/connections/${connectionId}/orders/rows`, params || {})
+      return response.data
+    } catch (error: any) {
+      console.error('Get order rows error:', error)
+      throw error
+    }
+  },
+
+  // Story 5.6: 扣庫分析
+  async analyzeStockAllocation(connectionId: string, productCode: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await api.post(`/api/connections/${connectionId}/orders/analyze-allocation`, {
+        productCode
+      })
+      return response.data
+    } catch (error: any) {
+      console.error('Analyze stock allocation error:', error)
       throw error
     }
   }

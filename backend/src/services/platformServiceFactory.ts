@@ -31,9 +31,14 @@ export class PlatformServiceFactory {
    * @throws Error 如果平台未註冊
    */
   static getAdapter(platform: Platform): PlatformAdapter {
-    const adapter = this.adapters.get(platform)
+    let adapter = this.adapters.get(platform)
     if (!adapter) {
-      throw new Error(`Platform adapter not found: ${platform}`)
+      // 如果 adapter 不存在，嘗試初始化
+      this.initialize()
+      adapter = this.adapters.get(platform)
+      if (!adapter) {
+        throw new Error(`Platform adapter not found: ${platform}`)
+      }
     }
     return adapter
   }
@@ -47,25 +52,30 @@ export class PlatformServiceFactory {
 
   /**
    * 初始化所有平台 Adapter（在應用啟動時呼叫）
+   * 如果 adapter 已存在，則跳過重新註冊
    */
   static initialize() {
     // 註冊 Next Engine Adapter（如果環境變數存在）
-    try {
-      const nextEngineAdapter = new NextEngineAdapter()
-      this.registerAdapter('next-engine', nextEngineAdapter)
-      console.log('✅ Next Engine Adapter 已註冊')
-    } catch (error: any) {
-      console.warn('⚠️ Next Engine Adapter 初始化失敗（環境變數未設定）:', error.message)
+    if (!this.adapters.has('next-engine')) {
+      try {
+        const nextEngineAdapter = new NextEngineAdapter()
+        this.registerAdapter('next-engine', nextEngineAdapter)
+        console.log('✅ Next Engine Adapter 已註冊')
+      } catch (error: any) {
+        console.warn('⚠️ Next Engine Adapter 初始化失敗（環境變數未設定）:', error.message)
+      }
     }
 
     // 註冊 Shopline Adapter（Story 5.4）
-    try {
-      const shoplineAdapter = new ShoplineAdapter()
-      this.registerAdapter('shopline', shoplineAdapter)
-      console.log('✅ Shopline Adapter 已註冊')
-    } catch (error: any) {
-      console.error('❌ Shopline Adapter 初始化失敗:', error.message)
-      throw error // Shopline 是必需的，如果失敗應該拋出錯誤
+    if (!this.adapters.has('shopline')) {
+      try {
+        const shoplineAdapter = new ShoplineAdapter()
+        this.registerAdapter('shopline', shoplineAdapter)
+        console.log('✅ Shopline Adapter 已註冊')
+      } catch (error: any) {
+        console.error('❌ Shopline Adapter 初始化失敗:', error.message)
+        throw error // Shopline 是必需的，如果失敗應該拋出錯誤
+      }
     }
   }
 }

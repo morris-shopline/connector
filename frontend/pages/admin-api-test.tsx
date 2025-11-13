@@ -99,6 +99,8 @@ function AdminAPITest() {
   const [isBodyOpen, setIsBodyOpen] = useState<boolean>(false)
   const [isErrorOpen, setIsErrorOpen] = useState<boolean>(false)
   const [paramValues, setParamValues] = useState<Record<string, string>>({})
+  const [defaultNeProductCode, setDefaultNeProductCode] = useState<string | null>(null)
+  const [lastExecutedFunction, setLastExecutedFunction] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(false)
 
   // Story 5.3.1: 跟隨 Context Bar 的 selectedConnectionId
@@ -135,12 +137,23 @@ function AdminAPITest() {
           endpoint: func.endpoint,
           hasBody: func.hasBody,
           requiresParam: func.requiresParam,
-          bodyDescription: func.bodyDescription
+          bodyDescription: func.bodyDescription,
+          paramConfig: func.paramConfig // 保留 paramConfig
         }
       })
     })
     return functions
   }, [apiConfig])
+
+  // 取得當前選中的 API 函數配置
+  const currentApiFunction = useMemo(() => {
+    if (!apiConfig || !selectedFunction) return null
+    for (const group of apiConfig.groups) {
+      const func = group.functions.find(f => f.id === selectedFunction)
+      if (func) return func
+    }
+    return null
+  }, [apiConfig, selectedFunction])
 
   const adminAPI = useAdminAPI({
     handle: activeHandle,
@@ -157,12 +170,81 @@ function AdminAPITest() {
     setOpenGroups(newOpenGroups)
   }
 
+  const fetchFirstNextEngineProduct = useCallback(async () => {
+    if (selectedConnection?.platform !== 'next-engine' || !connectionId) {
+      setDefaultNeProductCode(null)
+      return
+    }
+
+    try {
+      const result = await apiClient.searchGoods(connectionId, {
+        fields: 'goods_id',
+        offset: '0',
+        limit: '1'
+      })
+
+      if (result?.success) {
+        const first =
+          result.data?.data?.[0]?.goods_id ||
+          result.data?.data?.[0]?.goodsId ||
+          result.data?.data?.[0]?.goodsCode ||
+          null
+        setDefaultNeProductCode(first || null)
+      } else {
+        setDefaultNeProductCode(null)
+      }
+    } catch (fetchError) {
+      console.error('Failed to fetch default Next Engine product code:', fetchError)
+      setDefaultNeProductCode(null)
+    }
+  }, [connectionId, selectedConnection?.platform])
+
+  useEffect(() => {
+    fetchFirstNextEngineProduct()
+  }, [fetchFirstNextEngineProduct])
+
+  useEffect(() => {
+    if (
+      selectedConnection?.platform === 'next-engine' &&
+      connectionId &&
+      lastExecutedFunction === 'neUploadGoods' &&
+      response
+    ) {
+      fetchFirstNextEngineProduct()
+    }
+  }, [response, lastExecutedFunction, selectedConnection?.platform, connectionId, fetchFirstNextEngineProduct])
+
+  useEffect(() => {
+    if (
+      selectedConnection?.platform === 'next-engine' &&
+      selectedFunction === 'neUpdateWarehouseStock' &&
+      defaultNeProductCode &&
+      (!paramValues.productCode || paramValues.productCode.trim().length === 0)
+    ) {
+      setParamValues((prev) => ({
+        ...prev,
+        productCode: defaultNeProductCode
+      }))
+    }
+  }, [defaultNeProductCode, selectedConnection?.platform, selectedFunction, paramValues.productCode])
+
   const selectFunction = (funcKey: string) => {
     setSelectedFunction(funcKey)
     setResponse(null)
     setError(null)
     setIsBodyOpen(false)
     setIsErrorOpen(false)
+    setLastExecutedFunction(null)
+
+    if (selectedConnection?.platform === 'next-engine' && funcKey === 'neUpdateWarehouseStock') {
+      setParamValues({
+        productCode: defaultNeProductCode || '',
+        newStock: '10',
+        warehouseId: '0'
+      })
+    } else {
+      setParamValues({})
+    }
   }
 
   const handleSubmit = async () => {
@@ -181,6 +263,7 @@ function AdminAPITest() {
     }
 
     try {
+      setLastExecutedFunction(selectedFunction)
       let result: any
 
       // Next Engine API 呼叫（使用統一的 apiClient，與 Shopline 一致）
@@ -218,12 +301,122 @@ function AdminAPITest() {
             break
           }
           case 'neUploadGoods': {
-            if (!paramValues.csvData) {
-              setError('請輸入 CSV 資料')
+            // 優先使用動態參數，若未提供則使用 CSV
+            if (paramValues.productCode || paramValues.productName || paramValues.price || paramValues.cost) {
+              result = await apiClient.uploadGoods(connectionId, {
+                productCode: paramValues.productCode,
+                productName: paramValues.productName,
+                price: paramValues.price ? parseInt(paramValues.price) : undefined,
+                cost: paramValues.cost ? parseInt(paramValues.cost) : undefined
+              })
+            } else if (paramValues.csvData) {
+              result = await apiClient.uploadGoods(connectionId, { csvData: paramValues.csvData })
+            } else {
+              // 都不提供時，使用動態模式（不傳參數）
+              result = await apiClient.uploadGoods(connectionId)
+            }
+            break
+          }
+          case 'neGetMasterStock': {
+            result = await apiClient.getMasterStock(connectionId, paramValues.productCode)
+            break
+          }
+          case 'neGetWarehouseStock': {
+            {
+              const warehouseId = paramValues.warehouseId && paramValues.warehouseId.trim().length > 0
+                ? paramValues.warehouseId
+                : '0'
+              result = await apiClient.getWarehouseStock(connectionId, warehouseId, paramValues.productCode)
+            }
+            break
+          }
+          case 'neGetWarehouses': {
+            result = await apiClient.getWarehouses(connectionId)
+            break
+          }
+          case 'neUpdateWarehouseStock': {
+            const resolvedProductCode =
+              (paramValues.productCode && paramValues.productCode.trim()) ||
+              defaultNeProductCode ||
+              ''
+
+            if (!resolvedProductCode) {
+              setError('尚未找到可用的商品，請先建立商品後再更新庫存')
               setIsLoading(false)
               return
             }
-            result = await apiClient.uploadGoods(connectionId, paramValues.csvData)
+
+            const resolvedNewStock =
+              paramValues.newStock && paramValues.newStock.trim().length > 0
+                ? paramValues.newStock.trim()
+                : '10'
+
+            const parsedNewStock = parseInt(resolvedNewStock, 10)
+            if (Number.isNaN(parsedNewStock)) {
+              setError('New Stock 必須為數字')
+              setIsLoading(false)
+              return
+            }
+
+            const warehouseId = paramValues.warehouseId && paramValues.warehouseId.trim().length > 0
+              ? paramValues.warehouseId.trim()
+              : '0'
+
+            result = await apiClient.updateWarehouseStock(
+              connectionId, 
+              resolvedProductCode, 
+              parsedNewStock,
+              warehouseId
+            )
+
+            if (result?.success) {
+              setParamValues((prev) => ({
+                ...prev,
+                productCode: resolvedProductCode,
+                newStock: resolvedNewStock,
+                warehouseId
+              }))
+            }
+            break
+          }
+          case 'neGetInventoryQueueStatus': {
+            const queueId = paramValues.queueId && paramValues.queueId.trim()
+            if (!queueId) {
+              setError('請輸入 Queue ID')
+              setIsLoading(false)
+              return
+            }
+            result = await apiClient.getInventoryQueueStatus(connectionId, queueId)
+            break
+          }
+          case 'neGetOrderBase': {
+            result = await apiClient.getOrderBase(connectionId, {
+              shopId: paramValues.shopId,
+              orderId: paramValues.orderId,
+              dateFrom: paramValues.dateFrom,
+              dateTo: paramValues.dateTo,
+              offset: paramValues.offset ? parseInt(paramValues.offset) : undefined,
+              limit: paramValues.limit ? parseInt(paramValues.limit) : undefined
+            })
+            break
+          }
+          case 'neGetOrderRows': {
+            result = await apiClient.getOrderRows(connectionId, {
+              orderId: paramValues.orderId,
+              productCode: paramValues.productCode,
+              shopId: paramValues.shopId,
+              offset: paramValues.offset ? parseInt(paramValues.offset) : undefined,
+              limit: paramValues.limit ? parseInt(paramValues.limit) : undefined
+            })
+            break
+          }
+          case 'neAnalyzeStockAllocation': {
+            if (!paramValues.productCode) {
+              setError('請輸入 Product Code')
+              setIsLoading(false)
+              return
+            }
+            result = await apiClient.analyzeStockAllocation(connectionId, paramValues.productCode)
             break
           }
           default:
@@ -288,11 +481,23 @@ function AdminAPITest() {
     if (!currentFunction) return ''
     
     if (selectedConnection?.platform === 'next-engine') {
-      return connectionId ? currentFunction.endpoint(connectionId) : ''
+      if (!connectionId) return ''
+
+      let endpointTemplate = currentFunction.endpoint(connectionId)
+
+      if (endpointTemplate.includes(':warehouseId')) {
+        const warehouseIdValue =
+          paramValues.warehouseId && paramValues.warehouseId.trim().length > 0
+            ? paramValues.warehouseId
+            : 'default'
+        endpointTemplate = endpointTemplate.replace(':warehouseId', encodeURIComponent(warehouseIdValue))
+      }
+
+      return endpointTemplate
     } else {
       return activeHandle ? currentFunction.endpoint(activeHandle).replace(':id', paramValues.productId || ':id') : ''
     }
-  }, [currentFunction, selectedConnection?.platform, connectionId, activeHandle, paramValues.productId])
+  }, [currentFunction, selectedConnection?.platform, connectionId, activeHandle, paramValues.productId, paramValues.warehouseId])
 
   return (
     <PrimaryLayout>
@@ -437,118 +642,34 @@ function AdminAPITest() {
                       </div>
                     )}
 
-                    {/* Next Engine API 參數輸入 */}
-                    {selectedConnection?.platform === 'next-engine' && selectedFunction && (
-                      <>
-                        {selectedFunction === 'neSearchShops' && (
-                          <div>
+                    {/* Next Engine API 參數輸入 - 使用 paramConfig 動態渲染 */}
+                    {selectedConnection?.platform === 'next-engine' && currentApiFunction?.paramConfig && currentApiFunction.paramConfig.length > 0 && (
+                      <div className="space-y-4">
+                        {currentApiFunction.paramConfig.map((param) => (
+                          <div key={param.id}>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Fields（選填）
+                              {param.label}
                             </label>
-                            <input
-                              type="text"
-                              value={paramValues.fields || 'shop_id,shop_name,shop_abbreviated_name,shop_note'}
-                              onChange={(e) => setParamValues({ ...paramValues, fields: e.target.value })}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              placeholder="shop_id,shop_name,shop_abbreviated_name,shop_note"
-                            />
-                          </div>
-                        )}
-                        {selectedFunction === 'neCreateShop' && (
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              XML 資料（必填）
-                            </label>
-                            <textarea
-                              value={paramValues.xmlData || ''}
-                              onChange={(e) => setParamValues({ ...paramValues, xmlData: e.target.value })}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs"
-                              rows={10}
-                              placeholder={`<?xml version="1.0" encoding="utf-8"?>
-<root>
-  <shop>
-    <shop_mall_id>90</shop_mall_id>
-    <shop_note>店舖備註</shop_note>
-    <shop_name>店舖名稱</shop_name>
-    <shop_abbreviated_name>SL</shop_abbreviated_name>
-    <shop_tax_id>0</shop_tax_id>
-    <shop_tax_calculation_sequence_id>0</shop_tax_calculation_sequence_id>
-    <shop_currency_unit_id>1</shop_currency_unit_id>
-  </shop>
-</root>`}
-                            />
-                          </div>
-                        )}
-                        {selectedFunction === 'neSearchGoods' && (
-                          <>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Fields（選填）
-                              </label>
-                              <input
-                                type="text"
-                                value={paramValues.fields || 'goods_id,goods_name,stock_quantity,supplier_name'}
-                                onChange={(e) => setParamValues({ ...paramValues, fields: e.target.value })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="goods_id,goods_name,stock_quantity,supplier_name"
+                            {param.type === 'textarea' ? (
+                              <textarea
+                                value={paramValues[param.id] || ''}
+                                onChange={(e) => setParamValues({ ...paramValues, [param.id]: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs"
+                                rows={10}
+                                placeholder={param.placeholder || ''}
                               />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Goods ID（選填，用於精確查詢）
-                              </label>
+                            ) : (
                               <input
-                                type="text"
-                                value={paramValues.goods_id_eq || ''}
-                                onChange={(e) => setParamValues({ ...paramValues, goods_id_eq: e.target.value })}
+                                type={param.type}
+                                value={paramValues[param.id] || param.defaultValue || ''}
+                                onChange={(e) => setParamValues({ ...paramValues, [param.id]: e.target.value })}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="例如：TestP001"
+                                placeholder={param.placeholder || ''}
                               />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  Offset（選填）
-                                </label>
-                                <input
-                                  type="text"
-                                  value={paramValues.offset || '0'}
-                                  onChange={(e) => setParamValues({ ...paramValues, offset: e.target.value })}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                  placeholder="0"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  Limit（選填）
-                                </label>
-                                <input
-                                  type="text"
-                                  value={paramValues.limit || '100'}
-                                  onChange={(e) => setParamValues({ ...paramValues, limit: e.target.value })}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                  placeholder="100"
-                                />
-                              </div>
-                            </div>
-                          </>
-                        )}
-                        {selectedFunction === 'neUploadGoods' && (
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              CSV 資料（必填）
-                            </label>
-                            <textarea
-                              value={paramValues.csvData || ''}
-                              onChange={(e) => setParamValues({ ...paramValues, csvData: e.target.value })}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs"
-                              rows={10}
-                              placeholder={`syohin_code,sire_code,jan_code,maker_name,maker_kana,maker_jyusyo,maker_yubin_bangou,kataban,iro,syohin_name,gaikoku_syohin_name,syohin_kbn,toriatukai_kbn,genka_tnk,hyoji_tnk,baika_tnk,gaikoku_baika_tnk,kake_ritu,omosa,haba,okuyuki,takasa,yusou_kbn,syohin_status_kbn,hatubai_bi,zaiko_teisu,hachu_ten,lot,keisai_tantou,keisai_bi,bikou,daihyo_syohin_code,visible_flg,mail_tag,tag,location,mail_send_flg,mail_send_num,gift_ok_flg,size,org_select1,org_select2,org_select3,org_select4,org_select5,org_select6,org_select7,org_select8,org_select9,org_select10,org1,org2,org3,org4,org5,org6,org7,org8,org9,org10,org11,org12,org13,org14,org15,org16,org17,org18,org19,org20,maker_kataban,zaiko_threshold,orosi_threshold,hasou_houhou_kbn,hasoumoto_code,zaiko_su,yoyaku_zaiko_su,nyusyukko_riyu,hit_syohin_alert_quantity,nouki_kbn,nouki_sitei_bi,syohin_setumei_html,syohin_setumei_text,spec_html,spec_text,chui_jiko_html,chui_jiko_text,syohin_jyotai_kbn,syohin_jyotai_setumei,category_code_yauc,category_text,image_url_http,image_alt
-TestP001,9999,,,,,,,,登録時必須,,0,0,120000,,150000,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,`}
-                            />
+                            )}
                           </div>
-                        )}
-                      </>
+                        ))}
+                      </div>
                     )}
 
                     {/* Body (Toggle) - 僅 Shopline API 顯示 */}
@@ -619,7 +740,7 @@ TestP001,9999,,,,,,,,登録時必須,,0,0,120000,,150000,,,,,,,,,,,,,,,,,,,,,,,,
                         isLoading ||
                         (currentFunction?.requiresParam && !paramValues[currentFunction.requiresParam.name]) ||
                         (selectedFunction === 'neCreateShop' && !paramValues.xmlData) ||
-                        (selectedFunction === 'neUploadGoods' && !paramValues.csvData)
+                        false // neUploadGoods 支援動態模式，不需要強制要求參數
                       }
                       className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >

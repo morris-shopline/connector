@@ -164,8 +164,19 @@ description: 匯總 ne-test MVP 中的 NextEngine 認證、API、在庫連携與
 | -- | -- | -- | -- |
 | 店舖 | `/api_v1_master_shop/search`<br>`/api_v1_master_shop/create` | 查詢既有店舖、以 XML 建立新店舖。 | 預設 `shop_mall_id=90`，並於 XML 中填入在庫連携 URL 與金鑰欄位（`mall_login_id1/2`、`mall_password1`）。 |
 | 商品 | `/api_v1_master_goods/search`<br>`/api_v1_master_goods/upload` | 查詢商品清單、以 CSV 上傳新商品。 | `createTestProduct()` 以時間戳產生唯一商品代碼並組裝官方欄位最小集；提供佇列查詢 API。 |
-| 庫存 | `/api_v1_master_stock/search`<br>`/api_v1_warehouse_stock/upload` | 查詢主倉／分倉庫存，CSV 方式差額調整。 | 先查問當前庫存，計算差異後決定加算或減算數量；保留查詢 logs 方便除錯。 |
+| 庫存 | `/api_v1_master_stock/search`<br>`/api_v1_warehouse_stock/upload` | 查詢主倉／分倉庫存，CSV 方式差額調整。 | **查詢時使用倉庫 ID（例 `0`），生成 CSV 時才換成拠点名。** 路由 `/inventory/warehouse/:warehouseId` 支援 `0` 或 `default`；更新流程嚴格依「查現況 → 算差值 → 加減欄位 → 上傳 CSV → 查佇列」五步驟，並新增 `GET /inventory/queue/:queueId` 供追蹤 `que_status`。 |
 | 訂單 | `/api_v1_receiveorder_base/search`<br>`/api_v1_receiveorder_row/search` | 取得訂單與訂單明細。 | `analyzeStockAllocation()` 統計扣庫狀態並加上中文標記，適合轉為報表模組。 |
+
+### 4.1 Story 5.5 rev1 更新重點
+
+- **Admin API 測試頁**：Next Engine 區塊新增「庫存」群組（主倉 / 分倉 / 倉庫列表 / 更新庫存），並於前端表單預設 `warehouseId = default` 代表「基本拠点」，避免手動輸入日文倉庫名稱。
+- **Adapter 快取**：`NextEngineAdapter` 以 5 分鐘 TTL 快取 `warehouse_id ↔ warehouse_name`，所有分倉查詢／更新 API 皆走相同映射邏輯。
+- **CLI Smoke Test**：`backend/scripts/test-next-engine-apis.ts` 提供 `--mode create-product|master-stock|warehouse-stock|update-stock` 與 `--dry-run`／`--max-seconds` 等參數，可快速在終端驗證整段流程並寫入審計 log（operation `script.next-engine.<mode>`）。
+- **佇列檢查 API**：`NextEngineAdapter.getQueueStatus()` 封裝 `/api_v1_system_que/search`，前端與 CLI 可輸入 `que_id` 查詢 `que_status_id`、`que_message` 錯誤訊息。
+  - **回傳結果判讀**：`result` 為 `success` 且 `data` 陣列內 `que_status_id` 顯示 `2`（全て処理成功）才算完成；`0`（処理待ち）或 `1`（処理中）表示還在跑，需稍後重查；`-1`（処理失敗）則需查看 `que_message`
+  - **欄位**：使用 `fields=que_id,que_status_id,que_message,que_creation_date` 以減少資料量並快速辨識問題
+  - **注意**：正確的欄位名稱是 `que_status_id`（数値型），不是 `que_status`
+  - **測試流程**：在取得 `que_id` 後必須先確認 `que_status_id=2` 成功再驗證庫存是否更新
 
 ## 5. 在庫連携（被動式整合重點）
 
@@ -222,6 +233,7 @@ description: 匯總 ne-test MVP 中的 NextEngine 認證、API、在庫連携與
 | SQLite 欄位確認 | [ ] | `tokens`、`auth_status` 表存在且字串型別正確 |
 | OAuth 測試成功 | [ ] | `/auth/ne` → `/auth/callback` → `/api/user-info` |
 | 商品／庫存 API 測試 | [ ] | `/api/products`、`/api/stock` |
+| CLI smoke test | [ ] | `npm run ts-node backend/scripts/test-next-engine-apis.ts -- --mode master-stock --dry-run` |
 | 在庫連携接收測試 | [ ] | NextEngine 後台「接続を確認」 or 模擬 GET |
 | 監控端點可用 | [ ] | `/api/inventory/status`、`/api/webhook/status` |
 

@@ -2,7 +2,7 @@
 
 **Run ID**: run-2025-11-13-01  
 **Run 類型**: Refactor + Bug Fix + Feature Development (Epic 5)  
-**狀態**: 🟡 in-acceptance（Story 5.4 推上正式站，進行 User Test）  
+**狀態**: 🔴 in-dev（Story 5.5 開發中）  
 **開始時間**: 2025-11-13  
 **達到 ready-for-acceptance 時間**: 2025-11-13  
 **開始驗收時間**: 2025-11-13（推上正式站）  
@@ -23,9 +23,9 @@
 
 | 任務 | 狀態 | 備註 |
 |------|------|------|
-| [Story 5.4: Shopline Platform Adapter 重構](../backlog/stories/story-5-4-shopline-adapter-refactor.md) | 🟢 ready-for-user-test | ✅ Agent 測試完成，代碼結構驗證通過，待 User Test |
-| [Issue 2025-11-11-001: 停用 Connection Item 時出現 Network Error](../backlog/issues/issue-2025-11-11-001-disable-connection-item-network-error.md) | 🔍 pending-investigation | ⏳ 待 Agent 先調查釐清 |
-| [Story 5.5: Next Engine 商品建立改進與庫存 API 補強](../backlog/stories/story-5-5-next-engine-inventory-apis.md) | 🟢 ready-for-dev | ✅ 完成後進行 User Test，通過後推上正式站 |
+| [Story 5.4: Shopline Platform Adapter 重構](../backlog/stories/story-5-4-shopline-adapter-refactor.md) | ✅ completed | ✅ User Test 完成，Story 已關閉 |
+| [Issue 2025-11-11-001: 停用 Connection Item 時出現 Network Error](../backlog/issues/issue-2025-11-11-001-disable-connection-item-network-error.md) | ⏸ pending | ⏸ 不在此 run 處理，待之後適當時機處理 |
+| [Story 5.5: Next Engine 商品建立改進與庫存 API 補強](../backlog/stories/story-5-5-next-engine-inventory-apis.md) | 🔴 in-dev | 🔴 開發中 |
 | [Story 5.6: Next Engine 訂單 API 補強](../backlog/stories/story-5-6-next-engine-order-apis.md) | ⏸ pending | ⏳ 待 Story 5.5 完成後啟動 |
 | [Story 5.7: Next Engine 店舖建立改進與在庫連携接收端點](../backlog/stories/story-5-7-next-engine-shop-creation-and-stock-webhook.md) | ⏸ pending | ⏳ 待 Story 5.6 完成後啟動 |
 
@@ -33,11 +33,11 @@
 
 ## 執行順序與策略
 
-### 階段 1：Story 5.4 - Shopline Platform Adapter 重構（🔴 開發中，有問題）
+### 階段 1：Story 5.4 - Shopline Platform Adapter 重構（✅ 已完成）
 
 **目標**：將 Shopline 授權／API 流程重構為與 Next Engine 一致的 Platform Adapter 架構
 
-**目前狀態**：🟢 **Agent 測試完成，待 User Test**
+**目前狀態**：✅ **已完成，User Test 通過，Story 已關閉**
 
 **已完成項目**：
 1. ✅ 建立 `ShoplineAdapter`，實作 `PlatformAdapter` 介面（OAuth 相關方法）
@@ -120,11 +120,11 @@
 
 ---
 
-### 階段 2：Issue 2025-11-11-001 - 調查並修復 Network Error
+### 階段 2：Issue 2025-11-11-001 - 調查並修復 Network Error（⏸ 不在此 run 處理）
 
 **目標**：調查並修復停用 Connection Item 時出現的 Network Error
 
-**狀態**：⏳ 待 Agent 先調查釐清
+**狀態**：⏸ **不在此 run 處理，待之後適當時機處理**
 
 **問題描述**：
 - 在 Connection Items 頁面點擊「停用」按鈕時，出現 Network Error
@@ -147,11 +147,11 @@
 
 ---
 
-### 階段 3：Story 5.5 - Next Engine 商品建立改進與庫存 API 補強
+### 階段 3：Story 5.5 - Next Engine 商品建立改進與庫存 API 補強（🔴 開發中）
 
 **目標**：改進商品建立 API 並補強庫存與倉庫相關 API
 
-**狀態**：🟢 ready-for-dev
+**狀態**：🔴 **開發中**
 
 **前置條件**：
 - ✅ Story 5.1～5.3 已完成並通過 User Test

@@ -191,20 +191,132 @@ export const nextEngineApiConfig: PlatformApiConfig = {
         },
         {
           id: 'neUploadGoods',
-          name: '建立商品',
+          name: '建立商品（支援動態參數）',
           group: 'goods',
           method: 'POST',
           endpoint: (connectionId: string) => `/api/connections/${connectionId}/goods/upload`,
           hasBody: true,
-          bodyDescription: '上傳 CSV 格式的商品資料',
+          bodyDescription: '支援動態參數或 CSV 格式',
           paramConfig: [
+            { id: 'productCode', label: 'Product Code（選填，動態模式）', type: 'text' },
+            { id: 'productName', label: 'Product Name（選填，動態模式）', type: 'text' },
+            { id: 'price', label: 'Price（選填，動態模式）', type: 'text', defaultValue: '1500' },
+            { id: 'cost', label: 'Cost（選填，動態模式）', type: 'text', defaultValue: '1000' },
             { 
               id: 'csvData', 
-              label: 'CSV 資料（必填）', 
-              type: 'textarea', 
-              placeholder: `syohin_code,sire_code,jan_code,maker_name,maker_kana,maker_jyusyo,maker_yubin_bangou,kataban,iro,syohin_name,gaikoku_syohin_name,syohin_kbn,toriatukai_kbn,genka_tnk,hyoji_tnk,baika_tnk,gaikoku_baika_tnk,kake_ritu,omosa,haba,okuyuki,takasa,yusou_kbn,syohin_status_kbn,hatubai_bi,zaiko_teisu,hachu_ten,lot,keisai_tantou,keisai_bi,bikou,daihyo_syohin_code,visible_flg,mail_tag,tag,location,mail_send_flg,mail_send_num,gift_ok_flg,size,org_select1,org_select2,org_select3,org_select4,org_select5,org_select6,org_select7,org_select8,org_select9,org_select10,org1,org2,org3,org4,org5,org6,org7,org8,org9,org10,org11,org12,org13,org14,org15,org16,org17,org18,org19,org20,maker_kataban,zaiko_threshold,orosi_threshold,hasou_houhou_kbn,hasoumoto_code,zaiko_su,yoyaku_zaiko_su,nyusyukko_riyu,hit_syohin_alert_quantity,nouki_kbn,nouki_sitei_bi,syohin_setumei_html,syohin_setumei_text,spec_html,spec_text,chui_jiko_html,chui_jiko_text,syohin_jyotai_kbn,syohin_jyotai_setumei,category_code_yauc,category_text,image_url_http,image_alt
-TestP001,9999,,,,,,,,登録時必須,,0,0,120000,,150000,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,` 
+              label: 'CSV 資料（選填，手動模式）', 
+              type: 'textarea',
+              placeholder: '若未提供動態參數，則使用 CSV 資料'
             }
+          ]
+        }
+      ]
+    },
+    {
+      id: 'inventory',
+      name: '庫存',
+      functions: [
+        {
+          id: 'neGetMasterStock',
+          name: '查詢主倉庫存',
+          group: 'inventory',
+          method: 'POST',
+          endpoint: (connectionId: string) => `/api/connections/${connectionId}/inventory`,
+          hasBody: true,
+          paramConfig: [
+            { id: 'productCode', label: 'Product Code（選填）', type: 'text' }
+          ]
+        },
+        {
+          id: 'neGetWarehouseStock',
+          name: '查詢分倉庫存',
+          group: 'inventory',
+          method: 'POST',
+          endpoint: (connectionId: string) => `/api/connections/${connectionId}/inventory/warehouse/:warehouseId`,
+          hasBody: true,
+          paramConfig: [
+            { id: 'warehouseId', label: 'Warehouse ID（選填，預設 default 代表基本拠点）', type: 'text', defaultValue: 'default', placeholder: 'default' },
+            { id: 'productCode', label: 'Product Code（選填）', type: 'text' }
+          ]
+        },
+        {
+          id: 'neGetWarehouses',
+          name: '查詢倉庫列表',
+          group: 'inventory',
+          method: 'POST',
+          endpoint: (connectionId: string) => `/api/connections/${connectionId}/warehouses`,
+          hasBody: true
+        },
+        {
+          id: 'neUpdateWarehouseStock',
+          name: '更新分倉庫存',
+          group: 'inventory',
+          method: 'POST',
+          endpoint: (connectionId: string) => `/api/connections/${connectionId}/inventory/warehouse`,
+          hasBody: true,
+          paramConfig: [
+            { id: 'productCode', label: 'Product Code（必填；留空時會自動取得第一筆商品，若尚未建立請先新增）', type: 'text' },
+            { id: 'newStock', label: 'New Stock（必填）', type: 'text', defaultValue: '10' },
+            { id: 'warehouseId', label: 'Warehouse ID（必填，預設值 0 代表基本拠点）', type: 'text', defaultValue: '0', placeholder: '0' }
+          ]
+        },
+        {
+          id: 'neGetInventoryQueueStatus',
+          name: '查詢庫存更新佇列狀態',
+          group: 'inventory',
+          method: 'GET',
+          endpoint: (connectionId: string) => `/api/connections/${connectionId}/inventory/queue/:queueId`,
+          hasBody: false,
+          paramConfig: [
+            { id: 'queueId', label: 'Queue ID（必填）', type: 'text', placeholder: 'que_id' }
+          ]
+        }
+      ]
+    },
+    {
+      id: 'orders',
+      name: '訂單',
+      functions: [
+        {
+          id: 'neGetOrderBase',
+          name: '查詢訂單 Base',
+          group: 'orders',
+          method: 'POST',
+          endpoint: (connectionId: string) => `/api/connections/${connectionId}/orders/base`,
+          hasBody: true,
+          paramConfig: [
+            { id: 'shopId', label: 'Shop ID（選填）', type: 'text' },
+            { id: 'orderId', label: 'Order ID（選填）', type: 'text' },
+            { id: 'dateFrom', label: '開始日期（選填）', type: 'text', placeholder: 'YYYY-MM-DD' },
+            { id: 'dateTo', label: '結束日期（選填）', type: 'text', placeholder: 'YYYY-MM-DD' },
+            { id: 'offset', label: 'Offset（選填）', type: 'text', defaultValue: '0' },
+            { id: 'limit', label: 'Limit（選填）', type: 'text', defaultValue: '100' }
+          ]
+        },
+        {
+          id: 'neGetOrderRows',
+          name: '查詢訂單 Rows（明細）',
+          group: 'orders',
+          method: 'POST',
+          endpoint: (connectionId: string) => `/api/connections/${connectionId}/orders/rows`,
+          hasBody: true,
+          paramConfig: [
+            { id: 'orderId', label: 'Order ID（選填）', type: 'text' },
+            { id: 'productCode', label: 'Product Code（選填）', type: 'text' },
+            { id: 'shopId', label: 'Shop ID（選填）', type: 'text' },
+            { id: 'offset', label: 'Offset（選填）', type: 'text', defaultValue: '0' },
+            { id: 'limit', label: 'Limit（選填）', type: 'text', defaultValue: '100' }
+          ]
+        },
+        {
+          id: 'neAnalyzeStockAllocation',
+          name: '扣庫分析',
+          group: 'orders',
+          method: 'POST',
+          endpoint: (connectionId: string) => `/api/connections/${connectionId}/orders/analyze-allocation`,
+          hasBody: true,
+          paramConfig: [
+            { id: 'productCode', label: 'Product Code（必填）', type: 'text' }
           ]
         }
       ]

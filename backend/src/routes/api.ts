@@ -1299,7 +1299,7 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
     }
   })
 
-  // 建立商品（上傳 CSV）
+  // Story 5.5: 建立商品（支援動態產生測試資料）
   fastify.post('/api/connections/:connectionId/goods/upload', {
     preHandler: [authMiddleware, requireConnectionOwner]
   }, async (request, reply) => {
@@ -1334,60 +1334,32 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
         })
       }
 
-      const body = request.body as any
-      const csvData = body.data
+      PlatformServiceFactory.initialize()
+      const adapter = PlatformServiceFactory.getAdapter('next-engine') as NextEngineAdapter
 
-      if (!csvData) {
+      const body = request.body as any
+
+      // 支援動態參數或 CSV 資料
+      const result = await adapter.createProduct(accessToken, {
+        productCode: body.productCode,
+        productName: body.productName,
+        price: body.price ? parseInt(body.price) : undefined,
+        cost: body.cost ? parseInt(body.cost) : undefined,
+        csvData: body.csvData || body.data, // 保留向後相容
+      })
+
+      if (!result.success) {
+        const error = result.error
+        await auditLogRepository.createAuditLog({
+          userId: request.user!.id,
+          operation: 'next-engine.goods.upload',
+          result: 'error',
+          metadata: { connectionId, error: error.message, errorType: error.type, raw: error.raw }
+        })
         return reply.status(400).send({
           success: false,
-          code: 'MISSING_DATA',
-          error: 'CSV data is required'
-        })
-      }
-
-      const params = new URLSearchParams({
-        access_token: accessToken,
-        data_type: 'csv',
-        data: csvData,
-        wait_flag: '1',
-      })
-
-      const response = await fetch('https://api.next-engine.org/api_v1_master_goods/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: params.toString(),
-      })
-
-      const data: any = await response.json()
-
-      // Next Engine API 錯誤檢查：檢查 code 或 result
-      if (data.code && data.code !== '000000') {
-        const errorMessage = data.error_description || data.error || data.message || `Next Engine API error (code: ${data.code})`
-        await auditLogRepository.createAuditLog({
-          userId: request.user!.id,
-          operation: 'next-engine.goods.upload',
-          result: 'error',
-          metadata: { connectionId, error: errorMessage, code: data.code }
-        })
-        return reply.status(response.ok ? 200 : response.status).send({
-          success: false,
-          code: 'NEXT_ENGINE_API_ERROR',
-          error: errorMessage
-        })
-      }
-
-      if (data.result !== 'success') {
-        const errorMessage = data.error_description || data.error || data.message || 'Next Engine API error'
-        await auditLogRepository.createAuditLog({
-          userId: request.user!.id,
-          operation: 'next-engine.goods.upload',
-          result: 'error',
-          metadata: { connectionId, error: errorMessage, raw: data }
-        })
-        return reply.status(response.ok ? 200 : response.status).send({
-          success: false,
-          code: 'NEXT_ENGINE_API_ERROR',
-          error: errorMessage
+          code: error.type || 'NEXT_ENGINE_API_ERROR',
+          error: error.message
         })
       }
 
@@ -1398,13 +1370,685 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
         metadata: { connectionId }
       })
 
-      return reply.send({ success: true, data: data })
+      return reply.send({ success: true, data: result.data })
     } catch (error: any) {
       fastify.log.error('Next Engine goods/upload error:', error)
       return reply.status(500).send({
         success: false,
         code: 'INTERNAL_ERROR',
         error: error.message || 'Failed to upload goods'
+      })
+    }
+  })
+
+  // Story 5.5: 查詢主倉庫存
+  fastify.post('/api/connections/:connectionId/inventory', {
+    preHandler: [authMiddleware, requireConnectionOwner]
+  }, async (request, reply) => {
+    try {
+      const { connectionId } = request.params as { connectionId: string }
+      const connection = await connectionRepository.findConnectionById(connectionId)
+
+      if (!connection) {
+        return reply.status(404).send({
+          success: false,
+          code: 'CONNECTION_NOT_FOUND',
+          error: 'Connection not found'
+        })
+      }
+
+      if (connection.platform !== 'next-engine') {
+        return reply.status(400).send({
+          success: false,
+          code: 'INVALID_PLATFORM',
+          error: 'This endpoint is only for Next Engine connections'
+        })
+      }
+
+      const authPayload = connection.authPayload as any
+      const accessToken = authPayload.accessToken
+
+      if (!accessToken) {
+        return reply.status(401).send({
+          success: false,
+          code: 'TOKEN_NOT_FOUND',
+          error: 'Access token not found in connection'
+        })
+      }
+
+      PlatformServiceFactory.initialize()
+      const adapter = PlatformServiceFactory.getAdapter('next-engine') as NextEngineAdapter
+
+      const body = request.body as any
+      const result = await adapter.getMasterStock(accessToken, body.productCode)
+
+      if (!result.success) {
+        const error = result.error
+        await auditLogRepository.createAuditLog({
+          userId: request.user!.id,
+          operation: 'next-engine.inventory.master',
+          result: 'error',
+          metadata: { connectionId, error: error.message, errorType: error.type, raw: error.raw }
+        })
+        return reply.status(400).send({
+          success: false,
+          code: error.type || 'NEXT_ENGINE_API_ERROR',
+          error: error.message
+        })
+      }
+
+      await auditLogRepository.createAuditLog({
+        userId: request.user!.id,
+        operation: 'next-engine.inventory.master',
+        result: 'success',
+        metadata: { connectionId, productCode: body.productCode }
+      })
+
+      return reply.send({ success: true, data: result.data })
+    } catch (error: any) {
+      fastify.log.error('Next Engine inventory/master error:', error)
+      return reply.status(500).send({
+        success: false,
+        code: 'INTERNAL_ERROR',
+        error: error.message || 'Failed to get master stock'
+      })
+    }
+  })
+
+  // Story 5.5: 查詢分倉庫存
+  fastify.post('/api/connections/:connectionId/inventory/warehouse/:warehouseId', {
+    preHandler: [authMiddleware, requireConnectionOwner]
+  }, async (request, reply) => {
+    try {
+      const { connectionId, warehouseId } = request.params as { connectionId: string; warehouseId: string }
+      const connection = await connectionRepository.findConnectionById(connectionId)
+
+      if (!connection) {
+        return reply.status(404).send({
+          success: false,
+          code: 'CONNECTION_NOT_FOUND',
+          error: 'Connection not found'
+        })
+      }
+
+      if (connection.platform !== 'next-engine') {
+        return reply.status(400).send({
+          success: false,
+          code: 'INVALID_PLATFORM',
+          error: 'This endpoint is only for Next Engine connections'
+        })
+      }
+
+      const authPayload = connection.authPayload as any
+      const accessToken = authPayload.accessToken
+
+      if (!accessToken) {
+        return reply.status(401).send({
+          success: false,
+          code: 'TOKEN_NOT_FOUND',
+          error: 'Access token not found in connection'
+        })
+      }
+
+      PlatformServiceFactory.initialize()
+      const adapter = PlatformServiceFactory.getAdapter('next-engine') as NextEngineAdapter
+
+      const body = (request.body || {}) as { productCode?: string }
+      const safeWarehouseId = (warehouseId || '').trim() || 'default'
+      const result = await adapter.getWarehouseStock(accessToken, body.productCode, safeWarehouseId)
+
+      if (!result.success) {
+        const error = result.error
+        await auditLogRepository.createAuditLog({
+          userId: request.user!.id,
+          operation: 'next-engine.inventory.warehouse.search',
+          result: 'error',
+          metadata: { connectionId, warehouseId: safeWarehouseId, productCode: body.productCode, error: error.message, errorType: error.type, raw: error.raw }
+        })
+        return reply.status(400).send({
+          success: false,
+          code: error.type || 'NEXT_ENGINE_API_ERROR',
+          error: error.message
+        })
+      }
+
+      await auditLogRepository.createAuditLog({
+        userId: request.user!.id,
+        operation: 'next-engine.inventory.warehouse.search',
+        result: 'success',
+        metadata: { connectionId, warehouseId: safeWarehouseId, productCode: body.productCode }
+      })
+
+      return reply.send({ success: true, data: result.data })
+    } catch (error: any) {
+      fastify.log.error('Next Engine inventory/warehouse search error:', error)
+      return reply.status(500).send({
+        success: false,
+        code: 'INTERNAL_ERROR',
+        error: error.message || 'Failed to get warehouse stock'
+      })
+    }
+  })
+
+  // Story 5.5: 查詢倉庫列表
+  fastify.post('/api/connections/:connectionId/warehouses', {
+    preHandler: [authMiddleware, requireConnectionOwner]
+  }, async (request, reply) => {
+    try {
+      const { connectionId } = request.params as { connectionId: string }
+      const connection = await connectionRepository.findConnectionById(connectionId)
+
+      if (!connection) {
+        return reply.status(404).send({
+          success: false,
+          code: 'CONNECTION_NOT_FOUND',
+          error: 'Connection not found'
+        })
+      }
+
+      if (connection.platform !== 'next-engine') {
+        return reply.status(400).send({
+          success: false,
+          code: 'INVALID_PLATFORM',
+          error: 'This endpoint is only for Next Engine connections'
+        })
+      }
+
+      const authPayload = connection.authPayload as any
+      const accessToken = authPayload.accessToken
+
+      if (!accessToken) {
+        return reply.status(401).send({
+          success: false,
+          code: 'TOKEN_NOT_FOUND',
+          error: 'Access token not found in connection'
+        })
+      }
+
+      PlatformServiceFactory.initialize()
+      const adapter = PlatformServiceFactory.getAdapter('next-engine') as NextEngineAdapter
+
+      const result = await adapter.getWarehouses(accessToken)
+
+      if (!result.success) {
+        const error = result.error
+        await auditLogRepository.createAuditLog({
+          userId: request.user!.id,
+          operation: 'next-engine.warehouses',
+          result: 'error',
+          metadata: { connectionId, error: error.message, errorType: error.type, raw: error.raw }
+        })
+        return reply.status(400).send({
+          success: false,
+          code: error.type || 'NEXT_ENGINE_API_ERROR',
+          error: error.message
+        })
+      }
+
+      await auditLogRepository.createAuditLog({
+        userId: request.user!.id,
+        operation: 'next-engine.warehouses',
+        result: 'success',
+        metadata: { connectionId }
+      })
+
+      return reply.send({ success: true, data: result.data })
+    } catch (error: any) {
+      fastify.log.error('Next Engine warehouses error:', error)
+      return reply.status(500).send({
+        success: false,
+        code: 'INTERNAL_ERROR',
+        error: error.message || 'Failed to get warehouses'
+      })
+    }
+  })
+
+  // Story 5.5: 更新分倉庫存
+  fastify.post('/api/connections/:connectionId/inventory/warehouse', {
+    preHandler: [authMiddleware, requireConnectionOwner]
+  }, async (request, reply) => {
+    try {
+      const { connectionId } = request.params as { connectionId: string }
+      const connection = await connectionRepository.findConnectionById(connectionId)
+
+      if (!connection) {
+        return reply.status(404).send({
+          success: false,
+          code: 'CONNECTION_NOT_FOUND',
+          error: 'Connection not found'
+        })
+      }
+
+      if (connection.platform !== 'next-engine') {
+        return reply.status(400).send({
+          success: false,
+          code: 'INVALID_PLATFORM',
+          error: 'This endpoint is only for Next Engine connections'
+        })
+      }
+
+      const authPayload = connection.authPayload as any
+      const accessToken = authPayload.accessToken
+
+      if (!accessToken) {
+        return reply.status(401).send({
+          success: false,
+          code: 'TOKEN_NOT_FOUND',
+          error: 'Access token not found in connection'
+        })
+      }
+
+      const body = request.body as any
+
+      if (!body.productCode || body.newStock === undefined) {
+        return reply.status(400).send({
+          success: false,
+          code: 'MISSING_PARAMETERS',
+          error: 'productCode and newStock are required'
+        })
+      }
+
+      const rawWarehouseId = (body.warehouseId || body.warehouse_id || '').toString().trim()
+      const warehouseId = rawWarehouseId || 'default'
+
+      const newStockValue =
+        typeof body.newStock === 'string'
+          ? parseInt(body.newStock, 10)
+          : Number(body.newStock)
+
+      if (Number.isNaN(newStockValue)) {
+        return reply.status(400).send({
+          success: false,
+          code: 'INVALID_PARAMETERS',
+          error: 'newStock must be a valid number'
+        })
+      }
+
+      PlatformServiceFactory.initialize()
+      const adapter = PlatformServiceFactory.getAdapter('next-engine') as NextEngineAdapter
+
+      const result = await adapter.updateWarehouseStock(accessToken, {
+        productCode: body.productCode,
+        newStock: newStockValue,
+        warehouseId,
+        warehouseName: body.warehouseName,
+      })
+
+      if (!result.success) {
+        const error = result.error
+        await auditLogRepository.createAuditLog({
+          userId: request.user!.id,
+          operation: 'next-engine.inventory.update',
+          result: 'error',
+          metadata: { connectionId, warehouseId, productCode: body.productCode, error: error.message, errorType: error.type, raw: error.raw }
+        })
+        return reply.status(400).send({
+          success: false,
+          code: error.type || 'NEXT_ENGINE_API_ERROR',
+          error: error.message
+        })
+      }
+
+      const responseData = result.data
+
+      await auditLogRepository.createAuditLog({
+        userId: request.user!.id,
+        operation: 'next-engine.inventory.update',
+        result: 'success',
+        metadata: {
+          connectionId,
+          productCode: body.productCode,
+          newStock: newStockValue,
+          warehouseId: responseData.warehouseId,
+          warehouseName: responseData.warehouseName,
+          diff: responseData.diff
+        }
+      })
+
+      return reply.send({ success: true, data: responseData })
+    } catch (error: any) {
+      fastify.log.error('Next Engine inventory/update error:', error)
+      return reply.status(500).send({
+        success: false,
+        code: 'INTERNAL_ERROR',
+        error: error.message || 'Failed to update warehouse stock'
+      })
+    }
+  })
+
+  // Story 5.5: 查詢庫存更新佇列狀態
+  fastify.get('/api/connections/:connectionId/inventory/queue/:queueId', {
+    preHandler: [authMiddleware, requireConnectionOwner]
+  }, async (request, reply) => {
+    try {
+      const { connectionId, queueId } = request.params as { connectionId: string; queueId: string }
+      const connection = await connectionRepository.findConnectionById(connectionId)
+
+      if (!connection) {
+        return reply.status(404).send({
+          success: false,
+          code: 'CONNECTION_NOT_FOUND',
+          error: 'Connection not found'
+        })
+      }
+
+      if (connection.platform !== 'next-engine') {
+        return reply.status(400).send({
+          success: false,
+          code: 'INVALID_PLATFORM',
+          error: 'This endpoint is only for Next Engine connections'
+        })
+      }
+
+      const authPayload = connection.authPayload as any
+      const accessToken = authPayload.accessToken
+
+      if (!accessToken) {
+        return reply.status(401).send({
+          success: false,
+          code: 'TOKEN_NOT_FOUND',
+          error: 'Access token not found in connection'
+        })
+      }
+
+      PlatformServiceFactory.initialize()
+      const adapter = PlatformServiceFactory.getAdapter('next-engine') as NextEngineAdapter
+
+      const result = await adapter.getQueueStatus(accessToken, queueId)
+
+      if (!result.success) {
+        // 這是真正的 API 呼叫失敗（例如：連線錯誤、認證失敗等）
+        const error = result.error
+        await auditLogRepository.createAuditLog({
+          userId: request.user!.id,
+          operation: 'next-engine.inventory.queue-status',
+          result: 'error',
+          metadata: { 
+            connectionId, 
+            queueId, 
+            error: error.message, 
+            errorType: error.type, 
+            raw: error.raw
+          }
+        })
+        return reply.status(400).send({
+          success: false,
+          code: error.type || 'NEXT_ENGINE_API_ERROR',
+          error: error.message
+        })
+      }
+
+      // API 呼叫成功，記錄結果（無論佇列處理成功或失敗）
+      const queueData = result.data
+      const queStatusId = queueData.que_status_id
+      const isQueueFailed = queStatusId === -1 || queStatusId === '-1'
+      
+      await auditLogRepository.createAuditLog({
+        userId: request.user!.id,
+        operation: 'next-engine.inventory.queue-status',
+        result: isQueueFailed ? 'queue_failed' : 'success', // 區分 API 成功但佇列失敗的情況
+        metadata: { 
+          connectionId, 
+          queueId,
+          queStatusId,
+          queMessage: queueData.que_message,
+          queMethodName: queueData.que_method_name,
+          queUploadName: queueData.que_upload_name,
+          queFileName: queueData.que_file_name,
+        }
+      })
+
+      return reply.send({ success: true, data: result.data })
+    } catch (error: any) {
+      fastify.log.error('Next Engine inventory queue status error:', error)
+      return reply.status(500).send({
+        success: false,
+        code: 'INTERNAL_ERROR',
+        error: error.message || 'Failed to get queue status'
+      })
+    }
+  })
+
+  // Story 5.6: 查詢訂單 Base
+  fastify.post('/api/connections/:connectionId/orders/base', {
+    preHandler: [authMiddleware, requireConnectionOwner]
+  }, async (request, reply) => {
+    try {
+      const { connectionId } = request.params as { connectionId: string }
+      const connection = await connectionRepository.findConnectionById(connectionId)
+
+      if (!connection) {
+        return reply.status(404).send({
+          success: false,
+          code: 'CONNECTION_NOT_FOUND',
+          error: 'Connection not found'
+        })
+      }
+
+      if (connection.platform !== 'next-engine') {
+        return reply.status(400).send({
+          success: false,
+          code: 'INVALID_PLATFORM',
+          error: 'This endpoint is only for Next Engine connections'
+        })
+      }
+
+      const authPayload = connection.authPayload as any
+      const accessToken = authPayload.accessToken
+
+      if (!accessToken) {
+        return reply.status(401).send({
+          success: false,
+          code: 'TOKEN_NOT_FOUND',
+          error: 'Access token not found in connection'
+        })
+      }
+
+      PlatformServiceFactory.initialize()
+      const adapter = PlatformServiceFactory.getAdapter('next-engine') as NextEngineAdapter
+
+      const body = request.body as any
+      const result = await adapter.getOrderBase(accessToken, {
+        shopId: body.shopId,
+        orderId: body.orderId,
+        dateFrom: body.dateFrom,
+        dateTo: body.dateTo,
+        offset: body.offset ? parseInt(body.offset, 10) : undefined,
+        limit: body.limit ? parseInt(body.limit, 10) : undefined,
+      })
+
+      if (!result.success) {
+        const error = result.error
+        await auditLogRepository.createAuditLog({
+          userId: request.user!.id,
+          operation: 'next-engine.orders.base',
+          result: 'error',
+          metadata: { connectionId, error: error.message, errorType: error.type, raw: error.raw }
+        })
+        return reply.status(400).send({
+          success: false,
+          code: error.type || 'NEXT_ENGINE_API_ERROR',
+          error: error.message
+        })
+      }
+
+      await auditLogRepository.createAuditLog({
+        userId: request.user!.id,
+        operation: 'next-engine.orders.base',
+        result: 'success',
+        metadata: { connectionId }
+      })
+
+      return reply.send({ success: true, data: result.data })
+    } catch (error: any) {
+      fastify.log.error('Next Engine orders/base error:', error)
+      return reply.status(500).send({
+        success: false,
+        code: 'INTERNAL_ERROR',
+        error: error.message || 'Failed to get order base'
+      })
+    }
+  })
+
+  // Story 5.6: 查詢訂單 Rows（明細）
+  fastify.post('/api/connections/:connectionId/orders/rows', {
+    preHandler: [authMiddleware, requireConnectionOwner]
+  }, async (request, reply) => {
+    try {
+      const { connectionId } = request.params as { connectionId: string }
+      const connection = await connectionRepository.findConnectionById(connectionId)
+
+      if (!connection) {
+        return reply.status(404).send({
+          success: false,
+          code: 'CONNECTION_NOT_FOUND',
+          error: 'Connection not found'
+        })
+      }
+
+      if (connection.platform !== 'next-engine') {
+        return reply.status(400).send({
+          success: false,
+          code: 'INVALID_PLATFORM',
+          error: 'This endpoint is only for Next Engine connections'
+        })
+      }
+
+      const authPayload = connection.authPayload as any
+      const accessToken = authPayload.accessToken
+
+      if (!accessToken) {
+        return reply.status(401).send({
+          success: false,
+          code: 'TOKEN_NOT_FOUND',
+          error: 'Access token not found in connection'
+        })
+      }
+
+      PlatformServiceFactory.initialize()
+      const adapter = PlatformServiceFactory.getAdapter('next-engine') as NextEngineAdapter
+
+      const body = request.body as any
+      const result = await adapter.getOrderRows(accessToken, {
+        orderId: body.orderId,
+        productCode: body.productCode,
+        shopId: body.shopId,
+        offset: body.offset ? parseInt(body.offset, 10) : undefined,
+        limit: body.limit ? parseInt(body.limit, 10) : undefined,
+      })
+
+      if (!result.success) {
+        const error = result.error
+        await auditLogRepository.createAuditLog({
+          userId: request.user!.id,
+          operation: 'next-engine.orders.rows',
+          result: 'error',
+          metadata: { connectionId, error: error.message, errorType: error.type, raw: error.raw }
+        })
+        return reply.status(400).send({
+          success: false,
+          code: error.type || 'NEXT_ENGINE_API_ERROR',
+          error: error.message
+        })
+      }
+
+      await auditLogRepository.createAuditLog({
+        userId: request.user!.id,
+        operation: 'next-engine.orders.rows',
+        result: 'success',
+        metadata: { connectionId }
+      })
+
+      return reply.send({ success: true, data: result.data })
+    } catch (error: any) {
+      fastify.log.error('Next Engine orders/rows error:', error)
+      return reply.status(500).send({
+        success: false,
+        code: 'INTERNAL_ERROR',
+        error: error.message || 'Failed to get order rows'
+      })
+    }
+  })
+
+  // Story 5.6: 扣庫分析
+  fastify.post('/api/connections/:connectionId/orders/analyze-allocation', {
+    preHandler: [authMiddleware, requireConnectionOwner]
+  }, async (request, reply) => {
+    try {
+      const { connectionId } = request.params as { connectionId: string }
+      const connection = await connectionRepository.findConnectionById(connectionId)
+
+      if (!connection) {
+        return reply.status(404).send({
+          success: false,
+          code: 'CONNECTION_NOT_FOUND',
+          error: 'Connection not found'
+        })
+      }
+
+      if (connection.platform !== 'next-engine') {
+        return reply.status(400).send({
+          success: false,
+          code: 'INVALID_PLATFORM',
+          error: 'This endpoint is only for Next Engine connections'
+        })
+      }
+
+      const authPayload = connection.authPayload as any
+      const accessToken = authPayload.accessToken
+
+      if (!accessToken) {
+        return reply.status(401).send({
+          success: false,
+          code: 'TOKEN_NOT_FOUND',
+          error: 'Access token not found in connection'
+        })
+      }
+
+      const body = request.body as any
+
+      if (!body.productCode) {
+        return reply.status(400).send({
+          success: false,
+          code: 'MISSING_PARAMETERS',
+          error: 'productCode is required'
+        })
+      }
+
+      PlatformServiceFactory.initialize()
+      const adapter = PlatformServiceFactory.getAdapter('next-engine') as NextEngineAdapter
+
+      const result = await adapter.analyzeStockAllocation(accessToken, body.productCode)
+
+      if (!result.success) {
+        const error = result.error
+        await auditLogRepository.createAuditLog({
+          userId: request.user!.id,
+          operation: 'next-engine.orders.analyze-allocation',
+          result: 'error',
+          metadata: { connectionId, error: error.message, errorType: error.type, raw: error.raw }
+        })
+        return reply.status(400).send({
+          success: false,
+          code: error.type || 'NEXT_ENGINE_API_ERROR',
+          error: error.message
+        })
+      }
+
+      await auditLogRepository.createAuditLog({
+        userId: request.user!.id,
+        operation: 'next-engine.orders.analyze-allocation',
+        result: 'success',
+        metadata: { connectionId, productCode: body.productCode }
+      })
+
+      return reply.send({ success: true, data: result.data })
+    } catch (error: any) {
+      fastify.log.error('Next Engine orders/analyze-allocation error:', error)
+      return reply.status(500).send({
+        success: false,
+        code: 'INTERNAL_ERROR',
+        error: error.message || 'Failed to analyze stock allocation'
       })
     }
   })
