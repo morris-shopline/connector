@@ -1,7 +1,7 @@
 # Story 5.6: Next Engine 訂單 API 補強
 
 **所屬 Epic**: [Epic 5: Next Engine 多平台 MVP（Phase 1.3）](../epics/epic-5-next-engine-mvp.md)  
-**狀態**: 🟡 in-progress  
+**狀態**: ✅ completed  
 **對應 Roadmap**: Phase 1.3（多平台 MVP）  
 **預估工期**: 2-3 個工作天（包含前端整合）
 
