@@ -2,21 +2,23 @@
 
 **Run ID**: run-2025-11-13-01  
 **Run 類型**: Refactor + Bug Fix + Feature Development (Epic 5)  
-**狀態**: 🟡 in-progress（Story 5.5 已完成，Story 5.6 待啟動）  
+**狀態**: 🟡 in-progress（Story 5.5、5.6 已完成，Story 5.7 待開發）  
 **開始時間**: 2025-11-13  
 **達到 ready-for-acceptance 時間**: 2025-11-13  
 **開始驗收時間**: 2025-11-13（推上正式站）  
 **Story 5.5 完成時間**: 2025-11-13（地端 + 正式機測試通過）  
+**Story 5.6 完成時間**: 2025-11-13（查詢相關 API 已完成並通過 User Test）  
 
 ---
 
 ## Run 核心目標
 
-1. **Story 5.4**：將 Shopline 授權／API 流程重構為與 Next Engine 一致的 Platform Adapter 架構
-2. **Issue 2025-11-11-001**：調查並修復停用 Connection Item 時出現的 Network Error
-3. **Story 5.5**：Next Engine 商品建立改進與庫存 API 補強（完成後進行 User Test，通過後推上正式站）
-4. **Story 5.6**：Next Engine 訂單 API 補強
-5. **Story 5.7**：Next Engine 店舖建立改進與在庫連携接收端點
+1. **Story 5.4**：將 Shopline 授權／API 流程重構為與 Next Engine 一致的 Platform Adapter 架構（✅ 已完成 User Test，⏳ 待最後階段檢視架構）
+2. **Issue 2025-11-11-001**：調查並修復停用 Connection Item 時出現的 Network Error（⏸ 不在此 run 處理）
+3. **Story 5.5**：Next Engine 商品建立改進與庫存 API 補強（✅ 已完成並通過地端 + 正式機測試）
+4. **Story 5.6**：Next Engine 訂單 API 補強（✅ 已完成並通過 User Test）
+5. **Story 5.7**：Next Engine 店舖建立改進與在庫連携接收端點（⏸ 待下週繼續開發）
+6. **Story 5.8**：Next Engine 建立訂單 API（⏸ 待 Story 5.7 完成後啟動，API 文件待用戶補充）
 
 ---
 
