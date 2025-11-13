@@ -4,7 +4,7 @@
  * Story 5.2: 測試 Connection Items 與訂單摘要 API
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import Fastify from 'fastify'
 import { apiRoutes } from '../api'
 

@@ -1,9 +1,11 @@
 import { FastifyInstance } from 'fastify'
 import { ShoplineService } from '../services/shopline'
+import { ShoplineAdapter } from '../services/shoplineAdapter'
+import { PlatformServiceFactory } from '../services/platformServiceFactory'
 import { authMiddleware } from '../middleware/auth'
-import { filterWebhookEventsByUser } from '../utils/query-filter'
+import { filterWebhookEventsByUser, getShoplineStoreWithToken, handleRouteError } from '../utils/query-filter'
 
-const shoplineService = new ShoplineService()
+const shoplineService = new ShoplineService() // 保留用於資料庫操作（isWebhookProcessed, saveWebhookEvent, getStoreInfo）
 
 export async function webhookRoutes(fastify: FastifyInstance, options: any) {
   // 為 Webhook 路由配置原始 body 解析器（用於簽名驗證）
@@ -53,7 +55,8 @@ export async function webhookRoutes(fastify: FastifyInstance, options: any) {
       }
 
       // 4. 驗證簽名（必須在處理業務邏輯前完成）
-      const isValidSignature = shoplineService.verifyWebhookSignature(rawBody, signature)
+      const adapter = PlatformServiceFactory.getAdapter('shopline') as ShoplineAdapter
+      const isValidSignature = adapter.verifyWebhookSignature(rawBody, signature)
       if (!isValidSignature) {
         fastify.log.warn('Invalid webhook signature', { webhookId })
         return reply.status(401).send({
@@ -316,7 +319,13 @@ export async function webhookRoutes(fastify: FastifyInstance, options: any) {
 
       fastify.log.info('Subscribing webhook', { handle, topic, webhookUrl })
       
-      const result = await shoplineService.subscribeWebhook(
+      // 取得 store 和 accessToken（統一驗證邏輯）
+      const store = await getShoplineStoreWithToken(handle, shoplineService)
+      
+      // 透過 PlatformServiceFactory 取得 ShoplineAdapter
+      const adapter = PlatformServiceFactory.getAdapter('shopline') as ShoplineAdapter
+      const result = await adapter.subscribeWebhook(
+        store.accessToken,
         handle,
         topic,
         webhookUrl,
@@ -331,35 +340,7 @@ export async function webhookRoutes(fastify: FastifyInstance, options: any) {
       })
     } catch (error: any) {
       fastify.log.error('Subscribe webhook error:', error)
-      fastify.log.error('Error details:', {
-        message: error.message,
-        stack: error.stack
-      })
-
-      // 處理 Token 過期錯誤
-      if (error.message?.includes('ACCESS_TOKEN_EXPIRED')) {
-        return reply.status(401).send({
-          success: false,
-          error: 'ACCESS_TOKEN_EXPIRED',
-          message: 'Access Token 已過期，請重新授權商店',
-          code: 'TOKEN_EXPIRED'
-        })
-      }
-
-      // 處理認證失敗錯誤
-      if (error.message?.includes('AUTHENTICATION_FAILED')) {
-        return reply.status(401).send({
-          success: false,
-          error: 'AUTHENTICATION_FAILED',
-          message: error.message.replace('AUTHENTICATION_FAILED: ', ''),
-          code: 'AUTH_FAILED'
-        })
-      }
-
-      return reply.status(500).send({
-        success: false,
-        error: error.message || 'Internal server error'
-      })
+      return handleRouteError(error, reply)
     }
   })
 
@@ -377,7 +358,12 @@ export async function webhookRoutes(fastify: FastifyInstance, options: any) {
 
       fastify.log.info('Getting webhook subscriptions', { handle })
       
-      const result = await shoplineService.getSubscribedWebhooks(handle)
+      // 取得 store 和 accessToken（統一驗證邏輯）
+      const store = await getShoplineStoreWithToken(handle, shoplineService)
+      
+      // 透過 PlatformServiceFactory 取得 ShoplineAdapter
+      const adapter = PlatformServiceFactory.getAdapter('shopline') as ShoplineAdapter
+      const result = await adapter.getSubscribedWebhooks(store.accessToken, handle)
 
       fastify.log.info('Webhook subscriptions result', { 
         handle, 
@@ -391,35 +377,7 @@ export async function webhookRoutes(fastify: FastifyInstance, options: any) {
       })
     } catch (error: any) {
       fastify.log.error('Get subscribed webhooks error:', error)
-      fastify.log.error('Error details:', {
-        message: error.message,
-        stack: error.stack
-      })
-
-      // 處理 Token 過期錯誤
-      if (error.message?.includes('ACCESS_TOKEN_EXPIRED')) {
-        return reply.status(401).send({
-          success: false,
-          error: 'ACCESS_TOKEN_EXPIRED',
-          message: 'Access Token 已過期，請重新授權商店',
-          code: 'TOKEN_EXPIRED'
-        })
-      }
-
-      // 處理認證失敗錯誤
-      if (error.message?.includes('AUTHENTICATION_FAILED')) {
-        return reply.status(401).send({
-          success: false,
-          error: 'AUTHENTICATION_FAILED',
-          message: error.message.replace('AUTHENTICATION_FAILED: ', ''),
-          code: 'AUTH_FAILED'
-        })
-      }
-
-      return reply.status(500).send({
-        success: false,
-        error: error.message || 'Internal server error'
-      })
+      return handleRouteError(error, reply)
     }
   })
 
@@ -436,7 +394,12 @@ export async function webhookRoutes(fastify: FastifyInstance, options: any) {
         })
       }
 
-      const result = await shoplineService.unsubscribeWebhook(handle, webhookId)
+      // 取得 store 和 accessToken（統一驗證邏輯）
+      const store = await getShoplineStoreWithToken(handle, shoplineService)
+      
+      // 透過 PlatformServiceFactory 取得 ShoplineAdapter
+      const adapter = PlatformServiceFactory.getAdapter('shopline') as ShoplineAdapter
+      const result = await adapter.unsubscribeWebhook(store.accessToken, handle, webhookId)
 
       return reply.send({
         success: true,
@@ -444,31 +407,7 @@ export async function webhookRoutes(fastify: FastifyInstance, options: any) {
       })
     } catch (error: any) {
       fastify.log.error('Unsubscribe webhook error:', error)
-
-      // 處理 Token 過期錯誤
-      if (error.message?.includes('ACCESS_TOKEN_EXPIRED')) {
-        return reply.status(401).send({
-          success: false,
-          error: 'ACCESS_TOKEN_EXPIRED',
-          message: 'Access Token 已過期，請重新授權商店',
-          code: 'TOKEN_EXPIRED'
-        })
-      }
-
-      // 處理認證失敗錯誤
-      if (error.message?.includes('AUTHENTICATION_FAILED')) {
-        return reply.status(401).send({
-          success: false,
-          error: 'AUTHENTICATION_FAILED',
-          message: error.message.replace('AUTHENTICATION_FAILED: ', ''),
-          code: 'AUTH_FAILED'
-        })
-      }
-
-      return reply.status(500).send({
-        success: false,
-        error: error.message || 'Internal server error'
-      })
+      return handleRouteError(error, reply)
     }
   })
 
@@ -484,7 +423,12 @@ export async function webhookRoutes(fastify: FastifyInstance, options: any) {
         })
       }
 
-      const result = await shoplineService.getWebhookCount(handle)
+      // 取得 store 和 accessToken（統一驗證邏輯）
+      const store = await getShoplineStoreWithToken(handle, shoplineService)
+      
+      // 透過 PlatformServiceFactory 取得 ShoplineAdapter
+      const adapter = PlatformServiceFactory.getAdapter('shopline') as ShoplineAdapter
+      const result = await adapter.getWebhookCount(store.accessToken, handle)
 
       return reply.send({
         success: true,
@@ -492,10 +436,7 @@ export async function webhookRoutes(fastify: FastifyInstance, options: any) {
       })
     } catch (error: any) {
       fastify.log.error('Get webhook count error:', error)
-      return reply.status(500).send({
-        success: false,
-        error: error.message || 'Internal server error'
-      })
+      return handleRouteError(error, reply)
     }
   })
 }

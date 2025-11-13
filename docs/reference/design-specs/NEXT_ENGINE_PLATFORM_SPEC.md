@@ -2,7 +2,8 @@
 
 > 📑 參考：`docs/reference/guides/NE-OVERVIEW.md`（實驗專案導入指南）  
 > 📌 對應 Epic：`docs/backlog/epics/epic-5-next-engine-mvp.md`  
-> 📚 API 詳細參考：`docs/reference/platform-apis/NEXTENGINE_API_REFERENCE.md`
+> 📚 API 詳細參考：`docs/reference/platform-apis/NEXTENGINE_API_REFERENCE.md`  
+> 🔧 **實作範本**：`docs/reference/platform-apis/NE-EXAMPLE.md`（ne-test 專案完整實作範本，可直接複製到其他專案使用）
 
 ---
 

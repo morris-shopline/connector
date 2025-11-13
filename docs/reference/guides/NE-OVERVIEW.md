@@ -7,7 +7,8 @@ description: 匯總 ne-test MVP 中的 NextEngine 認證、API、在庫連携與
 
 > 📌 對應規格：`docs/reference/design-specs/NEXT_ENGINE_PLATFORM_SPEC.md`  
 > 📋 對應 Epic：`docs/backlog/epics/epic-5-next-engine-mvp.md`  
-> 📚 API 參考：`docs/reference/platform-apis/NEXTENGINE_API_REFERENCE.md`
+> 📚 API 參考：`docs/reference/platform-apis/NEXTENGINE_API_REFERENCE.md`  
+> 🔧 **實作範本**：`docs/reference/platform-apis/NE-EXAMPLE.md`（ne-test 專案完整實作範本，可直接複製到其他專案使用）
 
 ## 1. 專案定位與基礎結構
 

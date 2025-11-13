@@ -254,4 +254,5 @@ https://connector-theta.vercel.app/
 - 環境變數設定：`docs/reference/guides/ENV_SETUP_GUIDE.md`
 - Next Engine 平台規格：`docs/reference/design-specs/NEXT_ENGINE_PLATFORM_SPEC.md`
 - 正式環境資訊：`docs/reference/guides/PRODUCTION_ENVIRONMENT.md`
+- 🔧 **實作範本**：`docs/reference/platform-apis/NE-EXAMPLE.md`（ne-test 專案完整實作範本，包含 OAuth、API、在庫連携的端到端流程）
 

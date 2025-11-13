@@ -9,11 +9,17 @@ import { z } from 'zod'
 import { PrismaClient } from '@prisma/client'
 import { ShoplineAuthParams } from '../types'
 import { PlatformServiceFactory } from '../services/platformServiceFactory'
+import { PlatformError } from '../types/platform'
 import { connectionRepository } from '../repositories/connectionRepository'
 import { auditLogRepository } from '../repositories/auditLogRepository'
 
+// ShoplineService 保留用於非 OAuth 相關的方法（如 saveStoreInfo）
+// OAuth 相關的方法將使用 PlatformServiceFactory 取得 ShoplineAdapter
 const shoplineService = new ShoplineService()
 const prisma = new PrismaClient()
+
+// 初始化 PlatformServiceFactory
+// PlatformServiceFactory 已在 index.ts 初始化，這裡不需要再次初始化
 
 // 驗證安裝請求的 schema
 const installRequestSchema = z.object({
@@ -120,8 +126,9 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         fastify.log.warn({ msg: '⚠️  Redis 不可用，無法暫存 state 和 userId 對應關係' })
       }
       
-      // 生成授權 URL
-      const authUrl = shoplineService.generateAuthUrl(state, handle)
+      // 生成授權 URL（使用 PlatformServiceFactory）
+      const adapter = PlatformServiceFactory.getAdapter('shopline')
+      const authUrl = adapter.getAuthorizeUrl(state, { handle })
       
       return reply.send({
         success: true,
@@ -180,7 +187,9 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         }
       })
       
-      const isValid = await shoplineService.verifyInstallRequest(verifyParams)
+      // 驗證簽名（使用 ShoplineAdapter）
+      const installAdapter = PlatformServiceFactory.getAdapter('shopline')
+      const isValid = await (installAdapter as any).verifyInstallRequest(verifyParams)
       if (!isValid) {
         fastify.log.error('❌ 簽名驗證失敗')
         return reply.status(401).send({
@@ -230,9 +239,10 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         fastify.log.info('生成的 state (隨機字串):', state)
       }
       
-      // 重定向到 Shopline 授權頁面
+      // 重定向到 Shopline 授權頁面（使用 PlatformServiceFactory）
       fastify.log.info('步驟 4: 生成授權 URL...')
-      const authUrl = shoplineService.generateAuthUrl(state, params.handle)
+      const installAuthAdapter = PlatformServiceFactory.getAdapter('shopline')
+      const authUrl = installAuthAdapter.getAuthorizeUrl(state, { handle: params.handle })
       fastify.log.info('生成的授權 URL:', authUrl)
       
       const processingTime = Date.now() - startTime
@@ -293,7 +303,9 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
       // 這是重構前的正確做法，verifyInstallRequest 會自動遍歷所有參數進行簽名驗證
       // 重構時（Run 2025-11-10-01）被錯誤地改為只傳遞部分參數，導致缺少 code 參數而簽名驗證失敗
       // 恢復為重構前的做法：直接傳遞整個 params
-      const isValidSignature = await shoplineService.verifyInstallRequest(params as any)
+      // 使用 PlatformServiceFactory 取得 ShoplineAdapter
+      const callbackAdapter = PlatformServiceFactory.getAdapter('shopline')
+      const isValidSignature = await (callbackAdapter as any).verifyInstallRequest(params as any)
       if (!isValidSignature) {
         fastify.log.error('回調簽名驗證失敗')
         fastify.log.error('簽名驗證參數:', JSON.stringify(params, null, 2))
@@ -305,8 +317,26 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
 
       fastify.log.info('授權碼驗證成功:', params.code)
       
-      // 交換授權碼獲取存取令牌
-      const tokenData = await shoplineService.exchangeCodeForToken(params.code, params.handle)
+      // 交換授權碼獲取存取令牌（使用 PlatformServiceFactory）
+      const tokenAdapter = PlatformServiceFactory.getAdapter('shopline')
+      const tokenResult = await tokenAdapter.exchangeToken(params.code, params.state || '', { handle: params.handle })
+      
+      // 轉換為舊格式以相容 saveStoreInfo
+      if (!tokenResult.success) {
+        const error = (tokenResult as { success: false; error: PlatformError }).error
+        throw new Error(error.message)
+      }
+      
+      const tokenData = {
+        success: true,
+        data: {
+          accessToken: tokenResult.data.accessToken,
+          expireTime: tokenResult.data.expiresAt ? new Date(tokenResult.data.expiresAt).toISOString() : undefined,
+          refreshToken: tokenResult.data.refreshToken,
+          refreshExpireTime: tokenResult.data.refreshExpiresAt ? new Date(tokenResult.data.refreshExpiresAt).toISOString() : undefined,
+          scope: tokenResult.data.scope,
+        }
+      }
       
       if (tokenData.success) {
         fastify.log.info('Access token 獲取成功')
@@ -649,18 +679,20 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
         // 直接 redirect，不顯示紫色頁面
         return reply.redirect(302, redirectUrl)
       } else {
-        fastify.log.error('Access token 獲取失敗:', tokenData.error)
+        // 這個分支不應該被執行，因為我們已經在之前檢查了 tokenResult.success
+        // 但保留以處理意外情況
+        fastify.log.error('Access token 獲取失敗: 意外的錯誤')
         
         // 錯誤時也要 redirect 到前端 callback 頁面
         const frontendUrl = process.env.FRONTEND_URL
         if (frontendUrl) {
-          const errorRedirectUrl = `${frontendUrl}/connections/callback?auth_success=false&status=error&error=${encodeURIComponent(tokenData.error || '授權失敗')}`
+          const errorRedirectUrl = `${frontendUrl}/connections/callback?auth_success=false&status=error&error=${encodeURIComponent('授權失敗')}`
           return reply.redirect(302, errorRedirectUrl)
         }
         
         return reply.status(500).send({
           success: false,
-          error: tokenData.error
+          error: 'Token exchange failed'
         })
       }
     } catch (error: any) {
@@ -962,7 +994,7 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
       // 前端在授權完成後，從 URL 取得 uid 和 state，主動調用完成 API
       
       // 取得 Next Engine Adapter
-      PlatformServiceFactory.initialize() // 確保 adapter 已註冊
+      // PlatformServiceFactory 已在 index.ts 初始化，這裡不需要再次初始化 // 確保 adapter 已註冊
       const adapter = PlatformServiceFactory.getAdapter('next-engine')
 
       // 生成授權 URL（不包含任何額外參數，只包含 client_id 和 redirect_uri）
@@ -1023,18 +1055,19 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
       // 將 token 資訊暫存到 Redis，前端在授權完成後主動調用 API 完成 Connection 建立
       
       // 取得 Next Engine Adapter
-      PlatformServiceFactory.initialize()
+      // PlatformServiceFactory 已在 index.ts 初始化，這裡不需要再次初始化
       const adapter = PlatformServiceFactory.getAdapter('next-engine')
 
       // 交換 token（Next Engine 使用 uid 作為授權碼，使用 Next Engine 回傳的 state）
       const tokenResult = await adapter.exchangeToken(uid, neState)
 
       if (!tokenResult.success) {
-        fastify.log.error('Token exchange failed:', tokenResult.error)
+        const error = (tokenResult as { success: false; error: PlatformError }).error
+        fastify.log.error('Token exchange failed:', error)
         
         // 重導向回前端，帶上錯誤資訊
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000'
-        const errorMessage = tokenResult.error?.message || tokenResult.error?.type || 'Token exchange failed'
+        const errorMessage = error.message || error.type || 'Token exchange failed'
         const redirectUrl = `${frontendUrl}/connections/callback?auth_success=false&status=error&error=${encodeURIComponent(errorMessage)}`
         return reply.redirect(302, redirectUrl)
       }
@@ -1131,7 +1164,7 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
       }
 
       // 取得 Next Engine Adapter
-      PlatformServiceFactory.initialize()
+      // PlatformServiceFactory 已在 index.ts 初始化，這裡不需要再次初始化
       const adapter = PlatformServiceFactory.getAdapter('next-engine')
 
       // 刷新 token（需要 uid 和 state）
@@ -1141,7 +1174,8 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
       })
 
       if (!refreshResult.success) {
-        fastify.log.error('Token refresh failed:', refreshResult.error)
+        const error = (refreshResult as { success: false; error: PlatformError }).error
+        fastify.log.error('Token refresh failed:', error)
 
         // 記錄審計
         await auditLogRepository.createAuditLog({
@@ -1149,15 +1183,15 @@ export async function authRoutes(fastify: FastifyInstance, options: any) {
           connectionId: connection.id,
           operation: 'connection.reauthorize',
           result: 'error',
-          errorCode: refreshResult.error.type,
-          errorMessage: refreshResult.error.message,
-          metadata: { platform: 'next-engine', raw: refreshResult.error.raw }
+          errorCode: error.type,
+          errorMessage: error.message,
+          metadata: { platform: 'next-engine', raw: error.raw }
         })
 
         return reply.status(400).send({
           success: false,
-          error: refreshResult.error.type,
-          message: refreshResult.error.message
+          error: error.type,
+          message: error.message
         })
       }
 

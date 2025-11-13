@@ -173,4 +173,5 @@ REDIS_URL=redis://red-d406i56uk2gs739qn8ig:6379
 - 環境變數設定：`docs/reference/guides/ENV_SETUP_GUIDE.md`
 - Next Engine OAuth 流程指南：`docs/reference/guides/NEXT_ENGINE_OAUTH_GUIDE.md`
 - Redis 故障排除：`docs/reference/guides/NEXT_ENGINE_REDIS_TROUBLESHOOTING.md`
+- 🔧 **實作範本**：`docs/reference/platform-apis/NE-EXAMPLE.md`（ne-test 專案完整實作範本，包含 OAuth、API、在庫連携的端到端流程）
 

@@ -3,6 +3,8 @@
 ## 概述
 本文檔整理 NextEngine API 的詳細資訊，基於官方文檔和實際測試結果。
 
+> 🔧 **實作範本**：`docs/reference/platform-apis/NE-EXAMPLE.md`（ne-test 專案完整實作範本，包含 OAuth、API、在庫連携的端到端流程，可直接複製到其他專案使用）
+
 ## 重要文檔來源
 - [NextEngine 汎用在庫連携指南](https://manual.next-engine.net/main/category/mall-cart/mc_hanyo/)
 - [在庫更新程序準備](https://manual.next-engine.net/main/stock/stk_settei-unyou/zaiko_hanyo/5174/)

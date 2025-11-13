@@ -11,7 +11,11 @@
 
 在完成 OAuth 與 Adapter 後，將 Next Engine 的公司／店舖資料寫入既有的 Connection 模型，並提供最小可行的資料讀取 API（店舖列表 + 訂單摘要），以驗證多平台資料隔離、權限檢查與錯誤處理。
 
-> 參考文件：`docs/reference/design-specs/NEXT_ENGINE_PLATFORM_SPEC.md`、`docs/reference/guides/NE-OVERVIEW.md`、`docs/reference/platform-apis/NEXTENGINE_API_REFERENCE.md`
+> 參考文件：
+> - `docs/reference/design-specs/NEXT_ENGINE_PLATFORM_SPEC.md`
+> - `docs/reference/guides/NE-OVERVIEW.md`
+> - `docs/reference/platform-apis/NEXTENGINE_API_REFERENCE.md`
+> - 🔧 **實作範本**：`docs/reference/platform-apis/NE-EXAMPLE.md`（ne-test 專案完整實作範本，包含店舖與商品 API 的端到端實作）
 
 ---
 

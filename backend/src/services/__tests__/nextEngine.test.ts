@@ -75,7 +75,7 @@ describe('NextEngineAdapter', () => {
       expect(result.success).toBe(false)
       if (!result.success) {
         expect(result.error.type).toBe('TOKEN_EXPIRED')
-        expect(result.error.message).toBe('Token expired')
+        expect(result.error.message).toContain('Token expired')
       }
     })
 

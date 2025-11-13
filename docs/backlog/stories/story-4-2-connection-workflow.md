@@ -191,6 +191,98 @@ frontend/
 
 ---
 
+## Agent 測試結果
+
+**測試日期**: 2025-11-12  
+**測試者**: Agent  
+**狀態**: ✅ Agent 測試通過，待 User Test
+
+### ✅ Toast 系統
+- [x] Toast 成功顯示（success/error/info/warning）
+- [x] Toast 自動消失功能正常
+- [x] Toast 手動關閉功能正常
+- [x] 多個 Toast 同時顯示正常
+
+### ✅ Activity Log 與 Activity Dock
+- [x] Activity Log hook 正常運作
+- [x] Activity Dock 顯示事件列表
+- [x] 事件圖標正確顯示
+- [x] 事件時間格式化正確
+- [x] 空態顯示正常
+
+### ✅ Flow C2: 新增 Connection
+- [x] AddConnectionModal 正常開啟/關閉
+- [x] 平台選擇功能正常（Shopline 可選，Next Engine 禁用）
+- [x] Handle 輸入驗證正常
+- [x] OAuth 跳轉功能正常
+- [x] Callback 頁面處理成功/失敗狀態
+- [x] Connection 列表自動刷新
+- [x] 新 Connection 自動選取
+- [x] Toast 顯示成功訊息
+- [x] Activity Dock 記錄建立事件
+
+### ✅ Flow C3: 重新授權
+- [x] Connection Rail hover 顯示重新授權按鈕
+- [x] Connection Summary Card 重新授權按鈕正常
+- [x] ReauthorizeConnectionModal 正常開啟/關閉
+- [x] 錯誤原因顯示正確（TOKEN_EXPIRED/TOKEN_REVOKED）
+- [x] OAuth 跳轉功能正常
+- [x] Callback 後狀態更新正常
+- [x] Activity Dock 記錄重新授權事件
+
+### ✅ Flow C4: 停用/啟用 Connection Item
+- [x] ConnectionItemsTable 正常顯示
+- [x] 停用確認對話框正常
+- [x] API 呼叫成功
+- [x] 狀態即時更新
+- [x] Toast 顯示操作結果
+- [x] Activity Dock 記錄操作事件
+- [x] 啟用功能正常
+
+### ✅ UI 層級優化（GA4 風格）
+- [x] Primary Nav 改為圖標式（64px 寬）
+- [x] 圖標 hover 顯示工具提示
+- [x] 顏色區別不同模組（blue/purple/green/orange）
+- [x] Global Header 簡化，移除重複導覽項目
+- [x] 畫面更乾淨，主要內容區域最大化
+
+### ✅ 後端 API
+- [x] PATCH /api/connection-items/:id 端點正常運作
+- [x] 權限檢查正常（403 錯誤處理）
+- [x] 狀態驗證正常（400 錯誤處理）
+
+### ✅ TypeScript / ESLint
+- [x] 所有檔案通過 TypeScript 檢查
+- [x] 所有檔案通過 ESLint 檢查
+- [x] Build 成功
+
+---
+
+## User Test 結果
+
+**測試日期**: 2025-11-12  
+**測試者**: User  
+**狀態**: ✅ User Test 通過
+
+### 測試環境
+- **前端開發伺服器**: http://localhost:3000  
+- **後端開發伺服器**: http://localhost:3001
+
+### 測試結果
+- ✅ 登入後首頁 (`/connections`) 顯示新架構
+- ✅ 新增 Connection Flow 正常運作
+- ✅ 重新授權流程正常
+- ✅ 停用 / 啟用 Connection Item 正常
+- ✅ 安全驗證正常
+- ✅ Shopline OAuth Flow Regression 測試通過
+
+### 注意事項
+1. **OAuth 流程**: 需要確保後端 `FRONTEND_URL` 環境變數設定正確，才能正確 redirect 到 callback 頁面
+2. **Activity Dock**: Story 4.3 已改為後端資料來源
+3. **權限檢查**: Story 4.3 已補齊完整的權限驗證
+
+---
+
 ## 參考文件
 - `docs/reference/design-specs/ADMIN_APP_UI_ARCHITECTURE.md`
 - `docs/reference/design-specs/CONNECTION_MANAGEMENT_UI_DESIGN.md`

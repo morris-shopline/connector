@@ -19,6 +19,7 @@ if (!process.env.DATABASE_URL) {
 import { authRoutes } from './routes/auth'
 import { webhookRoutes } from './routes/webhook'
 import { apiRoutes } from './routes/api'
+import { PlatformServiceFactory } from './services/platformServiceFactory'
 
 const fastify = Fastify({
   logger: {
@@ -143,6 +144,10 @@ async function start() {
     console.error('❌ [DEBUG] Redis 客戶端未初始化，請檢查 REDIS_URL 環境變數')
   }
   try {
+    // 初始化 PlatformServiceFactory（必須在所有路由註冊前完成）
+    PlatformServiceFactory.initialize()
+    console.log('✅ PlatformServiceFactory 已初始化')
+    
     await registerPlugins()
     await registerRoutes()
 

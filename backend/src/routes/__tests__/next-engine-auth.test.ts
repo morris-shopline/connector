@@ -4,7 +4,7 @@
  * Story 5.1: 測試 OAuth API 端點
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import Fastify from 'fastify'
 import { authRoutes } from '../auth'
 

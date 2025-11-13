@@ -11,7 +11,10 @@
 
 修正 Webhook、Event、API 測試頁面，讓它們能夠配合多平台運作，跟隨 Context Bar 的 Connection 選擇，並根據 platform 動態調整顯示和 API 端點。同時實作 Next Engine 的 API 測試功能。
 
-> 參考文件：`docs/reference/design-specs/NEXT_ENGINE_PLATFORM_SPEC.md`、`docs/reference/platform-apis/NEXTENGINE_API_REFERENCE.md`
+> 參考文件：
+> - `docs/reference/design-specs/NEXT_ENGINE_PLATFORM_SPEC.md`
+> - `docs/reference/platform-apis/NEXTENGINE_API_REFERENCE.md`
+> - 🔧 **實作範本**：`docs/reference/platform-apis/NE-EXAMPLE.md`（ne-test 專案完整實作範本，包含 API 測試功能的端到端實作）
 
 ---
 

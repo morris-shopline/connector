@@ -11,7 +11,11 @@
 
 將 Next Engine 納入現有的 Connection Dashboard 與工作流，確保使用者可以在前端選取 Next Engine Connection、查看資料摘要、觸發重新授權與錯誤提示。需保持與 Epic 4 相同的體驗，並確保多平台切換的狀態同步正確。
 
-> 參考文件：`docs/reference/design-specs/NEXT_ENGINE_PLATFORM_SPEC.md`、`docs/reference/design-specs/CONNECTION_MANAGEMENT_UI_DESIGN.md`、`docs/reference/platform-apis/NEXTENGINE_API_REFERENCE.md`
+> 參考文件：
+> - `docs/reference/design-specs/NEXT_ENGINE_PLATFORM_SPEC.md`
+> - `docs/reference/design-specs/CONNECTION_MANAGEMENT_UI_DESIGN.md`
+> - `docs/reference/platform-apis/NEXTENGINE_API_REFERENCE.md`
+> - 🔧 **實作範本**：`docs/reference/platform-apis/NE-EXAMPLE.md`（ne-test 專案完整實作範本，包含 OAuth、API、在庫連携的端到端流程）
 
 ---
 

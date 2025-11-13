@@ -99,6 +99,7 @@
 - Next Engine 串接指南：`docs/reference/guides/NE-OVERVIEW.md`
 - Next Engine 平台規格：`docs/reference/design-specs/NEXT_ENGINE_PLATFORM_SPEC.md`
 - Next Engine API 參考：`docs/reference/platform-apis/NEXTENGINE_API_REFERENCE.md`
+- 🔧 **Next Engine 實作範本**：`docs/reference/platform-apis/NE-EXAMPLE.md`（ne-test 專案完整實作範本，包含 OAuth、API、在庫連携的端到端流程，可直接複製到其他專案使用）
 
 ---
 

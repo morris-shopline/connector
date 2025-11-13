@@ -243,6 +243,7 @@ sequenceDiagram
 
 ## 參考實作
 
+- 🔧 **完整實作範本**：`docs/reference/platform-apis/NE-EXAMPLE.md`（ne-test 專案完整實作範本，包含 OAuth、API、在庫連携的端到端流程）
 - `ne-test/services/nextengine-client.js`：完整 OAuth + token refresh 流程
 - `ne-test/server.js` 中 `/auth/ne` 與 `/auth/callback` 兩個路由：最小可執行範例
 - `ne-test/docs/nextengine-integration-essentials.md`：所有已驗證 API 的摘要與注意事項

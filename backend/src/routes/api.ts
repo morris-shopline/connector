@@ -1,13 +1,15 @@
 import { FastifyInstance } from 'fastify'
 import { ShoplineService } from '../services/shopline'
+import { ShoplineAdapter } from '../services/shoplineAdapter'
+import { NextEngineAdapter } from '../services/nextEngine'
 import { authMiddleware } from '../middleware/auth'
 import { requireConnectionOwner } from '../middleware/requireConnectionOwner'
-import { filterStoresByUser, verifyStoreOwnership, verifyStoreHandleOwnership } from '../utils/query-filter'
+import { filterStoresByUser, verifyStoreOwnership, verifyStoreHandleOwnership, getShoplineStoreWithToken, handleRouteError } from '../utils/query-filter'
 import { connectionRepository } from '../repositories/connectionRepository'
 import { auditLogRepository } from '../repositories/auditLogRepository'
 import { PlatformServiceFactory } from '../services/platformServiceFactory'
 
-const shoplineService = new ShoplineService()
+const shoplineService = new ShoplineService() // 保留用於資料庫操作（getStoreByHandle）
 
 export async function apiRoutes(fastify: FastifyInstance, options: any) {
   // R3.0: 取得所有 Connection 及底下項目（需要登入）
@@ -116,25 +118,26 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
         }
 
         PlatformServiceFactory.initialize()
-        const adapter = PlatformServiceFactory.getAdapter('next-engine')
+        const adapter = PlatformServiceFactory.getAdapter('next-engine') as NextEngineAdapter
         const orderSummary = await adapter.getOrderSummary(accessToken)
 
         if (!orderSummary.success) {
+          const errorResult = orderSummary as { success: false; error: any }
           // 記錄錯誤
           await auditLogRepository.createAuditLog({
             userId: request.user.id,
             connectionId: connection.id,
             operation: 'connection.orders.summary',
             result: 'error',
-            errorCode: orderSummary.error.type,
-            errorMessage: orderSummary.error.message,
-            metadata: { platform: 'next-engine', raw: orderSummary.error.raw }
+            errorCode: errorResult.error.type,
+            errorMessage: errorResult.error.message,
+            metadata: { platform: 'next-engine', raw: errorResult.error.raw }
           })
 
           return reply.status(400).send({
             success: false,
-            code: orderSummary.error.type,
-            error: orderSummary.error.message
+            code: errorResult.error.type,
+            error: errorResult.error.message
           })
         }
 
@@ -238,19 +241,59 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
   // 更新 Connection Item 狀態（需要登入 + 擁有權驗證）
   fastify.patch('/api/connection-items/:id', { 
     preHandler: [authMiddleware, async (request, reply) => {
-      // 先取得 item 的 connectionId，然後驗證擁有權
-      const itemId = (request.params as any).id
-      const item = await connectionRepository.findConnectionItemById(itemId)
-      if (!item) {
-        return reply.status(404).send({
+      try {
+        // 跳過 OPTIONS 請求（CORS preflight）
+        if (request.method === 'OPTIONS') {
+          return
+        }
+
+        // 先取得 item 的 connectionId，然後驗證擁有權
+        const itemId = (request.params as any).id
+        const item = await connectionRepository.findConnectionItemById(itemId)
+        
+        if (!item) {
+          return reply.status(404).send({
+            success: false,
+            code: 'CONNECTION_ITEM_NOT_FOUND',
+            error: 'Connection Item not found'
+          })
+        }
+
+        // 驗證 integrationAccountId 是否存在
+        if (!item.integrationAccountId) {
+          fastify.log.error('ConnectionItem missing integrationAccountId:', { itemId, item })
+          return reply.status(500).send({
+            success: false,
+            code: 'INVALID_CONNECTION_ITEM',
+            error: 'Connection Item is missing integration account reference'
+          })
+        }
+
+        // 將 connectionId 放入 params，讓 requireConnectionOwner 可以驗證
+        ;(request.params as any).connectionId = item.integrationAccountId
+        
+        // ⚠️ 關鍵修復：加上 await，確保 Promise 被正確處理
+        await requireConnectionOwner(request as any, reply)
+      } catch (error: any) {
+        fastify.log.error('Connection item middleware error:', {
+          error: error.message,
+          stack: error.stack,
+          itemId: (request.params as any).id,
+          url: request.url,
+          method: request.method,
+        })
+
+        // 如果已經有回應，跳過
+        if (reply.sent) {
+          return
+        }
+
+        return reply.status(500).send({
           success: false,
-          code: 'CONNECTION_ITEM_NOT_FOUND',
-          error: 'Connection Item not found'
+          code: 'INTERNAL_ERROR',
+          error: 'Internal server error'
         })
       }
-      // 將 connectionId 放入 params，讓 requireConnectionOwner 可以驗證
-      ;(request.params as any).connectionId = item.integrationAccountId
-      return requireConnectionOwner(request as any, reply)
     }]
   }, async (request, reply) => {
     try {
@@ -477,7 +520,12 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
         })
       }
       
-      const storeInfo = await shoplineService.getStoreInfoFromAPI(handle)
+      // 取得 store 和 accessToken（統一驗證邏輯）
+      const store = await getShoplineStoreWithToken(handle, shoplineService)
+      
+      // 透過 PlatformServiceFactory 取得 ShoplineAdapter
+      const adapter = PlatformServiceFactory.getAdapter('shopline') as ShoplineAdapter
+      const storeInfo = await adapter.getStoreInfoFromAPI(store.accessToken, handle)
       
       return reply.send({
         success: true,
@@ -485,19 +533,7 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
       })
     } catch (error: any) {
       fastify.log.error('Get store info error:', error)
-      
-      if (error.message?.includes('ACCESS_TOKEN_EXPIRED') || error.message?.includes('TOKEN_EXPIRED')) {
-        return reply.status(401).send({
-          success: false,
-          code: 'TOKEN_EXPIRED',
-          error: error.message
-        })
-      }
-      
-      return reply.status(500).send({
-        success: false,
-        error: error.message || 'Internal server error'
-      })
+      return handleRouteError(error, reply)
     }
   })
 
@@ -522,6 +558,10 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
           error: 'Forbidden: Store does not belong to current user'
         })
       }
+      
+      // 取得 store 和 accessToken（統一驗證邏輯）
+      const store = await getShoplineStoreWithToken(handle, shoplineService)
+      
       const { page, limit, ids } = request.query as { page?: string; limit?: string; ids?: string }
       
       const params: any = {}
@@ -529,7 +569,9 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
       if (limit) params.limit = parseInt(limit)
       if (ids) params.ids = ids
       
-      const products = await shoplineService.getProducts(handle, params)
+      // 透過 PlatformServiceFactory 取得 ShoplineAdapter
+      const adapter = PlatformServiceFactory.getAdapter('shopline') as ShoplineAdapter
+      const products = await adapter.getProducts(store.accessToken, handle, params)
       
       return reply.send({
         success: true,
@@ -537,19 +579,7 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
       })
     } catch (error: any) {
       fastify.log.error('Get products error:', error)
-      
-      if (error.message?.includes('ACCESS_TOKEN_EXPIRED') || error.message?.includes('TOKEN_EXPIRED')) {
-        return reply.status(401).send({
-          success: false,
-          code: 'TOKEN_EXPIRED',
-          error: error.message
-        })
-      }
-      
-      return reply.status(500).send({
-        success: false,
-        error: error.message || 'Internal server error'
-      })
+      return handleRouteError(error, reply)
     }
   })
 
@@ -573,7 +603,13 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
           error: 'Forbidden: Store does not belong to current user'
         })
       }
-      const product = await shoplineService.getProduct(handle, productId)
+      
+      // 取得 store 和 accessToken（統一驗證邏輯）
+      const store = await getShoplineStoreWithToken(handle, shoplineService)
+      
+      // 透過 PlatformServiceFactory 取得 ShoplineAdapter
+      const adapter = PlatformServiceFactory.getAdapter('shopline') as ShoplineAdapter
+      const product = await adapter.getProduct(store.accessToken, handle, productId)
       
       return reply.send({
         success: true,
@@ -582,25 +618,16 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
     } catch (error: any) {
       fastify.log.error('Get product error:', error)
       
-      if (error.message?.includes('ACCESS_TOKEN_EXPIRED') || error.message?.includes('TOKEN_EXPIRED')) {
-        return reply.status(401).send({
-          success: false,
-          code: 'TOKEN_EXPIRED',
-          error: error.message
-        })
-      }
-      
+      // 處理 404 錯誤（產品不存在）
       if (error.message?.includes('not found')) {
         return reply.status(404).send({
           success: false,
+          code: 'PRODUCT_NOT_FOUND',
           error: error.message
         })
       }
       
-      return reply.status(500).send({
-        success: false,
-        error: error.message || 'Internal server error'
-      })
+      return handleRouteError(error, reply)
     }
   })
 
@@ -624,9 +651,15 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
           error: 'Forbidden: Store does not belong to current user'
         })
       }
+      
+      // 取得 store 和 accessToken（統一驗證邏輯）
+      const store = await getShoplineStoreWithToken(handle, shoplineService)
+      
       const productData = request.body as any
       
-      const product = await shoplineService.createProduct(handle, productData)
+      // 透過 PlatformServiceFactory 取得 ShoplineAdapter
+      const adapter = PlatformServiceFactory.getAdapter('shopline') as ShoplineAdapter
+      const product = await adapter.createProduct(store.accessToken, handle, productData)
       
       return reply.status(201).send({
         success: true,
@@ -634,19 +667,7 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
       })
     } catch (error: any) {
       fastify.log.error('Create product error:', error)
-      
-      if (error.message?.includes('ACCESS_TOKEN_EXPIRED') || error.message?.includes('TOKEN_EXPIRED')) {
-        return reply.status(401).send({
-          success: false,
-          code: 'TOKEN_EXPIRED',
-          error: error.message
-        })
-      }
-      
-      return reply.status(500).send({
-        success: false,
-        error: error.message || 'Internal server error'
-      })
+      return handleRouteError(error, reply)
     }
   })
 
@@ -671,7 +692,13 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
           error: 'Forbidden: Store does not belong to current user'
         })
       }
-      const locations = await shoplineService.getLocations(handle)
+      
+      // 取得 store 和 accessToken（統一驗證邏輯）
+      const store = await getShoplineStoreWithToken(handle, shoplineService)
+      
+      // 透過 PlatformServiceFactory 取得 ShoplineAdapter
+      const adapter = PlatformServiceFactory.getAdapter('shopline') as ShoplineAdapter
+      const locations = await adapter.getLocations(store.accessToken, handle)
       
       return reply.send({
         success: true,
@@ -679,19 +706,7 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
       })
     } catch (error: any) {
       fastify.log.error('Get locations error:', error)
-      
-      if (error.message?.includes('ACCESS_TOKEN_EXPIRED') || error.message?.includes('TOKEN_EXPIRED')) {
-        return reply.status(401).send({
-          success: false,
-          code: 'TOKEN_EXPIRED',
-          error: error.message
-        })
-      }
-      
-      return reply.status(500).send({
-        success: false,
-        error: error.message || 'Internal server error'
-      })
+      return handleRouteError(error, reply)
     }
   })
 
@@ -716,6 +731,10 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
           error: 'Forbidden: Store does not belong to current user'
         })
       }
+      
+      // 取得 store 和 accessToken（統一驗證邏輯）
+      const store = await getShoplineStoreWithToken(handle, shoplineService)
+      
       const { page, limit, status } = request.query as { page?: string; limit?: string; status?: string }
       
       const params: any = {}
@@ -723,7 +742,9 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
       if (limit) params.limit = parseInt(limit)
       if (status) params.status = status
       
-      const orders = await shoplineService.getOrders(handle, params)
+      // 透過 PlatformServiceFactory 取得 ShoplineAdapter
+      const adapter = PlatformServiceFactory.getAdapter('shopline') as ShoplineAdapter
+      const orders = await adapter.getOrders(store.accessToken, handle, params)
       
       return reply.send({
         success: true,
@@ -731,19 +752,7 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
       })
     } catch (error: any) {
       fastify.log.error('Get orders error:', error)
-      
-      if (error.message?.includes('ACCESS_TOKEN_EXPIRED') || error.message?.includes('TOKEN_EXPIRED')) {
-        return reply.status(401).send({
-          success: false,
-          code: 'TOKEN_EXPIRED',
-          error: error.message
-        })
-      }
-      
-      return reply.status(500).send({
-        success: false,
-        error: error.message || 'Internal server error'
-      })
+      return handleRouteError(error, reply)
     }
   })
 
@@ -767,9 +776,15 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
           error: 'Forbidden: Store does not belong to current user'
         })
       }
+      
+      // 取得 store 和 accessToken（統一驗證邏輯）
+      const store = await getShoplineStoreWithToken(handle, shoplineService)
+      
       const orderData = request.body as any
       
-      const order = await shoplineService.createOrder(handle, orderData)
+      // 透過 PlatformServiceFactory 取得 ShoplineAdapter
+      const adapter = PlatformServiceFactory.getAdapter('shopline') as ShoplineAdapter
+      const order = await adapter.createOrder(store.accessToken, handle, orderData)
       
       return reply.status(201).send({
         success: true,
@@ -777,19 +792,7 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
       })
     } catch (error: any) {
       fastify.log.error('Create order error:', error)
-      
-      if (error.message?.includes('ACCESS_TOKEN_EXPIRED') || error.message?.includes('TOKEN_EXPIRED')) {
-        return reply.status(401).send({
-          success: false,
-          code: 'TOKEN_EXPIRED',
-          error: error.message
-        })
-      }
-      
-      return reply.status(500).send({
-        success: false,
-        error: error.message || 'Internal server error'
-      })
+      return handleRouteError(error, reply)
     }
   })
 
@@ -853,13 +856,13 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
 
       // 取得 Next Engine Adapter
       PlatformServiceFactory.initialize()
-      const adapter = PlatformServiceFactory.getAdapter('next-engine')
+      const adapter = PlatformServiceFactory.getAdapter('next-engine') as NextEngineAdapter
 
       // 取得公司資訊（用於 displayName）
       const identityResult = await adapter.getIdentity(tokenData.accessToken)
 
       if (!identityResult.success) {
-        fastify.log.warn('Get identity failed:', identityResult.error)
+        fastify.log.warn('Get identity failed:', (identityResult as { success: false; error: any }).error)
         // 繼續處理，使用 uid 作為 displayName
       }
 
@@ -907,7 +910,8 @@ export async function apiRoutes(fastify: FastifyInstance, options: any) {
 
       // 同步店舖資料（Story 5.2）
       try {
-        const shopsResult = await adapter.getShops(tokenData.accessToken)
+        const neAdapter = PlatformServiceFactory.getAdapter('next-engine') as NextEngineAdapter
+        const shopsResult = await neAdapter.getShops(tokenData.accessToken)
         if (shopsResult.success && shopsResult.data.length > 0) {
           // 取得現有的 Connection Items（避免重複建立）
           const existingItems = await connectionRepository.findConnectionItems(connection.id)

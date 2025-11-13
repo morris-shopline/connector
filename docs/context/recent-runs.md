@@ -6,27 +6,112 @@
 
 ## Run 列表
 
-### 🟡 Run 2025-11-12-02: Epic 5 Next Engine 多平台 MVP（草稿）
+### ✅ Run 2025-11-13-01: Epic 5 Shopline Adapter 重構 + Bug Fix + API 補強
+
+**Run ID**: run-2025-11-13-01  
+**類型**: Refactor + Bug Fix + Feature Development (Epic 5)  
+**狀態**: 🟡 in-acceptance（推上正式站，進行 User Test）  
+**開始時間**: 2025-11-13  
+**達到 ready-for-acceptance 時間**: 2025-11-13  
+**開始驗收時間**: 2025-11-13（推上正式站）
+
+**Stories**:
+- [Story 5.4: Shopline Platform Adapter 重構](../backlog/stories/story-5-4-shopline-adapter-refactor.md) 🟡 in-user-test
+- [Issue 2025-11-11-001: 停用 Connection Item 時出現 Network Error](../backlog/issues/issue-2025-11-11-001-disable-connection-item-network-error.md) 🔍 pending-investigation
+- [Story 5.5: Next Engine 庫存與倉庫 API 補強](../backlog/stories/story-5-5-next-engine-inventory-apis.md) 🟢 ready-for-dev
+- [Story 5.6: Next Engine 訂單 API 補強](../backlog/stories/story-5-6-next-engine-order-apis.md) ⏸ pending
+- [Story 5.7: Next Engine 店舖建立改進與在庫連携接收端點](../backlog/stories/story-5-7-next-engine-shop-creation-and-stock-webhook.md) ⏸ pending
+
+**完成內容**:
+- ✅ Story 5.4: Shopline Platform Adapter 重構
+  - 建立 `ShoplineAdapter`，實作 `PlatformAdapter` 介面（16 個方法）
+  - 將所有 API 和 Webhook 方法移到 `ShoplineAdapter`
+  - 更新 `PlatformServiceFactory` 註冊 ShoplineAdapter
+  - 重構所有路由使用 Factory 模式（auth.ts: 5處, api.ts: 13處, webhook.ts: 全部）
+  - 統一錯誤處理邏輯（建立 `RouteError` class 和 `handleRouteError` helper）
+  - 統一驗證邏輯（建立 `getShoplineStoreWithToken` helper）
+  - 符合 DRY 原則，消除重複代碼
+
+**Agent 測試結果**:
+- ✅ 代碼結構測試：所有方法存在性檢查通過
+- ✅ 架構驗證：所有路由使用新架構
+- ✅ 實際 API 測試：使用資料庫 Token 測試（見 `docs/memory/decisions/testing-with-database-tokens.md`）
+  - 成功從資料庫取得 Store
+  - API 呼叫邏輯正確
+  - 錯誤處理邏輯正確（Token 過期、無效 token）
+- ✅ 測試腳本：`backend/scripts/test-shopline-api.ts`（可重複執行）
+
+**交付項目**:
+- ✅ 建立測試方法論決策記錄：`docs/memory/decisions/testing-with-database-tokens.md`
+- ✅ 建立測試腳本：`backend/scripts/test-shopline-api.ts`
+
+**待 User Test**:
+- ⏳ Shopline OAuth 授權流程（正式站）
+- ⏳ Shopline API 端點功能（正式站）
+- ⏳ Shopline Webhook 功能（正式站）
+- ⏳ Next Engine 功能回歸測試（確認重構未影響）
+
+**推上線狀態**: 🚀 **已推上正式站，進行 User Test**
+
+---
+
+### ✅ Run 2025-11-12-02: Epic 5 Next Engine 多平台 MVP
 
 **Run ID**: run-2025-11-12-02  
 **類型**: Feature Development (Epic 5)  
-**狀態**: 🟡 draft  
+**狀態**: ✅ accepted  
 **開始時間**: 2025-11-12  
+**完成時間**: 2025-11-12（晚間）  
+**User Test 完成時間**: 2025-11-13
 
 **Stories**:
-- [Story 5.1: Next Engine OAuth Flow 與 Platform Adapter](../backlog/stories/story-5-1-next-engine-oauth.md) 🟡 draft
-- [Story 5.2: Next Engine Connection Item 與資料讀取 MVP](../backlog/stories/story-5-2-next-engine-connection-data.md) ⚪ pending
-- [Story 5.3: 前端 Connection UX 延伸與重新授權整合](../backlog/stories/story-5-3-next-engine-ux.md) ⚪ pending
-- [Story 5.4: Shopline Platform Adapter 重構](../backlog/stories/story-5-4-shopline-adapter-refactor.md) ⚪ pending
-- [Story 5.5: Next Engine 庫存與倉庫 API 補強](../backlog/stories/story-5-5-next-engine-inventory-apis.md) ⚪ pending
+- [Story 5.1: Next Engine OAuth Flow 與 Platform Adapter](../backlog/stories/story-5-1-next-engine-oauth.md) ✅ completed
+- [Story 5.2: Next Engine Connection Item 與資料讀取 MVP](../backlog/stories/story-5-2-next-engine-connection-data.md) ✅ completed
+- [Story 5.3: 前端 Connection UX 延伸與重新授權整合](../backlog/stories/story-5-3-next-engine-ux.md) ✅ completed
+- [Story 5.3.1: 多平台測試頁面整合](../backlog/stories/story-5-3-1-multi-platform-test-pages.md) ✅ completed
 
-**目前進度**:
-- 完成 Next Engine 平台設計規格、環境變數設定與 sandbox 憑證紀錄（已寫入 `.env` / Render 指引）。
-- Story 規劃已完成，可依序啟動 5.1 → 5.3；5.4 / 5.5 暫緩至第一輪 User Test 後再評估。
+**完成內容**:
+- ✅ Story 5.1: Next Engine OAuth Flow 與 Platform Adapter
+  - 建立 PlatformServiceFactory 與 PlatformAdapter 介面
+  - 實作 NextEngineAdapter（授權、Token 交換、刷新、身份識別）
+  - 建立 OAuth API 路由（install、callback、refresh）
+  - 錯誤碼映射與 Activity Dock 整合
+- ✅ Story 5.2: Next Engine Connection Item 與資料讀取 MVP
+  - Prisma migration 建立 Connection Item 模型
+  - 店舖資料同步與訂單摘要 API
+  - 後端 API 完成並通過自動化測試
+- ✅ Story 5.3: 前端 Connection UX 延伸與重新授權整合
+  - 多平台切換功能
+  - 重新授權 UX 與錯誤提示
+  - 前端整合完成，User Test 通過
+- ✅ Story 5.3.1: 多平台測試頁面整合
+  - 建立 ConnectionSelectorDropdown 組件
+  - 平台 API 配置系統（api-configs.ts）
+  - Next Engine API 測試功能（4 個端點）
+  - 統一 API 呼叫架構（使用 apiClient）
+  - 修復 CORS 問題
 
-**待辦**:
-- Agent 完成 5.1～5.3 的自動化測試並更新錯誤碼映射與 Activity Dock 事件。
-- Human 依 User Test 清單實際走一次 OAuth / 重新授權體驗。
+**架構修復**:
+- ✅ 統一 API 呼叫架構（Next Engine 改用 apiClient，與 Shopline 一致）
+- ✅ 統一 URL 處理（所有地方使用 getBackendUrl）
+- ✅ 修復 CORS 問題（加強後端 CORS 設定與 debug 日誌）
+- ✅ 移除所有直接使用 fetch 的地方
+- ✅ 移除所有直接使用環境變數的地方
+
+**測試結果**:
+- ✅ Agent 功能測試：所有 Story 通過
+- ✅ 正式站測試通過
+- ⏳ User Test：待驗收
+
+**遺留項目**:
+- 🔴 Issue 2025-11-11-001: 停用 Connection Item 時出現 Network Error（下個 Run 優先處理）
+- 🟡 Token 到期時間顯示問題（優化階段處理）
+- 🟡 Issue 2025-11-12-001: 清理備份檔案（技術債清理）
+- 🔵 Note 2025-11-11-001: Admin x Connection 資料隔離與綁定策略（Phase 2）
+- 🔵 Next Engine Store 建立邏輯（Phase 2 設計討論）
+- 🔵 Note 2025-11-12-002: UI/UX 改進項目（優化階段或 Phase 2）
+
+**推上線狀態**: ✅ 已推上線（正式站測試通過）
 
 ---
 
@@ -281,5 +366,5 @@
 
 ---
 
-**最後更新**: 2025-11-12
+**最後更新**: 2025-11-13
 

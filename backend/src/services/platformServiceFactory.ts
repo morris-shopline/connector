@@ -12,8 +12,7 @@
 
 import { Platform, PlatformAdapter } from '../types/platform'
 import { NextEngineAdapter } from './nextEngine'
-// ShoplineAdapter 將在 Story 5.4 重構時加入
-// import { ShoplineAdapter } from './shoplineAdapter'
+import { ShoplineAdapter } from './shoplineAdapter'
 
 export class PlatformServiceFactory {
   private static adapters: Map<Platform, PlatformAdapter> = new Map()
@@ -50,13 +49,24 @@ export class PlatformServiceFactory {
    * 初始化所有平台 Adapter（在應用啟動時呼叫）
    */
   static initialize() {
-    // 註冊 Next Engine Adapter
-    const nextEngineAdapter = new NextEngineAdapter()
-    this.registerAdapter('next-engine', nextEngineAdapter)
+    // 註冊 Next Engine Adapter（如果環境變數存在）
+    try {
+      const nextEngineAdapter = new NextEngineAdapter()
+      this.registerAdapter('next-engine', nextEngineAdapter)
+      console.log('✅ Next Engine Adapter 已註冊')
+    } catch (error: any) {
+      console.warn('⚠️ Next Engine Adapter 初始化失敗（環境變數未設定）:', error.message)
+    }
 
-    // Shopline Adapter 將在 Story 5.4 重構時加入
-    // const shoplineAdapter = new ShoplineAdapter()
-    // this.registerAdapter('shopline', shoplineAdapter)
+    // 註冊 Shopline Adapter（Story 5.4）
+    try {
+      const shoplineAdapter = new ShoplineAdapter()
+      this.registerAdapter('shopline', shoplineAdapter)
+      console.log('✅ Shopline Adapter 已註冊')
+    } catch (error: any) {
+      console.error('❌ Shopline Adapter 初始化失敗:', error.message)
+      throw error // Shopline 是必需的，如果失敗應該拋出錯誤
+    }
   }
 }
 

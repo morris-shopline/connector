@@ -11,7 +11,11 @@
 
 建立 Next Engine 專屬的授權流程與 Platform Adapter，讓使用者可以在 Admin 介面完成 Next Engine 的授權、重新授權與 Token Refresh。流程需與 Epic 4 的 Connection 架構整合，所有平台差異封裝於 Adapter 層，後端 API 仍透過統一的 `PlatformServiceFactory` 存取。
 
-> 參考文件：`docs/reference/design-specs/NEXT_ENGINE_PLATFORM_SPEC.md`、`docs/reference/guides/NE-OVERVIEW.md`、`docs/reference/platform-apis/NEXTENGINE_API_REFERENCE.md`
+> 參考文件：
+> - `docs/reference/design-specs/NEXT_ENGINE_PLATFORM_SPEC.md`
+> - `docs/reference/guides/NE-OVERVIEW.md`
+> - `docs/reference/platform-apis/NEXTENGINE_API_REFERENCE.md`
+> - 🔧 **實作範本**：`docs/reference/platform-apis/NE-EXAMPLE.md`（ne-test 專案完整實作範本，包含 OAuth 流程的端到端實作）
 
 ---
 
