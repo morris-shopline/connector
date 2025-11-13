@@ -227,12 +227,38 @@
 
 ---
 
-### 階段 6：Story 5.4 架構檢視與徹底重構（⏳ 待執行）
+### 階段 6：Story 5.8 - Next Engine 建立訂單 API（待啟動）
+
+**目標**：實作 Next Engine 建立訂單 API
+
+**狀態**：⏸ 待 Story 5.7 完成後啟動
+
+**前置條件**：
+- ⏳ Story 5.7 已完成
+- ⏳ Next Engine 建立訂單 API 文件已補充（待用戶補充）
+
+**實作重點**：
+1. 實作建立訂單 API（API 端點與參數待用戶補充文件）
+2. 在 `NextEngineAdapter` 中新增 `createOrder` 方法
+3. 前端 API 客戶端方法整合
+4. 前端 API 配置整合
+5. 前端測試頁面整合
+
+**備註**：
+- ⚠️ **API 文件待補充**：此 Story 為初步規劃版本，需等待用戶補充 Next Engine 建立訂單 API 的詳細文件後，再更新詳細的實作規格
+- 📝 參考文件：`docs/reference/platform-apis/NE-EXAMPLE.md`（如有相關章節）
+
+**參考文件**：
+- [Story 5.8: Next Engine 建立訂單 API](../backlog/stories/story-5-8-next-engine-create-order.md)
+
+---
+
+### 階段 7：Story 5.4 架構檢視與徹底重構（⏳ 待執行）
 
 **目標**：回頭檢視 Story 5.4 的重構是否徹底，確保代碼架構面完全沒有雙軌的痕跡
 
 **狀態**：⏳ 待執行  
-**預定時機**：此 Run 的最後階段（等 Next Engine 相關 Story 都調整完成後）
+**預定時機**：此 Run 的最後階段（等所有 Next Engine 相關 Story 都調整完成後）
 
 **前置條件**：
 - ✅ Story 5.5 已完成
@@ -277,32 +303,6 @@
 
 **參考文件**：
 - [Story 5.4: Shopline Platform Adapter 重構](../backlog/stories/story-5-4-shopline-adapter-refactor.md) - 見「⚠️ 後續檢視需求」章節
-
----
-
-### 階段 7：Story 5.8 - Next Engine 建立訂單 API（待啟動）
-
-**目標**：實作 Next Engine 建立訂單 API
-
-**狀態**：⏸ 待 Story 5.7 完成後啟動
-
-**前置條件**：
-- ⏳ Story 5.7 已完成
-- ⏳ Next Engine 建立訂單 API 文件已補充（待用戶補充）
-
-**實作重點**：
-1. 實作建立訂單 API（API 端點與參數待用戶補充文件）
-2. 在 `NextEngineAdapter` 中新增 `createOrder` 方法
-3. 前端 API 客戶端方法整合
-4. 前端 API 配置整合
-5. 前端測試頁面整合
-
-**備註**：
-- ⚠️ **API 文件待補充**：此 Story 為初步規劃版本，需等待用戶補充 Next Engine 建立訂單 API 的詳細文件後，再更新詳細的實作規格
-- 📝 參考文件：`docs/reference/platform-apis/NE-EXAMPLE.md`（如有相關章節）
-
-**參考文件**：
-- [Story 5.8: Next Engine 建立訂單 API](../backlog/stories/story-5-8-next-engine-create-order.md)
 
 ---
 
