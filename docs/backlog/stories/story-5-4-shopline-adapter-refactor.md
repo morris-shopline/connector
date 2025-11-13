@@ -1,7 +1,7 @@
 # Story 5.4: Shopline Platform Adapter 重構
 
 **所屬 Epic**: [Epic 5: Next Engine 多平台 MVP（Phase 1.3）](../epics/epic-5-next-engine-mvp.md)  
-**狀態**: 🟡 in-user-test（推上正式站，進行 User Test）  
+**狀態**: ✅ completed  
 **對應 Roadmap**: Phase 1.3（多平台 MVP）  
 **預估工期**: 2 個工作天
 
@@ -160,3 +160,58 @@
 - 重構期間需特別注意 Shopline 正式環境授權流程不可中斷，可先在 staging / sandbox 驗證。
 - 建議在非尖峰時間佈署，並保留 rollback 策略。
 - 若後續還要支援第三個平台，可直接在本 Story 完成後新增 adapter，不需再次大改。
+
+---
+
+## ⚠️ 後續檢視需求
+
+**狀態**：⏳ 待檢視  
+**預定時機**：此 Run 的最後階段（等 Next Engine 相關 Story 都調整完成後）
+
+### 檢視目標
+
+雖然 Story 5.4 已完成並通過 User Test，但代碼架構面仍可能存在**雙軌的痕跡**，需要回頭重新檢視：
+
+1. **徹底全面改用 adapter**
+   - 目標：代碼架構面完全不要有雙軌的痕跡
+   - 檢視範圍：
+     - `backend/src/routes/api.ts` - 目前仍使用 `ShoplineService` 進行資料庫操作（`getStoreByHandle`）
+     - `backend/src/routes/webhook.ts` - 目前仍使用 `ShoplineService` 進行資料庫操作（`isWebhookProcessed`, `saveWebhookEvent`, `getStoreInfo`）
+     - `backend/src/routes/auth.ts` - 目前仍使用 `ShoplineService` 進行資料庫操作（`saveStoreInfo`）
+   - 檢視重點：
+     - 確認是否所有資料庫操作都可以透過 adapter 或 repository 模式統一處理
+     - 確認是否還有其他地方直接使用 `ShoplineService` 而非透過 `PlatformServiceFactory`
+     - 確認 `ShoplineService` 是否還有存在的必要，或應完全移除
+
+2. **用戶體驗維持**
+   - 目標：重構過程中確保所有功能行為與重構前一致
+   - 檢視重點：
+     - 所有 API 端點行為與重構前一致
+     - OAuth 授權流程正常運作
+     - Webhook 處理邏輯正確
+     - 錯誤處理與回傳格式一致
+
+3. **架構一致性**
+   - 目標：確保 Shopline 與 Next Engine 使用完全一致的架構模式
+   - 檢視重點：
+     - 確認兩個平台的 adapter 實作方式一致
+     - 確認兩個平台的路由處理方式一致
+     - 確認兩個平台的錯誤處理方式一致
+
+### 檢視檢查清單
+
+- [ ] 搜尋所有 `ShoplineService` 的使用位置，確認是否都必要
+- [ ] 確認所有資料庫操作是否都可以透過 repository 模式統一處理
+- [ ] 確認是否還有直接 `new ShoplineService()` 的地方（除了必要的資料庫操作）
+- [ ] 確認 `ShoplineService` 是否還有存在的必要，或應完全移除
+- [ ] 確認所有路由都透過 `PlatformServiceFactory` 取得 adapter
+- [ ] 確認 Shopline 與 Next Engine 的架構模式完全一致
+- [ ] 進行完整回歸測試，確認所有功能正常運作
+- [ ] 更新相關文件，標註架構檢視結果
+
+### 預期成果
+
+- ✅ 代碼架構面完全沒有雙軌的痕跡
+- ✅ 所有平台統一使用 adapter 模式
+- ✅ 用戶體驗與重構前完全一致
+- ✅ 架構文件更新完成

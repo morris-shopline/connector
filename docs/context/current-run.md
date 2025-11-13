@@ -24,7 +24,7 @@
 
 | 任務 | 狀態 | 備註 |
 |------|------|------|
-| [Story 5.4: Shopline Platform Adapter 重構](../backlog/stories/story-5-4-shopline-adapter-refactor.md) | ✅ completed | ✅ User Test 完成，Story 已關閉 |
+| [Story 5.4: Shopline Platform Adapter 重構](../backlog/stories/story-5-4-shopline-adapter-refactor.md) | ⏳ 待檢視 | ✅ User Test 完成，但需回頭檢視架構是否徹底移除雙軌痕跡 |
 | [Issue 2025-11-11-001: 停用 Connection Item 時出現 Network Error](../backlog/issues/issue-2025-11-11-001-disable-connection-item-network-error.md) | ⏸ pending | ⏸ 不在此 run 處理，待之後適當時機處理 |
 | [Story 5.5: Next Engine 商品建立改進與庫存 API 補強](../backlog/stories/story-5-5-next-engine-inventory-apis.md) | ✅ completed | ✅ 地端測試通過 + 正式機測試通過，Story 已結案 |
 | [Story 5.6: Next Engine 訂單 API 補強](../backlog/stories/story-5-6-next-engine-order-apis.md) | ⏸ pending | ⏳ 待下週繼續開發 |
@@ -34,11 +34,11 @@
 
 ## 執行順序與策略
 
-### 階段 1：Story 5.4 - Shopline Platform Adapter 重構（✅ 已完成）
+### 階段 1：Story 5.4 - Shopline Platform Adapter 重構（✅ 已完成，⏳ 待檢視）
 
 **目標**：將 Shopline 授權／API 流程重構為與 Next Engine 一致的 Platform Adapter 架構
 
-**目前狀態**：✅ **已完成，User Test 通過，Story 已關閉**
+**目前狀態**：✅ **已完成，User Test 通過**，但 ⏳ **需回頭檢視架構是否徹底移除雙軌痕跡**（見階段 6）
 
 **已完成項目**：
 1. ✅ 建立 `ShoplineAdapter`，實作 `PlatformAdapter` 介面（OAuth 相關方法）
@@ -215,6 +215,58 @@
 4. 實作監控 API
 5. 實作 Webhook 管理 UI（在 `webhook-test.tsx`）
 6. 新增前端 Hooks 與 Components
+
+---
+
+### 階段 6：Story 5.4 架構檢視與徹底重構（⏳ 待執行）
+
+**目標**：回頭檢視 Story 5.4 的重構是否徹底，確保代碼架構面完全沒有雙軌的痕跡
+
+**狀態**：⏳ 待執行  
+**預定時機**：此 Run 的最後階段（等 Next Engine 相關 Story 都調整完成後）
+
+**前置條件**：
+- ✅ Story 5.5 已完成
+- ⏳ Story 5.6 已完成
+- ⏳ Story 5.7 已完成（或確認不需要）
+
+**檢視目標**：
+
+1. **徹底全面改用 adapter**
+   - 檢視範圍：
+     - `backend/src/routes/api.ts` - 目前仍使用 `ShoplineService` 進行資料庫操作（`getStoreByHandle`）
+     - `backend/src/routes/webhook.ts` - 目前仍使用 `ShoplineService` 進行資料庫操作（`isWebhookProcessed`, `saveWebhookEvent`, `getStoreInfo`）
+     - `backend/src/routes/auth.ts` - 目前仍使用 `ShoplineService` 進行資料庫操作（`saveStoreInfo`）
+   - 檢視重點：
+     - 確認是否所有資料庫操作都可以透過 adapter 或 repository 模式統一處理
+     - 確認是否還有其他地方直接使用 `ShoplineService` 而非透過 `PlatformServiceFactory`
+     - 確認 `ShoplineService` 是否還有存在的必要，或應完全移除
+
+2. **用戶體驗維持**
+   - 確保所有功能行為與重構前一致
+   - 進行完整回歸測試
+
+3. **架構一致性**
+   - 確保 Shopline 與 Next Engine 使用完全一致的架構模式
+
+**檢視檢查清單**：
+- [ ] 搜尋所有 `ShoplineService` 的使用位置，確認是否都必要
+- [ ] 確認所有資料庫操作是否都可以透過 repository 模式統一處理
+- [ ] 確認是否還有直接 `new ShoplineService()` 的地方（除了必要的資料庫操作）
+- [ ] 確認 `ShoplineService` 是否還有存在的必要，或應完全移除
+- [ ] 確認所有路由都透過 `PlatformServiceFactory` 取得 adapter
+- [ ] 確認 Shopline 與 Next Engine 的架構模式完全一致
+- [ ] 進行完整回歸測試，確認所有功能正常運作
+- [ ] 更新相關文件，標註架構檢視結果
+
+**預期成果**：
+- ✅ 代碼架構面完全沒有雙軌的痕跡
+- ✅ 所有平台統一使用 adapter 模式
+- ✅ 用戶體驗與重構前完全一致
+- ✅ 架構文件更新完成
+
+**參考文件**：
+- [Story 5.4: Shopline Platform Adapter 重構](../backlog/stories/story-5-4-shopline-adapter-refactor.md) - 見「⚠️ 後續檢視需求」章節
 
 ---
 
@@ -418,8 +470,10 @@
 **2025-11-13 進度更新**：
 - ✅ Story 5.5 已完成並通過地端 + 正式機測試
 - ⏸ Story 5.6 待下週繼續開發
+- ⏳ Story 5.4 需要回頭檢視架構是否徹底移除雙軌痕跡（待 Run 最後階段執行）
 - 📝 今天花了比較久時間在修正 CSV 格式和錯誤處理邏輯，但最終成功完成並通過測試
 - 📝 此 Run 將繼續進行，下週繼續完成剩餘的 Story
+- 📝 **重要**：Story 5.4 雖然已完成 User Test，但代碼架構面仍可能存在雙軌痕跡，需要在 Run 最後階段（等 Next Engine 相關 Story 都調整完成後）回頭檢視並徹底重構
 
 ---
 
